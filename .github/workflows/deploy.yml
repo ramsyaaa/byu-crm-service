@@ -32,11 +32,11 @@ jobs:
           port: 22
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
-            cd /usr/go/sensor_monitoring_be
+            cd /usr/go/byu-crm-service
             git pull origin master
             go mod tidy
-            go build -o sensor_monitoring_be
-            pm2 restart sensor_monitoring_be
+            go build -o byu-crm-service
+            pm2 restart byu_crm_service
 
       # 4. Send success notification via custom API
       - name: Send Telegram Notification
