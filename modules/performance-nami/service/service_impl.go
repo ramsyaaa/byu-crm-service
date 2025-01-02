@@ -28,6 +28,14 @@ func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
 		return fmt.Errorf("city not found")
 	}
 
+	existingRecord, err := s.repo.FindBySerialNumberMsisdn(data[16])
+	if err != nil {
+		return fmt.Errorf("failed to check existing record: %w", err)
+	}
+	if existingRecord != nil {
+		return nil
+	}
+
 	performanceNami := models.PerformanceNami{
 		Periode:           &data[0],
 		PeriodeDate:       parseDate(data[1]),
@@ -55,7 +63,7 @@ func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
 		Revenue:            &data[23],
 		SaDate:             parseDate(data[24]),
 		SoDate:             parseDate(data[25]),
-		NewImei:            data[26], // Assuming parseUint8 is a helper to parse uint8 values
+		NewImei:            dereferenceString(parseNewImei(data[26])), // Assuming parseUint8 is a helper to parse uint8 values
 		SkulIDDate:         parseDate(data[27]),
 		AgentID:            &data[28],
 		UserID:             &data[29],
@@ -80,6 +88,36 @@ func parseDate(dateStr string) *time.Time {
 		return nil
 	}
 	return &parsedDate
+}
+
+func parseNewImei(imeiStr string) *string {
+	if imeiStr == "\\N" || strings.TrimSpace(imeiStr) == "" {
+		return nil
+	}
+
+	if imeiStr == "-" {
+		str := "0"
+		return &str
+	}
+
+	if imeiStr == "N" {
+		str := "1"
+		return &str
+	}
+
+	if imeiStr == "Y" {
+		str := "2"
+		return &str
+	}
+
+	return nil
+}
+
+func dereferenceString(str *string) string {
+	if str == nil {
+		return ""
+	}
+	return *str
 }
 
 func parseDateTime(dateTimeStr string) *time.Time {

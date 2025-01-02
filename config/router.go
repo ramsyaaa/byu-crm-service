@@ -23,8 +23,10 @@ func Route(db *gorm.DB) {
 
 	// Register your routes here
 	routes.PerformanceNamiRouter(app, db)
+	routes.PerformanceSkulIdRouter(app, db)
 	routes.AccountRouter(app, db)
 	routes.CityRouter(app, db)
+	routes.SubdistrictRouter(app, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
