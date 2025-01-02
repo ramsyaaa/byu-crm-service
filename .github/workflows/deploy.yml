@@ -42,9 +42,9 @@ jobs:
       - name: Send Telegram Notification
         if: success()
         run: |
-          curl -s -X POST https://telebot.apicollection.my.id/api/v1/cicd/send-message \
+          curl -s -X POST https://telebot.apicollection.my.id/api/v1/notification/send-message \
           -H "Content-Type: application/json" \
-           -d '{"message": "✅ Task Succeeded\n${{ github.event.head_commit.message }}\nMonitoring BE Deployed to Production\nBy: ${{ github.event.head_commit.committer.name }}"}'
+           -d '{"message": "✅ Task Succeeded\n${{ github.event.head_commit.message }}\nby.U CRM Services Deployed to Production\nBy: ${{ github.event.head_commit.committer.name }}", "channel": "@byu_crm"}'
       # 5. Cleanup
       - name: Remove SSH Key
         if: always()
