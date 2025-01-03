@@ -6,4 +6,5 @@ import (
 
 type PerformanceNamiRepository interface {
 	Create(performanceNami *models.PerformanceNami) error
+	FindBySerialNumberMsisdn(serial string) (*models.PerformanceNami, error)
 }

@@ -10,7 +10,7 @@ type UploadRequest struct {
 	UserID  string `form:"user_id" validate:"required"`
 }
 
-func ValidatePerformanceNamiRequest(c *fiber.Ctx) error {
+func ValidatePerformanceSkulIdRequest(c *fiber.Ctx) error {
 	var request UploadRequest
 	if err := c.BodyParser(&request); err != nil {
 		return err
