@@ -1,10 +1,14 @@
 package http
 
 import (
+	"bytes"
 	"byu-crm-service/modules/performance-nami/service"
 	"byu-crm-service/modules/performance-nami/validation"
 	"context"
 	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -77,29 +81,70 @@ func (h *PerformanceNamiHandler) Import(c *fiber.Ctx) error {
 	if err := c.SaveFile(file, tempPath); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file"})
 	}
-	defer os.Remove(tempPath)
 
-	// Process file with timeout
-	_, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	// Retrieve user_id from the form
+	userID := c.FormValue("user_id")
 
-	f, err := os.Open(tempPath)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to open file"})
-	}
-	defer f.Close()
+	// Respond immediately to the user
+	go func() {
+		defer os.Remove(tempPath) // Clean up the temporary file
 
-	reader := csv.NewReader(f)
-	rows, _ := reader.ReadAll()
+		// Process file with timeout
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
 
-	for i, row := range rows {
-		if i == 0 {
-			continue // Skip header
+		f, err := os.Open(tempPath)
+		if err != nil {
+			fmt.Println("Failed to open file:", err)
+			return
 		}
-		if err := h.service.ProcessPerformanceNami(row); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-		}
-	}
+		defer f.Close()
 
-	return c.JSON(fiber.Map{"message": "File processed successfully"})
+		reader := csv.NewReader(f)
+		rows, _ := reader.ReadAll()
+
+		for i, row := range rows {
+			if i == 0 {
+				continue // Skip header
+			}
+			if err := h.service.ProcessPerformanceNami(row); err != nil {
+				fmt.Println("Error processing row:", err)
+				return
+			}
+		}
+
+		// Send notification
+		notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
+		payload := map[string]interface{}{
+			"model":    "App\\Models\\PerformanceNami",
+			"model_id": 0, // Replace with actual model ID if needed
+			"user_id":  userID,
+			"data": map[string]string{
+				"title":        "Import Performance Nami",
+				"description":  "Import Performance Nami",
+				"callback_url": "/performances-nami",
+			},
+		}
+
+		payloadBytes, _ := json.Marshal(payload)
+		resp, err := http.Post(notificationURL, "application/json", bytes.NewReader(payloadBytes))
+		if err != nil {
+			fmt.Println("Failed to send notification:", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Println("Notification API responded with status:", resp.StatusCode)
+		} else {
+			var responseMap map[string]interface{}
+			if err := json.NewDecoder(resp.Body).Decode(&responseMap); err != nil {
+				fmt.Println("Failed to decode response:", err)
+				return
+			}
+			fmt.Println("Notification sent successfully:", responseMap["message"])
+		}
+	}()
+
+	return c.JSON(fiber.Map{"message": "File upload successful, processing in background"})
 }

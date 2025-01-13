@@ -2,6 +2,8 @@ package http
 
 import (
 	"bytes"
+	"byu-crm-service/modules/performance-skul-id/service"
+	"byu-crm-service/modules/performance-skul-id/validation"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -10,23 +12,20 @@ import (
 	"os"
 	"time"
 
-	"byu-crm-service/modules/account/service"
-	"byu-crm-service/modules/account/validation"
-
 	"github.com/gofiber/fiber/v2"
 )
 
-type AccountHandler struct {
-	service service.AccountService
+type PerformanceSkulIdHandler struct {
+	service service.PerformanceSkulIdService
 }
 
-func NewAccountHandler(service service.AccountService) *AccountHandler {
-	return &AccountHandler{service: service}
+func NewPerformanceSkulIdHandler(service service.PerformanceSkulIdService) *PerformanceSkulIdHandler {
+	return &PerformanceSkulIdHandler{service: service}
 }
 
-func (h *AccountHandler) Import(c *fiber.Ctx) error {
+func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 	// Validate the uploaded file
-	if err := validation.ValidateAccountRequest(c); err != nil {
+	if err := validation.ValidatePerformanceSkulIdRequest(c); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -48,8 +47,9 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 	// Retrieve user_id from the form
 	userID := c.FormValue("user_id")
 
+	// Respond immediately to the user
 	go func() {
-		defer os.Remove(tempPath)
+		defer os.Remove(tempPath) // Clean up the temporary file
 
 		// Process file with timeout
 		_, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -69,7 +69,7 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 			if i == 0 {
 				continue // Skip header
 			}
-			if err := h.service.ProcessAccount(row); err != nil {
+			if err := h.service.ProcessPerformanceSkulId(row); err != nil {
 				fmt.Println("Error processing row:", err)
 				return
 			}
@@ -78,13 +78,13 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 		// Send notification
 		notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
 		payload := map[string]interface{}{
-			"model":    "App\\Models\\Account",
+			"model":    "App\\Models\\PerformanceSkulId",
 			"model_id": 0, // Replace with actual model ID if needed
 			"user_id":  userID,
 			"data": map[string]string{
-				"title":        "Import Account",
-				"description":  "Import Account",
-				"callback_url": "/accounts",
+				"title":        "Import Performance SkulId",
+				"description":  "Import Performance SkulId",
+				"callback_url": "/performances-skulId",
 			},
 		}
 
@@ -108,5 +108,5 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 		}
 	}()
 
-	return c.JSON(fiber.Map{"message": "File processed successfully"})
+	return c.JSON(fiber.Map{"message": "File upload successful, processing in background"})
 }
