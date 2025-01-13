@@ -3,7 +3,7 @@ name: by.U CRM Service CI/CD
 on:
   push:
     branches:
-      - master # Trigger on push to the main branch
+      - dev # Trigger on push to the main branch
 
 jobs:
   deploy:
@@ -33,7 +33,7 @@ jobs:
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
             cd /usr/go/byu-crm-service
-            git pull origin master
+            git pull origin dev
             go mod tidy
             go build -o byu-crm-service
             pm2 restart byu_crm_service
@@ -44,7 +44,7 @@ jobs:
         run: |
           curl -s -X POST https://telebot.apicollection.my.id/api/v1/notification/send-message \
           -H "Content-Type: application/json" \
-           -d '{"message": "✅ Task Succeeded\n${{ github.event.head_commit.message }}\nby.U CRM Services Deployed to Production\nBy: ${{ github.event.head_commit.committer.name }}", "channel": "@byu_crm"}'
+           -d '{"message": "✅ Task Succeeded\n${{ github.event.head_commit.message }}\nby.U CRM Services Deployed to Dev\nBy: ${{ github.event.head_commit.committer.name }}", "channel": "@byu_crm"}'
       # 5. Cleanup
       - name: Remove SSH Key
         if: always()
