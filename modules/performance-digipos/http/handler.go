@@ -78,13 +78,13 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 		// Send notification
 		notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
 		payload := map[string]interface{}{
-			"model":    "App\\Models\\PerformanceDigipos",
+			"model":    "App\\Models\\Performance",
 			"model_id": 0, // Replace with actual model ID if needed
 			"user_id":  userID,
 			"data": map[string]string{
 				"title":        "Import Performance Digipos",
 				"description":  "Import Performance Digipos",
-				"callback_url": "/performances",
+				"callback_url": "/performances-digiposId",
 			},
 		}
 

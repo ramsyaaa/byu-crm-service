@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account/repository"
 	cityRepository "byu-crm-service/modules/city/repository"
+	"errors"
 	"fmt"
 )
 
@@ -14,6 +15,29 @@ type accountService struct {
 
 func NewAccountService(repo repository.AccountRepository, cityRepo cityRepository.CityRepository) AccountService {
 	return &accountService{repo: repo, cityRepo: cityRepo}
+}
+
+func (s *accountService) GetAllAccounts(limit, page int, search, userRole, territoryID string) ([]models.Account, map[string]interface{}, error) {
+	if limit <= 0 || page <= 0 {
+		return nil, nil, errors.New("limit and page must be greater than 0")
+	}
+
+	// Call repository layer
+	accounts, totalRecords, err := s.repo.GetFilteredAccounts(limit, page, search, userRole, territoryID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create pagination metadata
+	totalPages := (totalRecords + limit - 1) / limit
+	pagination := map[string]interface{}{
+		"current_page": page,
+		"total_pages":  totalPages,
+		"total_items":  totalRecords,
+		"limit":        limit,
+	}
+
+	return accounts, pagination, nil
 }
 
 func (s *accountService) ProcessAccount(data []string) error {

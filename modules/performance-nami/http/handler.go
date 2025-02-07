@@ -15,44 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// Struct untuk performance
-type PerformanceNami struct {
-	Periode            string
-	PeriodeDate        *time.Time
-	EventID            string
-	PoiID              string
-	PoiName            string
-	PoiType            string
-	EventName          string
-	EventType          string
-	EventLocationType  string
-	SalesType          string
-	SalesType2         string
-	CityID             *uint
-	SerialNumberMSISDN string
-	ScanType           string
-	ActiveMSISDN       string
-	ActiveDate         *time.Time
-	ActiveCity         string
-	Validation         string
-	ValidKPI           bool
-	Rev                string
-	SaDate             *time.Time
-	SoDate             *time.Time
-	NewImei            string
-	SkulIDDate         *time.Time
-	AgentID            string
-	UserID             string
-	UserName           string
-	UserType           string
-	UserSubType        string
-	ScanDate           *time.Time
-	Plan               string
-	TopStatus          bool
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-}
-
 type PerformanceNamiHandler struct {
 	service service.PerformanceNamiService
 }

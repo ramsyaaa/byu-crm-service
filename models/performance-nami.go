@@ -36,6 +36,7 @@ type PerformanceNami struct {
 	ScanDate           *time.Time `gorm:"column:scan_date" json:"scan_date"`
 	Plan               *string    `gorm:"column:plan" json:"plan"`
 	TopStatus          bool       `gorm:"column:top_status" json:"top_status"`
+	AccountID          uint       `gorm:"column:account_id" json:"account_id"`
 	CreatedAt          time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }

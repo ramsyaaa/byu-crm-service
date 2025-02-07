@@ -2,6 +2,7 @@ package service
 
 import (
 	"byu-crm-service/models"
+	AccountRepository "byu-crm-service/modules/account/repository"
 	cityRepository "byu-crm-service/modules/city/repository"
 	"byu-crm-service/modules/performance-nami/repository"
 	"fmt"
@@ -10,12 +11,13 @@ import (
 )
 
 type performanceNamiService struct {
-	repo     repository.PerformanceNamiRepository
-	cityRepo cityRepository.CityRepository
+	repo        repository.PerformanceNamiRepository
+	cityRepo    cityRepository.CityRepository
+	accountRepo AccountRepository.AccountRepository
 }
 
-func NewPerformanceNamiService(repo repository.PerformanceNamiRepository, cityRepo cityRepository.CityRepository) PerformanceNamiService {
-	return &performanceNamiService{repo: repo, cityRepo: cityRepo}
+func NewPerformanceNamiService(repo repository.PerformanceNamiRepository, cityRepo cityRepository.CityRepository, accountRepo AccountRepository.AccountRepository) PerformanceNamiService {
+	return &performanceNamiService{repo: repo, cityRepo: cityRepo, accountRepo: accountRepo}
 }
 
 func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
@@ -26,6 +28,16 @@ func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
 	}
 	if city == nil {
 		return fmt.Errorf("city not found")
+	}
+
+	account, err := s.accountRepo.FindByAccountName(data[4]) // City
+	if err != nil {
+		return err
+	}
+
+	account_id := 0
+	if account != nil {
+		account_id = int(account.ID)
 	}
 
 	existingRecord, err := s.repo.FindBySerialNumberMsisdn(data[16])
@@ -73,6 +85,7 @@ func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
 		ScanDate:           parseDateTime(data[33]),
 		Plan:               &data[34],
 		TopStatus:          parseBool(data[35]),
+		AccountID:          uint(account_id),
 	}
 	return s.repo.Create(&performanceNami)
 }
