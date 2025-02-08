@@ -40,6 +40,7 @@ type PerformanceDetail struct {
 	ScanDate           *time.Time `json:"scan_date"`
 	Plan               *string    `json:"plan"`
 	TopStatus          bool       `json:"top_status"`
+	AccountID          *uint      `json:"account_id"`
 	CreatedAt          time.Time  `json:"created_at"`
 	UpdatedAt          time.Time  `json:"updated_at"`
 }
@@ -78,6 +79,7 @@ type (
 		ScanDate           *time.Time `json:"scan_date"`
 		Plan               *string    `json:"plan"`
 		TopStatus          bool       `json:"top_status"`
+		AccountID          *uint      `json:"account_id"`
 	}
 	StoreResponse PerformanceDetail
 )
