@@ -32,19 +32,27 @@ jobs:
           port: 22
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
+            cd /usr/go/byu-crm-service-dev
+            git pull origin master
+            go mod tidy
+            go build -o byu-crm-service-dev
+            pm2 restart byu_crm_service-dev
+
             cd /usr/go/byu-crm-service-prod
             git pull origin master
             go mod tidy
-            go build -o byu-crm-service
-            pm2 restart byu_crm_service_prod
+            go build -o byu-crm-service-prod
+            pm2 restart byu_crm_service-prod
 
       # 4. Send success notification via custom API
       - name: Send Telegram Notification
         if: success()
         run: |
+          COMMIT_MESSAGE="${{ github.event.head_commit.message || github.event.pull_request.title }}"
+          COMMITTER_NAME="${{ github.event.head_commit.committer.name || github.event.pull_request.user.login }}"
           curl -s -X POST https://telebot.apicollection.my.id/api/v1/notification/send-message \
           -H "Content-Type: application/json" \
-           -d '{"message": "✅ Task Succeeded\n${{ github.event.head_commit.message }}\nby.U CRM Services Deployed to Production\nBy: ${{ github.event.head_commit.committer.name }}", "channel": "@byu_crm"}'
+           -d '{"message": "✅ Task Succeeded\n'"${COMMIT_MESSAGE}"'\nby.U CRM Services Deployed to Production\nBy: '"${COMMITTER_NAME}"'", "channel": "@byu_crm"}'
       # 5. Cleanup
       - name: Remove SSH Key
         if: always()
