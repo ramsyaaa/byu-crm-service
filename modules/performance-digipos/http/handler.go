@@ -76,6 +76,7 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 		}
 
 		// Send notification
+		fmt.Println("Sending notification...")
 		notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
 		payload := map[string]interface{}{
 			"model":    "App\\Models\\Performance",

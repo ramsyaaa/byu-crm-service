@@ -19,12 +19,23 @@ func NewPerformanceDigiposService(repo repository.PerformanceDigiposRepository, 
 }
 
 func (s *performanceDigiposService) ProcessPerformanceDigipos(data []string) error {
-	cluster, err := s.clusterRepo.FindByName(data[28]) // Cluatser
+	cluster, err := s.clusterRepo.FindByName(data[28]) // Cluster
 	if err != nil {
 		return err
 	}
 	if cluster == nil {
 		return fmt.Errorf("cluster not found")
+	}
+
+	idImport := &data[0]
+	if idImport == nil || *idImport == "" {
+		return fmt.Errorf("id_import tidak boleh kosong")
+	}
+
+	// Cek apakah id_import sudah ada di tabel performances
+	existingPerformance, err := s.repo.FindByIdImport(*idImport)
+	if err != nil {
+		return err
 	}
 
 	performanceDigipos := models.PerformanceDigipos{
@@ -58,6 +69,13 @@ func (s *performanceDigiposService) ProcessPerformanceDigipos(data []string) err
 		// BranchId:            &data[27],
 		ClusterId: cluster.ID,
 	}
+
+	if existingPerformance != nil {
+		// Update jika id_import sudah ada
+		performanceDigipos.ID = existingPerformance.ID // Gunakan ID yang sudah ada
+		return s.repo.Update(&performanceDigipos)
+	}
+
 	return s.repo.Create(&performanceDigipos)
 }
 

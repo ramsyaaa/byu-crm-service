@@ -32,3 +32,7 @@ type PerformanceDigipos struct {
 	SalesTerritoryValue *string    `gorm:"column:sales_territory_value" json:"sales_territory_value"`
 	Wok                 *string    `gorm:"column:wok" json:"wok"`
 }
+
+func (PerformanceDigipos) TableName() string {
+	return "performances"
+}
