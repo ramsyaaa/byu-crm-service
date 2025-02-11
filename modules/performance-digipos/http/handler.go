@@ -2,8 +2,8 @@ package http
 
 import (
 	"bytes"
-	"byu-crm-service/modules/performance-nami/service"
-	"byu-crm-service/modules/performance-nami/validation"
+	"byu-crm-service/modules/performance-digipos/service"
+	"byu-crm-service/modules/performance-digipos/validation"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -15,17 +15,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type PerformanceNamiHandler struct {
-	service service.PerformanceNamiService
+type PerformanceDigiposHandler struct {
+	service service.PerformanceDigiposService
 }
 
-func NewPerformanceNamiHandler(service service.PerformanceNamiService) *PerformanceNamiHandler {
-	return &PerformanceNamiHandler{service: service}
+func NewPerformanceDigiposHandler(service service.PerformanceDigiposService) *PerformanceDigiposHandler {
+	return &PerformanceDigiposHandler{service: service}
 }
 
-func (h *PerformanceNamiHandler) Import(c *fiber.Ctx) error {
+func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 	// Validate the uploaded file
-	if err := validation.ValidatePerformanceNamiRequest(c); err != nil {
+	if err := validation.ValidatePerformanceDigiposRequest(c); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -69,22 +69,23 @@ func (h *PerformanceNamiHandler) Import(c *fiber.Ctx) error {
 			if i == 0 {
 				continue // Skip header
 			}
-			if err := h.service.ProcessPerformanceNami(row); err != nil {
+			if err := h.service.ProcessPerformanceDigipos(row); err != nil {
 				fmt.Println("Error processing row:", err)
 				return
 			}
 		}
 
 		// Send notification
+		fmt.Println("Sending notification...")
 		notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
 		payload := map[string]interface{}{
-			"model":    "App\\Models\\PerformanceNami",
+			"model":    "App\\Models\\Performance",
 			"model_id": 0, // Replace with actual model ID if needed
 			"user_id":  userID,
 			"data": map[string]string{
-				"title":        "Import Performance Nami",
-				"description":  "Import Performance Nami",
-				"callback_url": "/performances-nami",
+				"title":        "Import Performance Digipos",
+				"description":  "Import Performance Digipos",
+				"callback_url": "/performances-digiposId",
 			},
 		}
 

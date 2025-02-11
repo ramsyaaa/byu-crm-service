@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"byu-crm-service/modules/account/service"
@@ -22,6 +23,29 @@ type AccountHandler struct {
 
 func NewAccountHandler(service service.AccountService) *AccountHandler {
 	return &AccountHandler{service: service}
+}
+
+func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
+	// Parse query parameters
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	search := c.Query("q", "")
+	userRole := c.Query("userRole", "Super-Admin")
+	territoryID := c.Query("territory_id", "")
+
+	// Call service layer
+	result, pagination, err := h.service.GetAllAccounts(limit, page, search, userRole, territoryID)
+	if err != nil {
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Return response with pagination
+	return c.JSON(fiber.Map{
+		"data":       result,
+		"pagination": pagination,
+	})
 }
 
 func (h *AccountHandler) Import(c *fiber.Ctx) error {
