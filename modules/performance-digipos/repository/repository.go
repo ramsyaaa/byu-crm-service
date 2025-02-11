@@ -6,4 +6,6 @@ import (
 
 type PerformanceDigiposRepository interface {
 	Create(performanceDigipos *models.PerformanceDigipos) error
+	FindByIdImport(idImport string) (*models.PerformanceDigipos, error)
+	Update(performance *models.PerformanceDigipos) error
 }
