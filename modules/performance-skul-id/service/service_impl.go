@@ -37,8 +37,14 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 		return fmt.Errorf("subdistrict not found")
 	}
 
+	idSkulId := &data[0]
+	if idSkulId == nil || *idSkulId == "" {
+		return fmt.Errorf("id_skulid tidak boleh kosong")
+	}
+
 	performanceSkulId := models.PerformanceSkulId{
 		UserId:         account.Pic,
+		IdSkulid:       idSkulId,
 		UserType:       &data[1],
 		RegisteredDate: parseDate(data[2]),
 		Msisdn:         &data[3],
@@ -55,6 +61,17 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 		SubdistrictId:  &subdistrict.ID,
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
+	}
+
+	existingPerformance, err := s.repo.FindByIdSkulId(*idSkulId)
+	if err != nil {
+		return err
+	}
+
+	if existingPerformance != nil {
+		// Update jika id_import sudah ada
+		performanceSkulId.ID = existingPerformance.ID // Gunakan ID yang sudah ada
+		return s.repo.Update(&performanceSkulId)
 	}
 	return s.repo.Create(&performanceSkulId)
 }
