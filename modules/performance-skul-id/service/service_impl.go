@@ -51,8 +51,8 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 		Provider:       &data[4],
 		AccountId:      &account.ID,
 		UserName:       &data[6],
-		FlagNewSales:   &data[18],
-		FlagImei:       &data[19],
+		FlagNewSales:   boolToInt(data[18]),
+		FlagImei:       boolToInt(data[19]),
 		RevMtd:         &data[20],
 		RevMtdM1:       &data[21],
 		RevDigital:     &data[22],
@@ -74,6 +74,16 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 		return s.repo.Update(&performanceSkulId)
 	}
 	return s.repo.Create(&performanceSkulId)
+}
+
+func boolToInt(value string) *int {
+	var result int
+	if value == "Y" {
+		result = 1
+	} else {
+		result = 0
+	}
+	return &result // Mengembalikan pointer ke int
 }
 
 func parseDate(dateStr string) *time.Time {
