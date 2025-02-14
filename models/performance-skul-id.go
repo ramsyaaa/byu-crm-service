@@ -12,8 +12,8 @@ type PerformanceSkulId struct {
 	Provider       *string    `gorm:"column:provider" json:"provider"`
 	AccountId      *uint      `gorm:"column:account_id" json:"account_id"`
 	UserName       *string    `gorm:"column:user_name" json:"user_name"`
-	FlagNewSales   *string    `gorm:"column:flag_new_sales" json:"flag_new_sales"`
-	FlagImei       *string    `gorm:"column:flag_imei" json:"flag_imei"`
+	FlagNewSales   *int       `gorm:"column:flag_new_sales" json:"flag_new_sales"`
+	FlagImei       *int       `gorm:"column:flag_imei" json:"flag_imei"`
 	RevMtd         *string    `gorm:"column:rev_mtd" json:"rev_mtd"`
 	RevMtdM1       *string    `gorm:"column:rev_mtd_m1" json:"rev_mtd_m1"`
 	RevDigital     *string    `gorm:"column:rev_digital" json:"rev_digital"`
