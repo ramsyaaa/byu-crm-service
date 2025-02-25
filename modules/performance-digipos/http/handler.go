@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -46,6 +47,19 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 
 	// Retrieve user_id from the form
 	userID := c.FormValue("user_id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
+	}
+
+	// Menghitung jumlah total baris untuk estimasi durasi
+	totalRows, err := countCSVRows(tempPath)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to count CSV rows"})
+	}
+
+	// Asumsi setiap baris membutuhkan 0.5 detik untuk diproses
+	processingTimePerRow := 0.5
+	estimatedDuration := time.Duration(float64(totalRows) * processingTimePerRow * float64(time.Second))
 
 	// Respond immediately to the user
 	go func() {
@@ -109,5 +123,34 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 		}
 	}()
 
-	return c.JSON(fiber.Map{"message": "File upload successful, processing in background"})
+	return c.JSON(fiber.Map{
+		"message":           "File upload successful, processing in background",
+		"estimated_seconds": estimatedDuration.Seconds(),
+	})
+}
+
+// countCSVRows menghitung jumlah total baris dalam file CSV
+func countCSVRows(filePath string) (int, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	totalRows := 0
+
+	// Baca setiap baris dan hitung jumlah totalnya
+	for {
+		_, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+		totalRows++
+	}
+
+	return totalRows, nil
 }

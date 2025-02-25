@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -30,7 +31,11 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 	}
 
 	// Save file temporarily
-	file, _ := c.FormFile("file_csv")
+	file, err := c.FormFile("file_csv")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to retrieve file"})
+	}
+
 	tempPath := "./temp/" + file.Filename
 
 	// Ensure the temp directory exists
@@ -40,12 +45,26 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 		}
 	}
 
+	// Save file
 	if err := c.SaveFile(file, tempPath); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file"})
 	}
 
 	// Retrieve user_id from the form
 	userID := c.FormValue("user_id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
+	}
+
+	// Menghitung jumlah total baris untuk estimasi durasi
+	totalRows, err := countCSVRows(tempPath)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to count CSV rows"})
+	}
+
+	// Asumsi setiap baris membutuhkan 0.5 detik untuk diproses
+	processingTimePerRow := 0.5
+	estimatedDuration := time.Duration(float64(totalRows) * processingTimePerRow * float64(time.Second))
 
 	// Respond immediately to the user
 	go func() {
@@ -63,7 +82,11 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 		defer f.Close()
 
 		reader := csv.NewReader(f)
-		rows, _ := reader.ReadAll()
+		rows, err := reader.ReadAll()
+		if err != nil {
+			fmt.Println("Failed to read CSV:", err)
+			return
+		}
 
 		for i, row := range rows {
 			if i == 0 {
@@ -71,7 +94,7 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 			}
 			if err := h.service.ProcessPerformanceSkulId(row); err != nil {
 				fmt.Println("Error processing row:", err)
-				return
+				continue // Lanjutkan proses meskipun ada error pada satu baris
 			}
 		}
 
@@ -88,8 +111,14 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 			},
 		}
 
-		payloadBytes, _ := json.Marshal(payload)
-		resp, err := http.Post(notificationURL, "application/json", bytes.NewReader(payloadBytes))
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			fmt.Println("Failed to marshal notification payload:", err)
+			return
+		}
+
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Post(notificationURL, "application/json", bytes.NewReader(payloadBytes))
 		if err != nil {
 			fmt.Println("Failed to send notification:", err)
 			return
@@ -98,15 +127,45 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 
 		if resp.StatusCode != http.StatusOK {
 			fmt.Println("Notification API responded with status:", resp.StatusCode)
-		} else {
-			var responseMap map[string]interface{}
-			if err := json.NewDecoder(resp.Body).Decode(&responseMap); err != nil {
-				fmt.Println("Failed to decode response:", err)
-				return
-			}
-			fmt.Println("Notification sent successfully:", responseMap["message"])
+			return
 		}
+
+		var responseMap map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&responseMap); err != nil {
+			fmt.Println("Failed to decode response:", err)
+			return
+		}
+		fmt.Println("Notification sent successfully:", responseMap["message"])
 	}()
 
-	return c.JSON(fiber.Map{"message": "File upload successful, processing in background"})
+	return c.JSON(fiber.Map{
+		"message":           "File upload successful, processing in background",
+		"estimated_seconds": estimatedDuration.Seconds(),
+	})
+}
+
+// countCSVRows menghitung jumlah total baris dalam file CSV
+func countCSVRows(filePath string) (int, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	totalRows := 0
+
+	// Baca setiap baris dan hitung jumlah totalnya
+	for {
+		_, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+		totalRows++
+	}
+
+	return totalRows, nil
 }
