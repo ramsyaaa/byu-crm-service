@@ -75,3 +75,7 @@ func (r *accountRepository) FindByAccountCode(code string) (*models.Account, err
 func (r *accountRepository) Create(account *models.Account) error {
 	return r.db.Create(account).Error
 }
+
+func (r *accountRepository) UpdateFields(id uint, fields map[string]interface{}) error {
+	return r.db.Model(&models.Account{}).Where("id = ?", id).Updates(fields).Error
+}
