@@ -28,11 +28,18 @@ func APIResponse(message string, code int, status string, data interface{}) Resp
 	return jsonResponse
 }
 
-func ErrorValidationFormat(err error) []string {
-	var errors []string
+func ErrorValidationFormat(err error, validationMessages map[string]string) map[string]string {
+	errors := make(map[string]string)
 
-	for _, error := range err.(validator.ValidationErrors) {
-		errors = append(errors, error.Error())
+	for _, e := range err.(validator.ValidationErrors) {
+		// Buat key yang sesuai dengan field dan tag error
+		key := e.Field() + "." + e.Tag()
+		if message, exists := validationMessages[key]; exists {
+			errors[e.Field()] = message
+		} else {
+			errors[e.Field()] = e.Error()
+		}
 	}
+
 	return errors
 }

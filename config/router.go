@@ -29,6 +29,7 @@ func Route(db *gorm.DB) {
 	routes.SubdistrictRouter(app, db)
 	routes.PerformanceDigiposRouter(app, db)
 	routes.DetailCommunityMemberRouter(app, db)
+	routes.AuthRouter(app, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
