@@ -20,6 +20,7 @@ import (
 	"byu-crm-service/modules/account/validation"
 
 	contactAccountService "byu-crm-service/modules/contact-account/service"
+	socialMediaService "byu-crm-service/modules/social-media/service"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -27,10 +28,11 @@ import (
 type AccountHandler struct {
 	service               service.AccountService
 	contactAccountService contactAccountService.ContactAccountService
+	socialMediaService    socialMediaService.SocialMediaService
 }
 
-func NewAccountHandler(service service.AccountService, contactAccountService contactAccountService.ContactAccountService) *AccountHandler {
-	return &AccountHandler{service: service, contactAccountService: contactAccountService}
+func NewAccountHandler(service service.AccountService, contactAccountService contactAccountService.ContactAccountService, socialMediaService socialMediaService.SocialMediaService) *AccountHandler {
+	return &AccountHandler{service: service, contactAccountService: contactAccountService, socialMediaService: socialMediaService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -141,6 +143,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	if len(account) > 0 {
 		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
+		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
 	}
 
 	// Return success response
