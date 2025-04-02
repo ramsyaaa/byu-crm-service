@@ -19,6 +19,7 @@ import (
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
 
+	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 
@@ -26,13 +27,23 @@ import (
 )
 
 type AccountHandler struct {
-	service               service.AccountService
-	contactAccountService contactAccountService.ContactAccountService
-	socialMediaService    socialMediaService.SocialMediaService
+	service                        service.AccountService
+	contactAccountService          contactAccountService.ContactAccountService
+	socialMediaService             socialMediaService.SocialMediaService
+	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService
 }
 
-func NewAccountHandler(service service.AccountService, contactAccountService contactAccountService.ContactAccountService, socialMediaService socialMediaService.SocialMediaService) *AccountHandler {
-	return &AccountHandler{service: service, contactAccountService: contactAccountService, socialMediaService: socialMediaService}
+func NewAccountHandler(
+	service service.AccountService,
+	contactAccountService contactAccountService.ContactAccountService,
+	socialMediaService socialMediaService.SocialMediaService,
+	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService) *AccountHandler {
+
+	return &AccountHandler{
+		service:                        service,
+		contactAccountService:          contactAccountService,
+		socialMediaService:             socialMediaService,
+		accountTypeSchoolDetailService: accountTypeSchoolDetailService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -144,6 +155,11 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	if len(account) > 0 {
 		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
 		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
+		if category, exists := requestBody["account_category"]; exists {
+			if categoryStr, ok := category.(string); ok && categoryStr == "SEKOLAH" {
+				_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
+			}
+		}
 	}
 
 	// Return success response
