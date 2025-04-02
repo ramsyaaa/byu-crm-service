@@ -2,7 +2,6 @@ package http
 
 import "github.com/gofiber/fiber/v2"
 
-func AuthRoutes(app *fiber.App, handler *AuthHandler) {
-
-	app.Post("/login", handler.Login)
+func AuthRoutes(router fiber.Router, handler *AuthHandler) {
+	router.Post("/login", handler.Login)
 }

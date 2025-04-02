@@ -24,12 +24,15 @@ func Route(db *gorm.DB) {
 	// Register your routes here
 	routes.PerformanceNamiRouter(app, db)
 	routes.PerformanceSkulIdRouter(app, db)
-	routes.AccountRouter(app, db)
+
 	routes.CityRouter(app, db)
 	routes.SubdistrictRouter(app, db)
 	routes.PerformanceDigiposRouter(app, db)
 	routes.DetailCommunityMemberRouter(app, db)
-	routes.AuthRouter(app, db)
+
+	authGroup := app.Group("/api/v1")
+	routes.AuthRouter(authGroup, db)
+	routes.AccountRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }

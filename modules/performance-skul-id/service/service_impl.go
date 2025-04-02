@@ -6,6 +6,7 @@ import (
 	"byu-crm-service/modules/performance-skul-id/repository"
 	subdistrictRepo "byu-crm-service/modules/subdistrict/repository"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -44,7 +45,7 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 	}
 
 	performanceSkulId := models.PerformanceSkulId{
-		UserId:         account.Pic,
+		UserId:         stringToUint(account.Pic),
 		IdSkulid:       idSkulId,
 		UserType:       &data[1],
 		RegisteredDate: parseDate(data[2]),
@@ -85,6 +86,19 @@ func boolToInt(value string) *int {
 		result = 0
 	}
 	return &result // Mengembalikan pointer ke int
+}
+
+func stringToUint(value *string) *uint {
+	if value == nil {
+		return nil
+	}
+	parsedValue, err := strconv.ParseUint(*value, 10, 32)
+	if err != nil {
+		fmt.Printf("Error converting string to uint: %s\n", err)
+		return nil
+	}
+	result := uint(parsedValue)
+	return &result
 }
 
 func parseDate(dateStr string) *time.Time {

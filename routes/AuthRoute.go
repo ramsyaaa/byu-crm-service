@@ -9,11 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func AuthRouter(app *fiber.App, db *gorm.DB) {
+func AuthRouter(router fiber.Router, db *gorm.DB) {
 	authRepo := repository.NewAuthRepository(db)
 	authService := service.NewAuthService(authRepo)
 	authHandler := http.NewAuthHandler(authService)
 
-	http.AuthRoutes(app, authHandler)
-
+	http.AuthRoutes(router, authHandler)
 }
