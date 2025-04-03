@@ -1,6 +1,8 @@
 package routes
 
 import (
+	accountFacultyRepo "byu-crm-service/modules/account-faculty/repository"
+	accountMemberRepo "byu-crm-service/modules/account-member/repository"
 	accountTypeSchoolDetailRepo "byu-crm-service/modules/account-type-school-detail/repository"
 	"byu-crm-service/modules/account/http"
 	"byu-crm-service/modules/account/repository"
@@ -9,6 +11,8 @@ import (
 	contactAccountRepo "byu-crm-service/modules/contact-account/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
 
+	accountFacultyService "byu-crm-service/modules/account-faculty/service"
+	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -23,13 +27,17 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	contactAccountRepo := contactAccountRepo.NewContactAccountRepository(db)
 	socialMediaRepo := socialMediaRepo.NewSocialMediaRepository(db)
 	accountTypeSchoolDetailRepo := accountTypeSchoolDetailRepo.NewAccountTypeSchoolDetailRepository(db)
+	accountFacultyRepo := accountFacultyRepo.NewAccountFacultyRepository(db)
+	accountMemberRepo := accountMemberRepo.NewAccountMemberRepository(db)
 
 	accountService := service.NewAccountService(accountRepo, cityRepo)
 	contactAccountService := contactAccountService.NewContactAccountService(contactAccountRepo)
 	socialMediaService := socialMediaService.NewSocialMediaService(socialMediaRepo)
 	accountTypeSchoolDetailService := accountTypeSchoolDetailService.NewAccountTypeSchoolDetailService(accountTypeSchoolDetailRepo)
+	accountFacultyService := accountFacultyService.NewAccountFacultyService(accountFacultyRepo)
+	accountMemberService := accountMemberService.NewAccountMemberService(accountMemberRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService)
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService)
 
 	http.AccountRoutes(router, accountHandler)
 

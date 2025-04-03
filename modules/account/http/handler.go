@@ -19,6 +19,8 @@ import (
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
 
+	accountFacultyService "byu-crm-service/modules/account-faculty/service"
+	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -31,19 +33,25 @@ type AccountHandler struct {
 	contactAccountService          contactAccountService.ContactAccountService
 	socialMediaService             socialMediaService.SocialMediaService
 	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService
+	accountFacultyService          accountFacultyService.AccountFacultyService
+	accountMemberService           accountMemberService.AccountMemberService
 }
 
 func NewAccountHandler(
 	service service.AccountService,
 	contactAccountService contactAccountService.ContactAccountService,
 	socialMediaService socialMediaService.SocialMediaService,
-	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService) *AccountHandler {
+	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService,
+	accountFacultyService accountFacultyService.AccountFacultyService,
+	accountMemberService accountMemberService.AccountMemberService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                        service,
 		contactAccountService:          contactAccountService,
 		socialMediaService:             socialMediaService,
-		accountTypeSchoolDetailService: accountTypeSchoolDetailService}
+		accountTypeSchoolDetailService: accountTypeSchoolDetailService,
+		accountFacultyService:          accountFacultyService,
+		accountMemberService:           accountMemberService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -156,8 +164,15 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
 		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
 		if category, exists := requestBody["account_category"]; exists {
-			if categoryStr, ok := category.(string); ok && categoryStr == "SEKOLAH" {
-				_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
+			if categoryStr, ok := category.(string); ok {
+				switch categoryStr {
+				case "SEKOLAH":
+					_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
+				case "KAMPUS":
+					_, _ = h.accountFacultyService.Insert(requestBody, account[0].ID)
+					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
+					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
+				}
 			}
 		}
 	}

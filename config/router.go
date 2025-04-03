@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/swagger"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +21,10 @@ func Route(db *gorm.DB) {
 		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,DELETE",
 	}))
+
+	if os.Getenv("APP_ENV") != "production" {
+		app.Get("/swagger/*", swagger.HandlerDefault)
+	}
 
 	// Register your routes here
 	routes.PerformanceNamiRouter(app, db)
