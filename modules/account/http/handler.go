@@ -21,6 +21,7 @@ import (
 
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
 	accountMemberService "byu-crm-service/modules/account-member/service"
+	accountScheduleService "byu-crm-service/modules/account-schedule/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -35,6 +36,7 @@ type AccountHandler struct {
 	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService
 	accountFacultyService          accountFacultyService.AccountFacultyService
 	accountMemberService           accountMemberService.AccountMemberService
+	accountScheduleService         accountScheduleService.AccountScheduleService
 }
 
 func NewAccountHandler(
@@ -43,7 +45,8 @@ func NewAccountHandler(
 	socialMediaService socialMediaService.SocialMediaService,
 	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService,
 	accountFacultyService accountFacultyService.AccountFacultyService,
-	accountMemberService accountMemberService.AccountMemberService) *AccountHandler {
+	accountMemberService accountMemberService.AccountMemberService,
+	accountScheduleService accountScheduleService.AccountScheduleService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                        service,
@@ -51,7 +54,8 @@ func NewAccountHandler(
 		socialMediaService:             socialMediaService,
 		accountTypeSchoolDetailService: accountTypeSchoolDetailService,
 		accountFacultyService:          accountFacultyService,
-		accountMemberService:           accountMemberService}
+		accountMemberService:           accountMemberService,
+		accountScheduleService:         accountScheduleService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -172,6 +176,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 					_, _ = h.accountFacultyService.Insert(requestBody, account[0].ID)
 					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
 					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
+					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
 				}
 			}
 		}
