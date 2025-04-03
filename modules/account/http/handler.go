@@ -23,6 +23,7 @@ import (
 	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountScheduleService "byu-crm-service/modules/account-schedule/service"
 	accountTypeCampusDetailService "byu-crm-service/modules/account-type-campus-detail/service"
+	accountTypeCommunityDetailService "byu-crm-service/modules/account-type-community-detail/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -31,14 +32,15 @@ import (
 )
 
 type AccountHandler struct {
-	service                        service.AccountService
-	contactAccountService          contactAccountService.ContactAccountService
-	socialMediaService             socialMediaService.SocialMediaService
-	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService
-	accountFacultyService          accountFacultyService.AccountFacultyService
-	accountMemberService           accountMemberService.AccountMemberService
-	accountScheduleService         accountScheduleService.AccountScheduleService
-	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService
+	service                           service.AccountService
+	contactAccountService             contactAccountService.ContactAccountService
+	socialMediaService                socialMediaService.SocialMediaService
+	accountTypeSchoolDetailService    accountTypeSchoolDetailService.AccountTypeSchoolDetailService
+	accountFacultyService             accountFacultyService.AccountFacultyService
+	accountMemberService              accountMemberService.AccountMemberService
+	accountScheduleService            accountScheduleService.AccountScheduleService
+	accountTypeCampusDetailService    accountTypeCampusDetailService.AccountTypeCampusDetailService
+	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService
 }
 
 func NewAccountHandler(
@@ -49,17 +51,19 @@ func NewAccountHandler(
 	accountFacultyService accountFacultyService.AccountFacultyService,
 	accountMemberService accountMemberService.AccountMemberService,
 	accountScheduleService accountScheduleService.AccountScheduleService,
-	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService) *AccountHandler {
+	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService,
+	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService) *AccountHandler {
 
 	return &AccountHandler{
-		service:                        service,
-		contactAccountService:          contactAccountService,
-		socialMediaService:             socialMediaService,
-		accountTypeSchoolDetailService: accountTypeSchoolDetailService,
-		accountFacultyService:          accountFacultyService,
-		accountMemberService:           accountMemberService,
-		accountScheduleService:         accountScheduleService,
-		accountTypeCampusDetailService: accountTypeCampusDetailService}
+		service:                           service,
+		contactAccountService:             contactAccountService,
+		socialMediaService:                socialMediaService,
+		accountTypeSchoolDetailService:    accountTypeSchoolDetailService,
+		accountFacultyService:             accountFacultyService,
+		accountMemberService:              accountMemberService,
+		accountScheduleService:            accountScheduleService,
+		accountTypeCampusDetailService:    accountTypeCampusDetailService,
+		accountTypeCommunityDetailService: accountTypeCommunityDetailService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -182,6 +186,9 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
 					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
 					_, _ = h.accountTypeCampusDetailService.Insert(requestBody, account[0].ID)
+				case "KOMUNITAS":
+					_, _ = h.accountTypeCommunityDetailService.Insert(requestBody, account[0].ID)
+					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
 				}
 			}
 		}
