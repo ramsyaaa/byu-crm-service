@@ -38,6 +38,7 @@ func Route(db *gorm.DB) {
 	authGroup := app.Group("/api/v1")
 	routes.AuthRouter(authGroup, db)
 	routes.AccountRouter(authGroup, db)
+	routes.FacultyRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
