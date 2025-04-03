@@ -140,6 +140,77 @@ func (r *accountRepository) CreateAccount(requestBody map[string]string, userID 
 	return accounts, nil
 }
 
+func (r *accountRepository) UpdateAccount(requestBody map[string]string, accountID int, userID int) ([]models.Account, error) {
+	var account models.Account
+
+	// Cek apakah akun dengan accountID ada
+	if err := r.db.First(&account, accountID).Error; err != nil {
+		return nil, err // Akun tidak ditemukan
+	}
+
+	// Menyiapkan data yang akan diupdate
+	updateData := map[string]interface{}{}
+
+	if v, exists := requestBody["account_name"]; exists {
+		updateData["account_name"] = v
+	}
+	if v, exists := requestBody["account_image"]; exists {
+		updateData["account_image"] = v
+	}
+	if v, exists := requestBody["account_type"]; exists {
+		updateData["account_type"] = v
+	}
+	if v, exists := requestBody["account_category"]; exists {
+		updateData["account_category"] = v
+	}
+	if v, exists := requestBody["account_code"]; exists {
+		updateData["account_code"] = v
+	}
+	if v, exists := requestBody["city"]; exists {
+		updateData["city"] = v
+	}
+	if v, exists := requestBody["contact_name"]; exists {
+		updateData["contact_name"] = v
+	}
+	if v, exists := requestBody["email_account"]; exists {
+		updateData["email_account"] = v
+	}
+	if v, exists := requestBody["website_account"]; exists {
+		updateData["website_account"] = v
+	}
+	if v, exists := requestBody["system_informasi_akademik"]; exists {
+		updateData["system_informasi_akademik"] = v
+	}
+	if v, exists := requestBody["latitude"]; exists {
+		updateData["latitude"] = v
+	}
+	if v, exists := requestBody["longitude"]; exists {
+		updateData["longitude"] = v
+	}
+	if v, exists := requestBody["ownership"]; exists {
+		updateData["ownership"] = v
+	}
+	if v, exists := requestBody["pic"]; exists {
+		updateData["pic"] = v
+	}
+	if v, exists := requestBody["pic_internal"]; exists {
+		updateData["pic_internal"] = v
+	}
+
+	// Eksekusi update
+	if err := r.db.Model(&account).Where("id = ?", accountID).Updates(updateData).Error; err != nil {
+		return nil, err
+	}
+
+	// Mengambil data yang telah diperbarui
+	var updatedAccounts []models.Account
+	if err := r.db.Where("id = ?", accountID).Find(&updatedAccounts).Error; err != nil {
+		return nil, err
+	}
+
+	return updatedAccounts, nil
+}
+
 func (r *accountRepository) GetFilteredAccounts(limit, page int, search, userRole, territoryID string) ([]models.Account, int, error) {
 	var accounts []models.Account
 	var totalRecords int64

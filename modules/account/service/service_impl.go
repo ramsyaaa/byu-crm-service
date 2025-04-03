@@ -48,6 +48,33 @@ func (s *accountService) CreateAccount(requestBody map[string]interface{}, userI
 	return accounts, nil
 }
 
+func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accountID int, userID int) ([]models.Account, error) {
+	accountData := map[string]string{
+		"account_name":              requestBody["account_name"].(string),
+		"account_image":             requestBody["account_image"].(string),
+		"account_type":              requestBody["account_type"].(string),
+		"account_category":          requestBody["account_category"].(string),
+		"account_code":              requestBody["account_code"].(string),
+		"city":                      requestBody["city"].(string),
+		"contact_name":              requestBody["contact_name"].(string),
+		"email_account":             requestBody["email_account"].(string),
+		"website_account":           requestBody["website_account"].(string),
+		"system_informasi_akademik": requestBody["system_informasi_akademik"].(string),
+		"ownership":                 requestBody["ownership"].(string),
+		"pic":                       requestBody["pic"].(string),
+		"pic_internal":              requestBody["pic_internal"].(string),
+		"latitude":                  requestBody["latitude"].(string),
+		"longitude":                 requestBody["longitude"].(string),
+	}
+
+	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return accounts, nil
+}
+
 func (s *accountService) ProcessAccount(data []string) error {
 	if isZeroValue(data[14]) || isZeroValue(data[15]) {
 		fmt.Println("data not found")

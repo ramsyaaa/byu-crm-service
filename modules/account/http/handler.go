@@ -199,6 +199,86 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
+	// Ambil Account ID dari URL
+	accountIDStr := c.Params("id")
+	if accountIDStr == "" {
+		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Convert Account ID to integer
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Parse the multipart form data
+	form, err := c.MultipartForm()
+	if err != nil {
+		response := helper.APIResponse("Failed to parse form", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Initialize a map to store the form data
+	requestBody := make(map[string]interface{})
+
+	// Loop through the form fields and store them in the requestBody map
+	for key, values := range form.Value {
+		if len(values) == 1 {
+			requestBody[key] = values[0]
+		} else {
+			requestBody[key] = values
+		}
+	}
+
+	// Handle "byod" field (convert from string to uint)
+	if byodStr, exists := requestBody["byod"].(string); exists {
+		byodValue, err := strconv.ParseUint(byodStr, 10, 32)
+		if err != nil {
+			byodValue = 0 // Default ke 0 jika gagal parsing
+		}
+		requestBody["byod"] = uint(byodValue)
+	}
+
+	// Ambil user ID dari sesi atau token (sementara default ke 1)
+	userID := 1
+
+	// Panggil service untuk update account
+	account, err := h.service.UpdateAccount(requestBody, accountID, userID)
+	if err != nil {
+		response := helper.APIResponse("Failed to update account", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	if len(account) > 0 {
+		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
+		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
+		if category, exists := requestBody["account_category"]; exists {
+			if categoryStr, ok := category.(string); ok {
+				switch categoryStr {
+				case "SEKOLAH":
+					_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
+				case "KAMPUS":
+					_, _ = h.accountFacultyService.Insert(requestBody, account[0].ID)
+					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
+					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
+					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
+					_, _ = h.accountTypeCampusDetailService.Insert(requestBody, account[0].ID)
+				case "KOMUNITAS":
+					_, _ = h.accountTypeCommunityDetailService.Insert(requestBody, account[0].ID)
+					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
+				}
+			}
+		}
+	}
+
+	// Return success response
+	response := helper.APIResponse("Account successfully updated", fiber.StatusOK, "success", account)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *AccountHandler) Import(c *fiber.Ctx) error {
 	// Validate the uploaded file
 	if err := validation.ValidateAccountRequest(c); err != nil {
