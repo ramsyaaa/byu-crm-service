@@ -22,6 +22,7 @@ import (
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
 	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountScheduleService "byu-crm-service/modules/account-schedule/service"
+	accountTypeCampusDetailService "byu-crm-service/modules/account-type-campus-detail/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -37,6 +38,7 @@ type AccountHandler struct {
 	accountFacultyService          accountFacultyService.AccountFacultyService
 	accountMemberService           accountMemberService.AccountMemberService
 	accountScheduleService         accountScheduleService.AccountScheduleService
+	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService
 }
 
 func NewAccountHandler(
@@ -46,7 +48,8 @@ func NewAccountHandler(
 	accountTypeSchoolDetailService accountTypeSchoolDetailService.AccountTypeSchoolDetailService,
 	accountFacultyService accountFacultyService.AccountFacultyService,
 	accountMemberService accountMemberService.AccountMemberService,
-	accountScheduleService accountScheduleService.AccountScheduleService) *AccountHandler {
+	accountScheduleService accountScheduleService.AccountScheduleService,
+	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                        service,
@@ -55,7 +58,8 @@ func NewAccountHandler(
 		accountTypeSchoolDetailService: accountTypeSchoolDetailService,
 		accountFacultyService:          accountFacultyService,
 		accountMemberService:           accountMemberService,
-		accountScheduleService:         accountScheduleService}
+		accountScheduleService:         accountScheduleService,
+		accountTypeCampusDetailService: accountTypeCampusDetailService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -177,6 +181,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
 					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
 					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
+					_, _ = h.accountTypeCampusDetailService.Insert(requestBody, account[0].ID)
 				}
 			}
 		}
