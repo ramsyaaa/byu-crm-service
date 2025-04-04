@@ -72,24 +72,57 @@ func (r *absenceUserRepository) GetAbsenceUserByID(id int) (*models.AbsenceUser,
 	return &absence_user, nil
 }
 
-func (r *absenceUserRepository) GetAbsenceUserToday(user_id int, type_absence *string, type_checking string) (*models.AbsenceUser, string, error) {
+func (r *absenceUserRepository) GetAbsenceUserToday(
+	only_today bool,
+	user_id int,
+	type_absence *string,
+	type_checking string,
+	action_type string,
+	subject_type string,
+	subject_id int,
+) (*models.AbsenceUser, string, error) {
 	var absence_user models.AbsenceUser
 
 	query := r.db.Where("user_id = ?", user_id)
 
-	// Filter berdasarkan type_checking
-	var message string
-	if type_checking == "daily" {
-		query = query.Where("DATE(date) = CURDATE()")
-		message = "The absence user is already checked in today"
-	} else if type_checking == "monthly" {
-		message = "The absence user is already checked in this month"
-		query = query.Where("MONTH(date) = MONTH(CURDATE()) AND YEAR(date) = YEAR(CURDATE())")
+	// Default message
+	message := "Absence user found"
+
+	// Filter by type_checking
+	if only_today {
+		switch type_checking {
+		case "daily":
+			query = query.Where("DATE(clock_in) = CURDATE()")
+			message = "The absence user is already checked in today"
+		case "monthly":
+			query = query.Where("MONTH(clock_in) = MONTH(CURDATE()) AND YEAR(clock_in) = YEAR(CURDATE())")
+			message = "The absence user is already checked in this month"
+		}
+		switch action_type {
+		case "Clock Out":
+			query = query.Where("clock_out IS NOT NULL")
+		}
+	} else {
+		// Filter by action_type
+		switch action_type {
+		case "Clock In":
+			query = query.Where("clock_in IS NOT NULL AND clock_out IS NULL")
+			message = "The user already clocked in, please clock out first"
+		case "Clock Out":
+			query = query.Where("clock_out IS NULL")
+			message = "The user already clocked out, need to clock in first"
+		}
 	}
 
-	// Filter berdasarkan type_absence jika ada
+	// Filter by type_absence
 	if type_absence != nil {
 		query = query.Where("type = ?", *type_absence)
+	}
+
+	// Filter by subject_type and subject_id if provided
+	if subject_type != "" && subject_id != 0 {
+
+		query = query.Where("subject_type = ? AND subject_id = ?", subject_type, subject_id)
 	}
 
 	err := query.First(&absence_user).Error
@@ -113,19 +146,19 @@ func (r *absenceUserRepository) CreateAbsenceUser(absence_user *models.AbsenceUs
 	return &createdAbsenceUser, nil
 }
 
-func (r *absenceUserRepository) UpdateAbsenceUser(faculty *models.AbsenceUser, id int) (*models.AbsenceUser, error) {
-	var existingFaculty models.AbsenceUser
-	if err := r.db.First(&existingFaculty, "id = ?", id).Error; err != nil {
+func (r *absenceUserRepository) UpdateAbsenceUser(absence_user *models.AbsenceUser, id int) (*models.AbsenceUser, error) {
+	var existingAbsenceUser models.AbsenceUser
+	if err := r.db.First(&existingAbsenceUser, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 
-	if err := r.db.Model(&existingFaculty).Updates(faculty).Error; err != nil {
+	if err := r.db.Model(&existingAbsenceUser).Updates(absence_user).Error; err != nil {
 		return nil, err
 	}
 
-	if err := r.db.First(&existingFaculty, "id = ?", id).Error; err != nil {
+	if err := r.db.First(&existingAbsenceUser, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 
-	return &existingFaculty, nil
+	return &existingAbsenceUser, nil
 }

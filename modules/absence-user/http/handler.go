@@ -102,47 +102,129 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
+	actionType := c.FormValue("action_type")
+
+	if actionType != "Clock In" && actionType != "Clock Out" {
+		errors := map[string]string{
+			"action_type": "action_type hanya boleh bernilai 'Clock In' atau 'Clock Out'",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	description := c.FormValue("description")
+
+	if description == "" && actionType == "Clock Out" {
+		errors := map[string]string{
+			"description": "Deskripsi harus diisi",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
 	subject_type := GetModelValueByKey(data, req.Type)
+	subjectTypeStr, ok := subject_type.(string)
+	if !ok {
+		subjectTypeStr = ""
+	}
 
 	var subjectID int
 	type_checking := "daily"
+
 	if req.Type == "Visit Account" {
 		subjectIDStr := c.FormValue("subject_id")
-		subjectID, _ := strconv.Atoi(subjectIDStr)
+		parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
+		subjectID = parsedSubjectID
+
 		type_checking = "monthly"
 
-		if subjectID == 0 {
+		if parsedSubjectID == 0 {
 			errors := map[string]string{
 				"subject_id": "subject_id harus diisi",
 			}
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-	}
-
-	existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(userID, &req.Type, type_checking)
-	if existingAbsenceUser != nil {
-		errors := map[string]string{
-			"name": message,
+		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+			true,
+			userID,
+			&req.Type,
+			type_checking,
+			actionType,
+			subjectTypeStr,
+			parsedSubjectID,
+		)
+		if existingAbsenceUser != nil {
+			errors := map[string]string{
+				"name": message,
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	subjectTypeStr, ok := subject_type.(string)
-	if !ok {
-		response := helper.APIResponse("Invalid subject type", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-	AbsenceUser, err := h.absenceUserService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &req.Description, &req.Type, &req.Latitude, &req.Longitude)
-	if err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
-		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	if actionType == "Clock In" {
+		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+			false,
+			userID,
+			&req.Type,
+			type_checking,
+			actionType,
+			"",
+			0,
+		)
+
+		if existingAbsenceUser != nil {
+			errors := map[string]string{
+				"name": message,
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		AbsenceUser, err := h.absenceUserService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		if err != nil {
+			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
+			return c.Status(fiber.StatusUnauthorized).JSON(response)
+		}
+		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
+		return c.Status(fiber.StatusOK).JSON(response)
+	} else if actionType == "Clock Out" {
+		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+			false,
+			userID,
+			&req.Type,
+			type_checking,
+			actionType,
+			"",
+			0,
+		)
+
+		if existingAbsenceUser == nil {
+			errors := map[string]string{
+				"name": message,
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		existingAbsenceUser, _, _ = h.absenceUserService.GetAbsenceUserToday(false, userID, &req.Type, type_checking, "Clock In", "", 0)
+		if existingAbsenceUser == nil {
+			response := helper.APIResponse("No existing absence user found for Clock In", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		if err != nil {
+			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
+			return c.Status(fiber.StatusUnauthorized).JSON(response)
+		}
+		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
+		return c.Status(fiber.StatusOK).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
-	return c.Status(fiber.StatusOK).JSON(response)
+	response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "success", nil)
+	return c.Status(fiber.StatusInternalServerError).JSON(response)
 }
 
 func GetModelValueByKey(data map[string]any, key string) any {

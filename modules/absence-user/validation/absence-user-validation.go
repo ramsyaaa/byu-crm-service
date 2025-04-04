@@ -12,16 +12,17 @@ var validate = validator.New()
 // CreateAbsenceUserRequest struct for creating a absence
 type CreateAbsenceUserRequest struct {
 	Type        string `json:"type" validate:"required"`
-	Description string `json:"description" validate:"required"`
+	ActionType  string `json:"action_type"`
+	Description string `json:"description"`
 	Longitude   string `json:"longitude" validate:"required"`
 	Latitude    string `json:"latitude" validate:"required"`
 }
 
 var validationMessages = map[string]string{
-	"Type.required":        "Tipe harus diisi",
-	"Description.required": "Deskripsi harus diisi",
-	"Longitude.required":   "Longitude harus diisi",
-	"Latitude.required":    "Latitude harus diisi",
+	"Type.required":       "Tipe harus diisi",
+	"ActionType.required": "Tipe aksi harus diisi",
+	"Longitude.required":  "Longitude harus diisi",
+	"Latitude.required":   "Latitude harus diisi",
 }
 
 // ValidateCreate function to validate CreateAbsenceUserRequest
