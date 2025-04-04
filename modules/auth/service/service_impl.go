@@ -19,31 +19,40 @@ func NewAuthService(userRepo repository.AuthRepository) AuthService {
 }
 
 // Generate JWT Token
-func generateJWT(email string) (string, error) {
+func generateJWT(email string, userID int) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", errors.New("missing JWT secret")
+	}
+
 	claims := jwt.MapClaims{
-		"email": email,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+		"email":   email,
+		"user_id": userID,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtSecret := os.Getenv("JWT_SECRET")
-	return token.SignedString([]byte(jwtSecret))
+	signedToken, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
 }
 
 // Login Service
 func (s *authService) Login(email, password string) (string, error) {
-	hashedPassword, err := s.userRepo.GetUserByKey("email", email)
+	user, err := s.userRepo.GetUserByKey("email", email)
 	if err != nil {
 		return "", errors.New("invalid email or password")
 	}
 
-	dbPassword := hashedPassword.Password
-
-	if !s.userRepo.CheckPassword(password, dbPassword) {
+	if !s.userRepo.CheckPassword(password, user.Password) {
 		return "", errors.New("invalid email or password")
 	}
 
-	token, err := generateJWT(email)
+	token, err := generateJWT(user.Email, int(user.ID))
 	if err != nil {
 		return "", errors.New("failed to generate token")
 	}
