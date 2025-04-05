@@ -1,25 +1,43 @@
 package validation
 
 import (
+	"mime/multipart"
+	"path/filepath"
+	"strings"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
 type UploadRequest struct {
-	FileCSV string `form:"file_csv" validate:"required,file_extension=csv"`
+	UserID string `form:"user_id" validate:"required"`
 }
 
 func ValidateAccountRequest(c *fiber.Ctx) error {
+	// Check if file exists in the request
+	file, err := c.FormFile("file_csv")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "File is required",
+		})
+	}
+
+	// Validate file extension
+	if !validateFileExtension(file, "csv") {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Only CSV files are allowed",
+		})
+	}
+
+	// Validate user_id
 	var request UploadRequest
 	if err := c.BodyParser(&request); err != nil {
-		return err
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request format",
+		})
 	}
 
 	validate := validator.New()
-	validate.RegisterValidation("file_extension", func(fl validator.FieldLevel) bool {
-		return fl.Field().String() == "csv"
-	})
-
 	if err := validate.Struct(request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -27,4 +45,10 @@ func ValidateAccountRequest(c *fiber.Ctx) error {
 	}
 
 	return c.Next()
+}
+
+// Helper function to validate file extension
+func validateFileExtension(file *multipart.FileHeader, allowedExt string) bool {
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	return ext == "."+allowedExt
 }
