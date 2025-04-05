@@ -1,10 +1,12 @@
 package service
 
 import (
+	"byu-crm-service/models"
 	accountRepo "byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/performance-skul-id/repository"
 	subdistrictRepo "byu-crm-service/modules/subdistrict/repository"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,60 +29,53 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 
 	if account == nil {
 		return fmt.Errorf("account not found")
-	} else {
-		updateData := map[string]interface{}{
-			"longitude": data[9],
-			"latitude":  data[10],
-		}
-
-		return s.accountRepo.UpdateFields(account.ID, updateData)
 	}
 
-	// subdistrict, err := s.subdistrictRepo.FindByName(data[13])
-	// if err != nil {
-	// 	return err
-	// }
-	// if subdistrict == nil {
-	// 	return fmt.Errorf("subdistrict not found")
-	// }
+	subdistrict, err := s.subdistrictRepo.FindByName(data[13])
+	if err != nil {
+		return err
+	}
+	if subdistrict == nil {
+		return fmt.Errorf("subdistrict not found")
+	}
 
-	// idSkulId := &data[0]
-	// if idSkulId == nil || *idSkulId == "" {
-	// 	return fmt.Errorf("id_skulid tidak boleh kosong")
-	// }
+	idSkulId := &data[0]
+	if idSkulId == nil || *idSkulId == "" {
+		return fmt.Errorf("id_skulid tidak boleh kosong")
+	}
 
-	// performanceSkulId := models.PerformanceSkulId{
-	// 	UserId:         account.Pic,
-	// 	IdSkulid:       idSkulId,
-	// 	UserType:       &data[1],
-	// 	RegisteredDate: parseDate(data[2]),
-	// 	Msisdn:         &data[3],
-	// 	Provider:       &data[4],
-	// 	AccountId:      &account.ID,
-	// 	UserName:       &data[6],
-	// 	FlagNewSales:   boolToInt(data[18]),
-	// 	FlagImei:       boolToInt(data[19]),
-	// 	RevMtd:         &data[20],
-	// 	RevMtdM1:       &data[21],
-	// 	RevDigital:     &data[22],
-	// 	ActivityMtd:    &data[23],
-	// 	FlagActiveMtd:  &data[24],
-	// 	SubdistrictId:  &subdistrict.ID,
-	// 	CreatedAt:      time.Now(),
-	// 	UpdatedAt:      time.Now(),
-	// }
+	performanceSkulId := models.PerformanceSkulId{
+		UserId:         stringToUint(account.Pic),
+		IdSkulid:       idSkulId,
+		UserType:       &data[1],
+		RegisteredDate: parseDate(data[2]),
+		Msisdn:         &data[3],
+		Provider:       &data[4],
+		AccountId:      &account.ID,
+		UserName:       &data[6],
+		FlagNewSales:   boolToInt(data[18]),
+		FlagImei:       boolToInt(data[19]),
+		RevMtd:         &data[20],
+		RevMtdM1:       &data[21],
+		RevDigital:     &data[22],
+		ActivityMtd:    &data[23],
+		FlagActiveMtd:  &data[24],
+		SubdistrictId:  &subdistrict.ID,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
 
-	// existingPerformance, err := s.repo.FindByIdSkulId(*idSkulId)
-	// if err != nil {
-	// 	return err
-	// }
+	existingPerformance, err := s.repo.FindByIdSkulId(*idSkulId)
+	if err != nil {
+		return err
+	}
 
-	// if existingPerformance != nil {
-	// 	// Update jika id_import sudah ada
-	// 	performanceSkulId.ID = existingPerformance.ID // Gunakan ID yang sudah ada
-	// 	return s.repo.Update(&performanceSkulId)
-	// }
-	// return s.repo.Create(&performanceSkulId)
+	if existingPerformance != nil {
+		// Update jika id_import sudah ada
+		performanceSkulId.ID = existingPerformance.ID // Gunakan ID yang sudah ada
+		return s.repo.Update(&performanceSkulId)
+	}
+	return s.repo.Create(&performanceSkulId)
 }
 
 func boolToInt(value string) *int {
@@ -91,6 +86,19 @@ func boolToInt(value string) *int {
 		result = 0
 	}
 	return &result // Mengembalikan pointer ke int
+}
+
+func stringToUint(value *string) *uint {
+	if value == nil {
+		return nil
+	}
+	parsedValue, err := strconv.ParseUint(*value, 10, 32)
+	if err != nil {
+		fmt.Printf("Error converting string to uint: %s\n", err)
+		return nil
+	}
+	result := uint(parsedValue)
+	return &result
 }
 
 func parseDate(dateStr string) *time.Time {
