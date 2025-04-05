@@ -42,13 +42,13 @@ jobs:
             git pull origin master
             go mod tidy
             go build -o byu-crm-service-dev
-            pm2 restart byu_crm_service-dev
+            pm2 restart byu-crm-service-dev
 
             cd /usr/go/byu-crm-service-prod
             git pull origin master
             go mod tidy
             go build -o byu-crm-service-prod
-            pm2 restart byu_crm_service-prod
+            pm2 restart byu-crm-service-prod
 
       # 4. Send success notification via custom API
       - name: Send Telegram Notification
