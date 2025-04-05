@@ -1,9 +1,8 @@
 package http
 
 import (
-	"byu-crm-service/modules/absence-user/service"
-	"byu-crm-service/modules/absence-user/validation"
-	visitHistoryService "byu-crm-service/modules/visit-history/service"
+	"byu-crm-service/modules/visit-history/service"
+	"byu-crm-service/modules/visit-history/validation"
 	"strconv"
 
 	"byu-crm-service/helper"
@@ -11,19 +10,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type AbsenceUserHandler struct {
-	absenceUserService  service.AbsenceUserService
-	visitHistoryService visitHistoryService.VisitHistoryService
+type VisitHistoryHandler struct {
+	visitHistoryService service.VisitHistoryService
 }
 
-func NewAbsenceUserHandler(absenceUserService service.AbsenceUserService, visitHistoryService visitHistoryService.VisitHistoryService) *AbsenceUserHandler {
-	return &AbsenceUserHandler{absenceUserService: absenceUserService, visitHistoryService: visitHistoryService}
+func NewVisitHistoryHandler(visitHistoryService service.VisitHistoryService) *VisitHistoryHandler {
+	return &VisitHistoryHandler{visitHistoryService: visitHistoryService}
 }
 
-func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
+func (h *VisitHistoryHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	// Default query params
-	user_id := c.Locals("user_id").(int)
-
 	filters := map[string]string{
 		"search":     c.Query("search", ""),
 		"order_by":   c.Query("order_by", "id"),
@@ -36,9 +32,10 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
+	user_id, _ := strconv.Atoi(c.Query("user_id", "0"))
 
 	// Call service with filters
-	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id)
+	absences, total, err := h.visitHistoryService.GetAllAbsences(limit, paginate, page, filters, user_id)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
@@ -55,17 +52,14 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
+func (h *VisitHistoryHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
-		errors := map[string]string{
-			"id": "ID tidak valid",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+		response := helper.APIResponse("Invalid Absence User ID", 400, "error", nil)
+		return c.Status(400).JSON(response)
 	}
-	AbsenceUser, err := h.absenceUserService.GetAbsenceUserByID(intID)
+	AbsenceUser, err := h.visitHistoryService.GetAbsenceUserByID(intID)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch Absence User", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
@@ -80,7 +74,7 @@ func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
+func (h *VisitHistoryHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	req := new(validation.CreateAbsenceUserRequest)
 	if err := c.BodyParser(req); err != nil {
@@ -135,7 +129,6 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	}
 
 	var subjectID int
-	var greeting, survey, presentation *bool
 	type_checking := "daily"
 
 	if req.Type == "Visit Account" {
@@ -152,7 +145,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+		existingAbsenceUser, message, _ := h.visitHistoryService.GetAbsenceUserToday(
 			true,
 			userID,
 			&req.Type,
@@ -168,48 +161,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-
-		if actionType == "Clock Out" {
-			greetingStr := c.FormValue("greeting")
-			surveyStr := c.FormValue("survey")
-			presentationStr := c.FormValue("presentation")
-
-			errors := make(map[string]string)
-
-			if greetingStr != "" {
-				val, _ := strconv.Atoi(greetingStr)
-				temp := val != 0
-				greeting = &temp
-			} else {
-				errors["greeting"] = "Salam harus diisi"
-			}
-
-			if surveyStr != "" {
-				val, _ := strconv.Atoi(surveyStr)
-				temp := val != 0
-				survey = &temp
-			} else {
-				errors["survey"] = "Survey harus diisi"
-			}
-
-			if presentationStr != "" {
-				val, _ := strconv.Atoi(presentationStr)
-				temp := val != 0
-				presentation = &temp
-			} else {
-				errors["presentation"] = "Presentasi harus diisi"
-			}
-
-			// If there are any errors, return them
-			if len(errors) > 0 {
-				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-
-		}
 	} else if req.Type == "Daily" {
 
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+		existingAbsenceUser, message, _ := h.visitHistoryService.GetAbsenceUserToday(
 			true,
 			userID,
 			&req.Type,
@@ -228,7 +182,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	}
 
 	if actionType == "Clock In" {
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+		existingAbsenceUser, message, _ := h.visitHistoryService.GetAbsenceUserToday(
 			false,
 			userID,
 			&req.Type,
@@ -246,15 +200,15 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		AbsenceUser, err := h.absenceUserService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
-		if err != nil {
-			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
-			return c.Status(fiber.StatusInternalServerError).JSON(response)
-		}
-		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
+		// AbsenceUser, err := h.visitHistoryService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		// if err != nil {
+		// 	response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
+		// 	return c.Status(fiber.StatusUnauthorized).JSON(response)
+		// }
+		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", nil)
 		return c.Status(fiber.StatusOK).JSON(response)
 	} else if actionType == "Clock Out" {
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+		existingAbsenceUser, message, _ := h.visitHistoryService.GetAbsenceUserToday(
 			false,
 			userID,
 			&req.Type,
@@ -272,23 +226,15 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		existingAbsenceUser, _, _ = h.absenceUserService.GetAbsenceUserToday(false, userID, &req.Type, type_checking, "Clock In", "", 0)
+		existingAbsenceUser, _, _ = h.visitHistoryService.GetAbsenceUserToday(false, userID, &req.Type, type_checking, "Clock In", "", 0)
 		if existingAbsenceUser == nil {
 			response := helper.APIResponse("No existing absence user found for Clock In", fiber.StatusBadRequest, "error", nil)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		AbsenceUser, err := h.visitHistoryService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
-		}
-
-		if req.Type == "Visit Account" {
-			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), *greeting, *survey, *presentation, &description)
-			if err != nil {
-				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
-				return c.Status(fiber.StatusUnauthorized).JSON(response)
-			}
 		}
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)
