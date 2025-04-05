@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"byu-crm-service/modules/account/repository"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -37,20 +38,6 @@ type CreateRequest struct {
 	PicInternal             *string `json:"pic_internal"`
 }
 
-var validationMessages = map[string]string{
-	"AccountImage.mime":               "Format gambar tidak valid, yang diizinkan: jpg, jpeg, png, gif",
-	"AccountName.required":            "Nama akun wajib diisi",
-	"AccountType.required":            "Tipe akun wajib diisi",
-	"AccountCategory.required":        "Kategori akun wajib diisi",
-	"AccountCode.required":            "Kode akun wajib diisi",
-	"AccountCode.unique_account_code": "Kode akun harus unik",
-	"City.required":                   "Kota wajib diisi",
-	"EmailAccount.email":              "Format email tidak valid",
-	"Ownership.required":              "Ownership wajib diisi",
-	"Pic.required":                    "PIC wajib diisi",
-	"PicInternal.required":            "PIC internal wajib diisi",
-}
-
 var validate = validator.New()
 
 func init() {
@@ -82,17 +69,8 @@ func ValidateAccountRequest(c *fiber.Ctx) error {
 		})
 	}
 
-<<<<<<< HEAD
 	validate := validator.New()
 	if err := validate.Struct(request); err != nil {
-=======
-	localValidate := validator.New()
-	localValidate.RegisterValidation("file_extension", func(fl validator.FieldLevel) bool {
-		return fl.Field().String() == "csv"
-	})
-
-	if err := localValidate.Struct(request); err != nil {
->>>>>>> 0320bde8277687a5ef50585037e6f48cc6e121b7
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -101,49 +79,42 @@ func ValidateAccountRequest(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-<<<<<<< HEAD
 // Helper function to validate file extension
 func validateFileExtension(file *multipart.FileHeader, allowedExt string) bool {
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	return ext == "."+allowedExt
-=======
-func ValidateCreate(req *CreateRequest) map[string]string {
-	err := validate.Struct(req)
-	if err != nil {
-		return helper.ErrorValidationFormat(err, validationMessages)
-	}
-	return nil
 }
 
+// Validate mime type for images
 func validateMime(fl validator.FieldLevel) bool {
-	// Get the file extension from the field value (assuming it's a string representing the file name)
-	fileName := fl.Field().String()
+	if fl.Field().String() == "" {
+		return true // Allow empty values
+	}
 
-	// Allowed file extensions
-	allowedExtensions := []string{".jpg", ".jpeg", ".png", ".gif"}
+	allowedTypes := []string{".jpg", ".jpeg", ".png", ".gif"}
+	filename := fl.Field().String()
+	ext := strings.ToLower(filepath.Ext(filename))
 
-	// Check if the file extension is in the allowed list
-	ext := strings.ToLower(filepath.Ext(fileName))
-	for _, allowedExt := range allowedExtensions {
-		if ext == allowedExt {
+	// Check if the extension is in the allowed types
+	for _, allowedType := range allowedTypes {
+		if ext == allowedType {
 			return true
 		}
 	}
-
 	return false
 }
 
+// Validate unique account code
 func uniqueAccountCode(fl validator.FieldLevel) bool {
-	accountCode := fl.Field().String()
-
-	// Use the FindByAccountCode method to check if the account code already exists
-	account, err := accountRepo.FindByAccountCode(accountCode)
-	if err != nil && err.Error() != "record not found" {
-		// If there's an error other than "record not found", validation fails
-		return false
+	if accountRepo == nil {
+		return true // Skip validation if repository is not set
 	}
 
-	// If the account is found, it means the account code is not unique
-	return account == nil
->>>>>>> 0320bde8277687a5ef50585037e6f48cc6e121b7
+	code := fl.Field().String()
+	account, err := accountRepo.FindByAccountCode(code)
+	if err != nil {
+		return false // Error occurred during validation
+	}
+
+	return account == nil // Return true if account doesn't exist (code is unique)
 }

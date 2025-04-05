@@ -10,6 +10,7 @@ import (
 	"byu-crm-service/modules/account/http"
 	"byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/account/service"
+	"byu-crm-service/modules/account/validation"
 	cityRepo "byu-crm-service/modules/city/repository"
 	contactAccountRepo "byu-crm-service/modules/contact-account/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
@@ -38,6 +39,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountScheduleRepo := accountScheduleRepo.NewAccountScheduleRepository(db)
 	accountTypeCampusDetailRepo := accountTypeCampusDetailRepo.NewAccountTypeCampusDetailRepository(db)
 	accountTypeCommunityDetailRepo := accountTypeCommunityDetailRepo.NewAccountTypeCommunityDetailRepository(db)
+
+	// Set the account repository for validation
+	validation.SetAccountRepository(accountRepo)
 
 	accountService := service.NewAccountService(accountRepo, cityRepo)
 	contactAccountService := contactAccountService.NewContactAccountService(contactAccountRepo)
