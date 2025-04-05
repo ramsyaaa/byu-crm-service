@@ -1,11 +1,18 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 func AccountRoutes(router fiber.Router, handler *AccountHandler) {
-
-	router.Post("/accounts/import", handler.Import)
-	router.Get("/accounts", handler.GetAllAccounts)
-	router.Post("/accounts", handler.CreateAccount)
-	router.Put("/accounts/:id", handler.UpdateAccount)
+	authRouter := router.Group("/accounts",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+	authRouter.Post("/import", handler.Import)
+	authRouter.Get("/", handler.GetAllAccounts)
+	authRouter.Post("/", handler.CreateAccount)
+	authRouter.Put("/:id", handler.UpdateAccount)
 }

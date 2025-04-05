@@ -40,6 +40,7 @@ func Route(db *gorm.DB) {
 	routes.AccountRouter(authGroup, db)
 	routes.FacultyRouter(authGroup, db)
 	routes.AbsenceUserRouter(authGroup, db)
+	routes.UserRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
