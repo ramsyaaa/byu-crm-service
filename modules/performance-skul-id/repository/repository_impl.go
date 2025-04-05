@@ -30,3 +30,19 @@ func (r *performanceSkulIdRepository) FindBySerialNumberMsisdn(serial string) (*
 	}
 	return &performanceSkulId, nil
 }
+
+func (r *performanceSkulIdRepository) FindByIdSkulId(idSkulId string) (*models.PerformanceSkulId, error) {
+	var performance models.PerformanceSkulId
+	err := r.db.Where("id_skulid = ?", idSkulId).First(&performance).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // Data tidak ditemukan, kembalikan nil
+		}
+		return nil, err
+	}
+	return &performance, nil
+}
+
+func (r *performanceSkulIdRepository) Update(performance *models.PerformanceSkulId) error {
+	return r.db.Save(performance).Error
+}
