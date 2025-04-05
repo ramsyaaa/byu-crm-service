@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/swagger"
 	"gorm.io/gorm"
 )
 
@@ -21,14 +22,25 @@ func Route(db *gorm.DB) {
 		AllowMethods: "GET,POST,PUT,DELETE",
 	}))
 
+	if os.Getenv("APP_ENV") != "production" {
+		app.Get("/swagger/*", swagger.HandlerDefault)
+	}
+
 	// Register your routes here
 	routes.PerformanceNamiRouter(app, db)
 	routes.PerformanceSkulIdRouter(app, db)
-	routes.AccountRouter(app, db)
+
 	routes.CityRouter(app, db)
 	routes.SubdistrictRouter(app, db)
 	routes.PerformanceDigiposRouter(app, db)
 	routes.DetailCommunityMemberRouter(app, db)
+
+	authGroup := app.Group("/api/v1")
+	routes.AuthRouter(authGroup, db)
+	routes.AccountRouter(authGroup, db)
+	routes.FacultyRouter(authGroup, db)
+	routes.AbsenceUserRouter(authGroup, db)
+	routes.UserRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
