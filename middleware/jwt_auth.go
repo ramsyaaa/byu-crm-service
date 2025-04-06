@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"byu-crm-service/helper"
+	"fmt"
 	"os"
-	"strings"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -14,24 +14,26 @@ func JWTMiddleware(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
 
 	if authHeader == "" {
-		return jwtErrorHandler(c, fiber.NewError(fiber.StatusUnauthorized, "Authorization header tidak ditemukan"))
+		return jwtErrorHandler(c, fiber.ErrUnauthorized)
 	}
 
-	// Pisahkan berdasarkan spasi → [Bearer, Bearer, <token>]
-	parts := strings.Fields(authHeader)
-	if len(parts) < 2 {
-		return jwtErrorHandler(c, fiber.NewError(fiber.StatusUnauthorized, "Format Authorization salah"))
+	fmt.Println(authHeader)
+
+	const bearerPrefix = "Bearer "
+	if len(authHeader) <= len(bearerPrefix) || authHeader[:len(bearerPrefix)] != bearerPrefix {
+		return jwtErrorHandler(c, fiber.NewError(fiber.StatusUnauthorized, "Token harus diawali dengan 'Bearer '"))
 	}
 
-	// Ambil token paling akhir (menghindari Bearer double)
-	tokenOnly := parts[len(parts)-1]
-	c.Request().Header.Set("Authorization", tokenOnly) // Overwrite agar jwtware bisa proses
+	// Ambil token tanpa "Bearer "
+	tokenOnly := authHeader[len(bearerPrefix):]
+	c.Request().Header.Set("Authorization", tokenOnly) // ganti header agar jwtware bisa proses
 
-	// Lanjut ke JWT middleware
+	// Jalankan middleware jwtware
 	return jwtware.New(jwtware.Config{
-		SigningKey:   jwtware.SigningKey{Key: []byte(os.Getenv("JWT_SECRET"))},
-		ContextKey:   "jwt",
-		TokenLookup:  "header:Authorization", // tetap gunakan header
+		SigningKey:  jwtware.SigningKey{Key: []byte(os.Getenv("JWT_SECRET"))},
+		ContextKey:  "jwt",
+		TokenLookup: "header:Authorization", // tetap sama
+		// AuthScheme dikosongkan agar jwtware tidak cek prefix
 		ErrorHandler: jwtErrorHandler,
 	})(c)
 }
