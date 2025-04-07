@@ -20,6 +20,7 @@ func Route(db *gorm.DB) {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,DELETE",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 
 	if os.Getenv("APP_ENV") != "production" {
