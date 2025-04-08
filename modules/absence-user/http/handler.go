@@ -36,9 +36,11 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
+	month, _ := strconv.Atoi(c.Query("month", "0"))
+	year, _ := strconv.Atoi(c.Query("year", "0"))
 
 	// Call service with filters
-	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id)
+	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id, month, year)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
