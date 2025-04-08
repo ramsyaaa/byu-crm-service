@@ -32,18 +32,23 @@ jobs:
           port: 22
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
-            export PATH=$PATH:/usr/local/go/bin/go
+            export PATH=$PATH:/usr/local/go/bin
+
+            # Debug commands to verify Go is available
+            echo "Current PATH: $PATH"
+            which go || echo "Go not found in PATH"
+            go version || echo "Go command failed"
             cd /usr/go/byu-crm-service-dev
             git pull origin master
             go mod tidy
             go build -o byu-crm-service-dev
-            pm2 restart byu_crm_service-dev
+            pm2 restart byu-crm-service-dev
 
             cd /usr/go/byu-crm-service-prod
             git pull origin master
             go mod tidy
             go build -o byu-crm-service-prod
-            pm2 restart byu_crm_service-prod
+            pm2 restart byu-crm-service-prod
 
       # 4. Send success notification via custom API
       - name: Send Telegram Notification
