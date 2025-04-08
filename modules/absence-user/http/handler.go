@@ -301,6 +301,28 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(response)
 }
 
+func (h *AbsenceUserHandler) GetAbsenceActive(c *fiber.Ctx) error {
+	// Default query params
+	user_id := c.Locals("user_id").(int)
+
+	type_absence := c.Query("type", "")
+
+	// Call service with filters
+	absences, err := h.absenceUserService.GetAbsenceActive(user_id, type_absence)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"absences": absences,
+	}
+
+	response := helper.APIResponse("Get Absences Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func GetModelValueByKey(data map[string]any, key string) any {
 	if val, ok := data[key]; ok {
 		return val

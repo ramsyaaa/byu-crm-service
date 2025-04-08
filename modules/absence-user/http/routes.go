@@ -12,6 +12,7 @@ func AbsenceUserRoutes(router fiber.Router, handler *AbsenceUserHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllAbsenceUsers)
+	authRouter.Get("/active-absence", handler.GetAbsenceActive)
 	authRouter.Get("/:id", handler.GetAbsenceUserByID)
 	authRouter.Post("/", handler.CreateAbsenceUser)
 }
