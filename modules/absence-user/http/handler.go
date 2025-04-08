@@ -36,9 +36,11 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
+	month, _ := strconv.Atoi(c.Query("month", "0"))
+	year, _ := strconv.Atoi(c.Query("year", "0"))
 
 	// Call service with filters
-	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id)
+	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id, month, year)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
@@ -297,6 +299,28 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	// Response
 	response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "success", nil)
 	return c.Status(fiber.StatusInternalServerError).JSON(response)
+}
+
+func (h *AbsenceUserHandler) GetAbsenceActive(c *fiber.Ctx) error {
+	// Default query params
+	user_id := c.Locals("user_id").(int)
+
+	type_absence := c.Query("type", "")
+
+	// Call service with filters
+	absences, err := h.absenceUserService.GetAbsenceActive(user_id, type_absence)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"absences": absences,
+	}
+
+	response := helper.APIResponse("Get Absences Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func GetModelValueByKey(data map[string]any, key string) any {

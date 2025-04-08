@@ -14,8 +14,8 @@ func NewAbsenceUserService(repo repository.AbsenceUserRepository) AbsenceUserSer
 	return &absenceUserService{repo: repo}
 }
 
-func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int) ([]models.AbsenceUser, int64, error) {
-	return s.repo.GetAllAbsences(limit, paginate, page, filters, user_id)
+func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int) ([]models.AbsenceUser, int64, error) {
+	return s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year)
 }
 
 func (s *absenceUserService) GetAbsenceUserByID(id int) (*models.AbsenceUser, error) {
@@ -55,4 +55,8 @@ func (s *absenceUserService) UpdateAbsenceUser(absence_id int, user_id int, subj
 		ClockOut:    func(t time.Time) *time.Time { return &t }(time.Now()),
 	}
 	return s.repo.UpdateAbsenceUser(AbsenceUser, absence_id)
+}
+
+func (s *absenceUserService) GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error) {
+	return s.repo.GetAbsenceActive(user_id, type_absence)
 }

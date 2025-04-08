@@ -15,7 +15,7 @@ func NewAbsenceUserRepository(db *gorm.DB) AbsenceUserRepository {
 	return &absenceUserRepository{db: db}
 }
 
-func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int) ([]models.AbsenceUser, int64, error) {
+func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int) ([]models.AbsenceUser, int64, error) {
 	var absence_users []models.AbsenceUser
 	var total int64
 
@@ -41,6 +41,10 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	}
 	if endDate, exists := filters["end_date"]; exists && endDate != "" {
 		query = query.Where("absence_users.created_at <= ?", endDate)
+	}
+
+	if month != 0 && year != 0 {
+		query = query.Where("MONTH(absence_users.created_at) = ? AND YEAR(absence_users.created_at) = ?", month, year)
 	}
 
 	// Get total count before applying pagination
@@ -161,4 +165,13 @@ func (r *absenceUserRepository) UpdateAbsenceUser(absence_user *models.AbsenceUs
 	}
 
 	return &existingAbsenceUser, nil
+}
+
+func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error) {
+	var absence_users []models.AbsenceUser
+	err := r.db.Where("user_id = ? AND type = ? AND clock_out IS NULL", user_id, type_absence).Find(&absence_users).Error
+	if err != nil {
+		return nil, err
+	}
+	return absence_users, nil
 }

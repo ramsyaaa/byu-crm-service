@@ -282,11 +282,15 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 func (h *AccountHandler) Import(c *fiber.Ctx) error {
 	// Validate the uploaded file
 	if err := validation.ValidateAccountRequest(c); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		return err // Error response is already handled in the validation function
 	}
 
-	// Save file temporarily
-	file, _ := c.FormFile("file_csv")
+	// Get the file from the request
+	file, err := c.FormFile("file_csv")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File is required"})
+	}
+
 	tempPath := "./temp/" + file.Filename
 
 	// Ensure the temp directory exists
@@ -302,6 +306,9 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 
 	// Retrieve user_id from the form
 	userID := c.FormValue("user_id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "User ID is required"})
+	}
 
 	go func() {
 		defer os.Remove(tempPath)
@@ -363,7 +370,10 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 		}
 	}()
 
-	return c.JSON(fiber.Map{"message": "File processed successfully"})
+	return c.JSON(fiber.Map{
+		"message": "File upload successful, processing in background",
+		"status":  "success",
+	})
 }
 
 func saveFileToLocal(file *multipart.FileHeader, directory string, allowedFormats []string) (*string, error) {
