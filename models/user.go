@@ -19,4 +19,6 @@ type User struct {
 	NamiAgentID       string `json:"nami_agent_id"`
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
+
+	Roles []Role `gorm:"many2many:user_roles"`
 }

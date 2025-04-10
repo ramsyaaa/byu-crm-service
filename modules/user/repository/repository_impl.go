@@ -13,17 +13,18 @@ type userRepository struct {
 }
 
 type UserResponse struct {
-	ID            uint   `json:"id"`
-	Name          string `json:"name"`
-	Email         string `json:"email"`
-	Avatar        string `json:"avatar"`
-	Msisdn        string `json:"msisdn"`
-	UserStatus    string `json:"user_status"`
-	UserType      string `json:"user_type"`
-	TerritoryID   uint   `json:"territory_id"`
-	TerritoryType string `json:"territory_type"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	ID            uint     `json:"id"`
+	Name          string   `json:"name"`
+	Email         string   `json:"email"`
+	Avatar        string   `json:"avatar"`
+	Msisdn        string   `json:"msisdn"`
+	UserStatus    string   `json:"user_status"`
+	UserType      string   `json:"user_type"`
+	TerritoryID   uint     `json:"territory_id"`
+	TerritoryType string   `json:"territory_type"`
+	RoleNames     []string `json:"role_names"`
+	CreatedAt     string   `json:"created_at"`
+	UpdatedAt     string   `json:"updated_at"`
 }
 
 func NewUserRepository(db *gorm.DB) UserRepository {
@@ -83,7 +84,25 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 		return nil, err
 	}
 
-	// Map hanya field yang diperlukan
+	// Get role IDs from model_has_roles table
+	var roleIDs []uint
+	if err := r.db.Table("model_has_roles").
+		Where("model_id = ? AND model_type = ?", id, "App\\Models\\User").
+		Pluck("role_id", &roleIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// Ambil nama role dari tabel roles
+	var roleNames []string
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("roles").
+			Where("id IN ?", roleIDs).
+			Pluck("name", &roleNames).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Build response
 	response := &UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
@@ -96,6 +115,7 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 		TerritoryType: user.TerritoryType,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
+		RoleNames:     roleNames,
 	}
 
 	return response, nil
