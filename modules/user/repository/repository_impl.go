@@ -86,6 +86,7 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 	// Map hanya field yang diperlukan
 	response := &UserResponse{
 		ID:            user.ID,
+		Name:          user.Name,
 		Email:         user.Email,
 		Avatar:        user.Avatar,
 		Msisdn:        user.Msisdn,
@@ -95,6 +96,38 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 		TerritoryType: user.TerritoryType,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
+	}
+
+	return response, nil
+}
+
+func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*UserResponse, error) {
+	var existingUser models.User
+	if err := r.db.First(&existingUser, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	existingUser.Password = user["password"].(string)
+
+	if err := r.db.Save(&existingUser).Error; err != nil {
+		return nil, err
+	}
+
+	response := &UserResponse{
+		ID:            existingUser.ID,
+		Name:          existingUser.Name,
+		Email:         existingUser.Email,
+		Avatar:        existingUser.Avatar,
+		Msisdn:        existingUser.Msisdn,
+		UserStatus:    existingUser.UserStatus,
+		UserType:      existingUser.UserType,
+		TerritoryID:   existingUser.TerritoryID,
+		TerritoryType: existingUser.TerritoryType,
+		CreatedAt:     existingUser.CreatedAt,
+		UpdatedAt:     existingUser.UpdatedAt,
 	}
 
 	return response, nil
