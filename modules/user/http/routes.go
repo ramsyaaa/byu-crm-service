@@ -11,6 +11,7 @@ func UserRoutes(router fiber.Router, handler *UserHandler) {
 		middleware.JWTMiddleware,
 		middleware.JWTUserContextMiddleware(),
 	)
+	authRouter.Put("/profile", handler.UpdateUserProfile)
 	authRouter.Get("/profile", handler.GetUserProfile)
 	authRouter.Get("/:id", handler.GetUserByID)
 	authRouter.Get("/", handler.GetAllUsers)

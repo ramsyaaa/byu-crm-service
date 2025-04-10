@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"byu-crm-service/models"
 	"byu-crm-service/modules/auth/repository"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -58,4 +59,12 @@ func (s *authService) Login(email, password string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (s *authService) CheckPassword(password, hashedPassword string) bool {
+	return s.userRepo.CheckPassword(password, hashedPassword)
+}
+
+func (s *authService) GetUserByKey(key, value string) (*models.User, error) {
+	return s.userRepo.GetUserByKey(key, value)
 }
