@@ -5,17 +5,20 @@ import (
 	"strconv"
 
 	"byu-crm-service/helper"
+	authService "byu-crm-service/modules/auth/service"
 	"byu-crm-service/modules/user/service"
+	"byu-crm-service/modules/user/validation"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type UserHandler struct {
-	service service.UserService
+	service     service.UserService
+	authService authService.AuthService
 }
 
-func NewUserHandler(service service.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service service.UserService, authService authService.AuthService) *UserHandler {
+	return &UserHandler{service: service, authService: authService}
 }
 
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
@@ -45,9 +48,7 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetUserProfile(c *fiber.Ctx) error {
-	fmt.Println("GetUserProfile called")
 	intID := c.Locals("user_id").(int)
-	fmt.Println("User fetched successfully:")
 	user, err := h.service.GetUserByID(uint(intID))
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -55,8 +56,6 @@ func (h *UserHandler) GetUserProfile(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
-
-	fmt.Println("User fetched successfully:", user)
 
 	// Return response
 	responseData := map[string]interface{}{
@@ -97,5 +96,77 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Users Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
+	req := new(validation.UpdateProfileRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	fmt.Println("Request Body:", req)
+
+	// Request Validation
+	errors := validation.ValidateUpdate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	intID := c.Locals("user_id").(int)
+	user, err := h.service.GetUserByID(uint(intID))
+
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch user", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	getUser, _ := h.authService.GetUserByKey("email", user.Email)
+
+	if !h.authService.CheckPassword(req.OldPassword, getUser.Password) {
+		errors := map[string]string{
+			"old_password": "Password lama tidak sesuai",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	dataUpdate := make(map[string]interface{})
+
+	dataUpdate["password"] = req.OldPassword
+	new_password := req.NewPassword
+	confirm_password := req.ConfirmPassword
+
+	if new_password != confirm_password {
+		errors := map[string]string{
+			"old_password": "Password baru dan konfirmasi password tidak sama",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if err := c.BodyParser(user); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	user, err = h.service.UpdateUserProfile(uint(intID), dataUpdate)
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to update user",
+			"error":   err.Error(),
+		})
+	}
+
+	responseData := map[string]interface{}{
+		"user": user,
+	}
+
+	response := helper.APIResponse("Update User Profile Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
