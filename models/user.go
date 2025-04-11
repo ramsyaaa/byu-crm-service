@@ -20,5 +20,6 @@ type User struct {
 	CreatedAt         string `json:"created_at"`
 	UpdatedAt         string `json:"updated_at"`
 
-	Roles []Role `gorm:"many2many:user_roles"`
+	Roles     []Role   `gorm:"many2many:user_roles"`
+	RoleNames []string `gorm:"-" json:"role_names"`
 }

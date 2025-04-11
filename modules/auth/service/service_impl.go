@@ -53,6 +53,19 @@ func (s *authService) Login(email, password string) (string, error) {
 		return "", errors.New("invalid email or password")
 	}
 
+	//  Check if user has the required roles
+	allowed := false
+	for _, role := range user.RoleNames {
+		if role == "Super-Admin" || role == "YAE" {
+			allowed = true
+			break
+		}
+	}
+
+	if !allowed {
+		return "", errors.New("you cannot access this application")
+	}
+
 	token, err := generateJWT(user.Email, int(user.ID))
 	if err != nil {
 		return "", errors.New("failed to generate token")

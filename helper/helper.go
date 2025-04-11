@@ -3,6 +3,7 @@ package helper
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,4 +115,33 @@ func saveFileToLocal(file *multipart.FileHeader, directory string, allowedFormat
 
 func generateUniqueID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+const EarthRadius = 6371000 // meters
+
+// Function to calculate the distance between two points on the Earth using the Haversine formula
+func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+	dLat := toRadians(lat2 - lat1)
+	dLon := toRadians(lon2 - lon1)
+
+	lat1 = toRadians(lat1)
+	lat2 = toRadians(lat2)
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1)*math.Cos(lat2)*math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return EarthRadius * c
+}
+
+// Convert degrees to radians
+func toRadians(deg float64) float64 {
+	return deg * math.Pi / 180
+}
+
+// function to check if a point is within a certain radius from another point
+func IsWithinRadius(radius, targetLat, targetLon, mainLat, mainLon float64) bool {
+	distance := haversine(mainLat, mainLon, targetLat, targetLon)
+	return distance <= radius // in meters
 }
