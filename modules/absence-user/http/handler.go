@@ -205,33 +205,16 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 				return c.Status(fiber.StatusBadRequest).JSON(response)
 			}
-		}
-
-		existingAbsenceUser, message, err := h.absenceUserService.GetAbsenceUserToday(
-			true,
-			userID,
-			&req.Type,
-			type_checking,
-			actionType,
-			subjectTypeStr,
-			parsedSubjectID,
-		)
-
-		if actionType == "Clock Out" {
-			if existingAbsenceUser == nil {
-				errors := map[string]string{
-					"message": message,
-				}
-				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
+		} else {
+			requestBody := map[string]interface{}{
+				"longitude": req.Longitude,
+				"latitude":  req.Latitude,
 			}
-		} else if actionType == "Clock In" {
-			if existingAbsenceUser != nil {
-				errors := map[string]string{
-					"message": message,
-				}
-				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
+			_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userID)
+
+			if err != nil {
+				response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
 		}
 
