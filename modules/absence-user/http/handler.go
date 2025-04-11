@@ -3,8 +3,13 @@ package http
 import (
 	"byu-crm-service/modules/absence-user/service"
 	"byu-crm-service/modules/absence-user/validation"
+	accountService "byu-crm-service/modules/account/service"
+	kpiYaeRange "byu-crm-service/modules/kpi-yae-range/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
+	"encoding/json"
+	"fmt"
 	"strconv"
+	"time"
 
 	"byu-crm-service/helper"
 
@@ -14,10 +19,20 @@ import (
 type AbsenceUserHandler struct {
 	absenceUserService  service.AbsenceUserService
 	visitHistoryService visitHistoryService.VisitHistoryService
+	accountService      accountService.AccountService
+	KpiYaeRangeService  kpiYaeRange.KpiYaeRangeService
 }
 
-func NewAbsenceUserHandler(absenceUserService service.AbsenceUserService, visitHistoryService visitHistoryService.VisitHistoryService) *AbsenceUserHandler {
-	return &AbsenceUserHandler{absenceUserService: absenceUserService, visitHistoryService: visitHistoryService}
+func NewAbsenceUserHandler(
+	absenceUserService service.AbsenceUserService,
+	visitHistoryService visitHistoryService.VisitHistoryService,
+	accountService accountService.AccountService,
+	kpiYaeRange kpiYaeRange.KpiYaeRangeService) *AbsenceUserHandler {
+	return &AbsenceUserHandler{
+		absenceUserService:  absenceUserService,
+		visitHistoryService: visitHistoryService,
+		accountService:      accountService,
+		KpiYaeRangeService:  kpiYaeRange}
 }
 
 func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
@@ -111,6 +126,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	}
 
 	actionType := c.FormValue("action_type")
+	kpiYae := make(map[string]*int)
 
 	if actionType != "Clock In" && actionType != "Clock Out" {
 		errors := map[string]string{
@@ -137,7 +153,6 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	}
 
 	var subjectID int
-	var greeting, survey, presentation *bool
 	type_checking := "daily"
 
 	if req.Type == "Visit Account" {
@@ -154,7 +169,45 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+
+		getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		if getAccount.Latitude != nil && getAccount.Longitude != nil {
+			latitude, err := strconv.ParseFloat(req.Latitude, 64)
+			if err != nil {
+				response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+			longitude, err := strconv.ParseFloat(req.Longitude, 64)
+			if err != nil {
+				response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+			accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
+			if err != nil {
+				response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+			accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
+			if err != nil {
+				response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+			inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+			if !inRadius {
+				errors := map[string]string{
+					"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+		}
+
+		existingAbsenceUser, message, err := h.absenceUserService.GetAbsenceUserToday(
 			true,
 			userID,
 			&req.Type,
@@ -163,51 +216,78 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			subjectTypeStr,
 			parsedSubjectID,
 		)
-		if existingAbsenceUser != nil {
-			errors := map[string]string{
-				"message": message,
-			}
-			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-			return c.Status(fiber.StatusBadRequest).JSON(response)
-		}
 
 		if actionType == "Clock Out" {
-			greetingStr := c.FormValue("greeting")
-			surveyStr := c.FormValue("survey")
-			presentationStr := c.FormValue("presentation")
-
-			errors := make(map[string]string)
-
-			if greetingStr != "" {
-				val, _ := strconv.Atoi(greetingStr)
-				temp := val != 0
-				greeting = &temp
-			} else {
-				errors["greeting"] = "Salam harus diisi"
-			}
-
-			if surveyStr != "" {
-				val, _ := strconv.Atoi(surveyStr)
-				temp := val != 0
-				survey = &temp
-			} else {
-				errors["survey"] = "Survey harus diisi"
-			}
-
-			if presentationStr != "" {
-				val, _ := strconv.Atoi(presentationStr)
-				temp := val != 0
-				presentation = &temp
-			} else {
-				errors["presentation"] = "Presentasi harus diisi"
-			}
-
-			// If there are any errors, return them
-			if len(errors) > 0 {
+			if existingAbsenceUser == nil {
+				errors := map[string]string{
+					"message": message,
+				}
 				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 				return c.Status(fiber.StatusBadRequest).JSON(response)
 			}
+		} else if actionType == "Clock In" {
+			if existingAbsenceUser != nil {
+				errors := map[string]string{
+					"message": message,
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+		}
 
+		if actionType == "Clock In" {
+			now := time.Now()
+			month := uint(now.Month()) // time.Month ke uint
+			year := uint(now.Year())
+
+			getKpiList, err := h.KpiYaeRangeService.GetKpiYaeRangeByDate(month, year)
+
+			if err != nil {
+				response := helper.APIResponse("Failed to fetch Kpi Yae", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			type KpiTargetItem struct {
+				Name   string `json:"name"`
+				Target string `json:"target"`
+			}
+
+			var targetItems []KpiTargetItem
+			err = json.Unmarshal([]byte(getKpiList.Target), &targetItems)
+			if err != nil {
+				response := helper.APIResponse("Gagal parsing data target", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			errors := make(map[string]string)
+
+			for _, item := range targetItems {
+				formKey := item.Name
+				valueBytes := c.Context().FormValue(formKey)
+				valueStr := string(valueBytes)
+
+				if valueStr == "" {
+					errors[formKey] = fmt.Sprintf("%s harus diisi", item.Name)
+					continue
+				}
+
+				if valueStr != "1" && valueStr != "0" {
+					errors[formKey] = fmt.Sprintf("%s hanya boleh bernilai 1 atau 0", item.Name)
+					continue
+				}
+
+				parsedValue, err := strconv.Atoi(valueStr)
+				if err != nil {
+					errors[formKey] = fmt.Sprintf("%s harus berupa angka", item.Name)
+					continue
+				}
+				kpiYae[formKey] = &parsedValue
+			}
+
+			if len(errors) > 0 {
+				response := helper.APIResponse("Validasi gagal", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 		}
 	} else if req.Type == "Daily" {
 
@@ -253,6 +333,15 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
+
+		if req.Type == "Visit Account" {
+			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description)
+			if err != nil {
+				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
+				return c.Status(fiber.StatusUnauthorized).JSON(response)
+			}
+		}
+
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)
 	} else if actionType == "Clock Out" {
@@ -283,14 +372,6 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
-		}
-
-		if req.Type == "Visit Account" {
-			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), *greeting, *survey, *presentation, &description)
-			if err != nil {
-				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
-				return c.Status(fiber.StatusUnauthorized).JSON(response)
-			}
 		}
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)

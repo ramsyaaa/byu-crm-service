@@ -3,6 +3,7 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/visit-history/repository"
+	"encoding/json"
 	"time"
 )
 
@@ -26,16 +27,19 @@ func (s *visitHistoryService) GetAbsenceUserToday(only_today bool, user_id int, 
 	return s.repo.GetAbsenceUserToday(only_today, user_id, type_absence, type_checking, action_type, subject_type, subject_id)
 }
 
-func (s *visitHistoryService) CreateVisitHistory(user_id int, subject_type string, subject_id int, absence_user_id int, greeting bool, survey bool, presentation bool, description *string) (*models.VisitHistory, error) {
+func (s *visitHistoryService) CreateVisitHistory(user_id int, subject_type string, subject_id int, absence_user_id int, kpiYae map[string]*int, description *string) (*models.VisitHistory, error) {
 	convertedUserID := uint(user_id)
+	kpiJSON, err := json.Marshal(kpiYae)
+	if err != nil {
+		return nil, err
+	}
+	kpiJSONString := string(kpiJSON)
 	VisitHistory := &models.VisitHistory{
 		UserID:        &convertedUserID,
 		SubjectType:   &subject_type,
 		SubjectID:     func(v int) *uint { u := uint(v); return &u }(subject_id),
 		AbsenceUserID: func(v int) *uint { u := uint(v); return &u }(absence_user_id),
-		Greeting:      greeting,
-		Survey:        survey,
-		Presentation:  presentation,
+		Target:        &kpiJSONString,
 		Description:   *description,
 	}
 	return s.repo.CreateVisitHistory(VisitHistory)
