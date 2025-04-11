@@ -171,7 +171,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		if actionType == "Clock Out" {
+		if actionType == "Clock In" {
 			greetingStr := c.FormValue("greeting")
 			surveyStr := c.FormValue("survey")
 			presentationStr := c.FormValue("presentation")
