@@ -173,3 +173,7 @@ func isZeroValue(value string) bool {
 	}
 	return parsed == 0
 }
+
+func (s *accountService) FindByAccountID(id uint) (*models.Account, error) {
+	return s.repo.FindByAccountID(id)
+}

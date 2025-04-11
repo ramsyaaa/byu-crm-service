@@ -104,10 +104,9 @@ func (r *absenceUserRepository) GetAbsenceUserToday(
 		}
 		switch action_type {
 		case "Clock Out":
-			query = query.Where("clock_out IS NOT NULL")
+			query = query.Where("clock_out IS NULL")
 		}
 	} else {
-		// Filter by action_type
 		switch action_type {
 		case "Clock In":
 			query = query.Where("clock_in IS NOT NULL AND clock_out IS NULL")

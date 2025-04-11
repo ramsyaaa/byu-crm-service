@@ -7,4 +7,5 @@ type AccountService interface {
 	CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error)
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userID int) ([]models.Account, error)
 	ProcessAccount(data []string) error
+	FindByAccountID(id uint) (*models.Account, error)
 }
