@@ -49,22 +49,41 @@ func (s *accountService) CreateAccount(requestBody map[string]interface{}, userI
 }
 
 func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accountID int, userID int) ([]models.Account, error) {
+	existingAccount, err := s.repo.FindByAccountID(uint(accountID))
+	if err != nil {
+		return nil, err
+	}
+
+	getString := func(val *string) string {
+		if val != nil {
+			return *val
+		}
+		return ""
+	}
+
 	accountData := map[string]string{
-		"account_name":              requestBody["account_name"].(string),
-		"account_image":             requestBody["account_image"].(string),
-		"account_type":              requestBody["account_type"].(string),
-		"account_category":          requestBody["account_category"].(string),
-		"account_code":              requestBody["account_code"].(string),
-		"city":                      requestBody["city"].(string),
-		"contact_name":              requestBody["contact_name"].(string),
-		"email_account":             requestBody["email_account"].(string),
-		"website_account":           requestBody["website_account"].(string),
-		"system_informasi_akademik": requestBody["system_informasi_akademik"].(string),
-		"ownership":                 requestBody["ownership"].(string),
-		"pic":                       requestBody["pic"].(string),
-		"pic_internal":              requestBody["pic_internal"].(string),
-		"latitude":                  requestBody["latitude"].(string),
-		"longitude":                 requestBody["longitude"].(string),
+		"account_name":              getString(existingAccount.AccountName),
+		"account_image":             getString(existingAccount.AccountImage),
+		"account_type":              getString(existingAccount.AccountType),
+		"account_category":          getString(existingAccount.AccountCategory),
+		"account_code":              getString(existingAccount.AccountCode),
+		"city":                      getString(existingAccount.City),
+		"contact_name":              getString(existingAccount.ContactName),
+		"email_account":             getString(existingAccount.EmailAccount),
+		"website_account":           getString(existingAccount.WebsiteAccount),
+		"system_informasi_akademik": getString(existingAccount.SystemInformasiAkademik),
+		"ownership":                 getString(existingAccount.Ownership),
+		"pic":                       getString(existingAccount.Pic),
+		"pic_internal":              getString(existingAccount.PicInternal),
+		"latitude":                  getString(existingAccount.Latitude),
+		"longitude":                 getString(existingAccount.Longitude),
+	}
+
+	// Override field hanya jika tersedia di requestBody
+	for key := range accountData {
+		if val, ok := requestBody[key]; ok && val != nil {
+			accountData[key] = fmt.Sprintf("%v", val)
+		}
 	}
 
 	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
