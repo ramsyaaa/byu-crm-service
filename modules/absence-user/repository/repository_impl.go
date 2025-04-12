@@ -102,19 +102,15 @@ func (r *absenceUserRepository) GetAbsenceUserToday(
 			query = query.Where("MONTH(clock_in) = MONTH(CURDATE()) AND YEAR(clock_in) = YEAR(CURDATE())")
 			message = "The absence user is already checked in this month"
 		}
-		switch action_type {
-		case "Clock Out":
-			query = query.Where("clock_out IS NULL")
-		}
-	} else {
-		switch action_type {
-		case "Clock In":
-			query = query.Where("clock_in IS NOT NULL AND clock_out IS NULL")
-			message = "The user already clocked in, please clock out first"
-		case "Clock Out":
-			query = query.Where("clock_out IS NULL")
-			message = "The user already clocked out, need to clock in first"
-		}
+	}
+
+	switch action_type {
+	case "Clock In":
+		query = query.Where("clock_in IS NOT NULL AND clock_out IS NULL")
+		message = "The user already clocked in, please clock out first"
+	case "Clock Out":
+		query = query.Where("clock_out IS NULL")
+		message = "The user already clocked out, need to clock in first"
 	}
 
 	// Filter by type_absence
@@ -173,4 +169,24 @@ func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence strin
 		return nil, err
 	}
 	return absence_users, nil
+}
+
+func (r *absenceUserRepository) AlreadyAbsenceInSameDay(user_id int, type_checking string) (*models.AbsenceUser, error) {
+	var absence_user models.AbsenceUser
+
+	query := r.db.Where("user_id = ?", user_id)
+
+	switch type_checking {
+	case "daily":
+		query = query.Where("DATE(clock_in) = CURDATE()")
+	case "monthly":
+		query = query.Where("MONTH(clock_in) = MONTH(CURDATE()) AND YEAR(clock_in) = YEAR(CURDATE())")
+	}
+
+	err := query.First(&absence_user).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &absence_user, nil
 }
