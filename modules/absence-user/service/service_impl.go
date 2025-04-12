@@ -61,6 +61,6 @@ func (s *absenceUserService) GetAbsenceActive(user_id int, type_absence string) 
 	return s.repo.GetAbsenceActive(user_id, type_absence)
 }
 
-func (s *absenceUserService) AlreadyAbsenceInSameDay(user_id int, type_checking string) (*models.AbsenceUser, error) {
-	return s.repo.AlreadyAbsenceInSameDay(user_id, type_checking)
+func (s *absenceUserService) AlreadyAbsenceInSameDay(user_id int, type_absence *string, type_checking string, action_type string, subject_type string, subject_id int) (*models.AbsenceUser, error) {
+	return s.repo.AlreadyAbsenceInSameDay(user_id, type_absence, type_checking, action_type, subject_type, subject_id)
 }

@@ -171,7 +171,7 @@ func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence strin
 	return absence_users, nil
 }
 
-func (r *absenceUserRepository) AlreadyAbsenceInSameDay(user_id int, type_checking string) (*models.AbsenceUser, error) {
+func (r *absenceUserRepository) AlreadyAbsenceInSameDay(user_id int, type_absence *string, type_checking string, action_type string, subject_type string, subject_id int) (*models.AbsenceUser, error) {
 	var absence_user models.AbsenceUser
 
 	query := r.db.Where("user_id = ?", user_id)
@@ -181,6 +181,16 @@ func (r *absenceUserRepository) AlreadyAbsenceInSameDay(user_id int, type_checki
 		query = query.Where("DATE(clock_in) = CURDATE()")
 	case "monthly":
 		query = query.Where("MONTH(clock_in) = MONTH(CURDATE()) AND YEAR(clock_in) = YEAR(CURDATE())")
+	}
+
+	if type_absence != nil {
+		query = query.Where("type = ?", *type_absence)
+	}
+
+	// Filter by subject_type and subject_id if provided
+	if subject_type != "" && subject_id != 0 {
+
+		query = query.Where("subject_type = ? AND subject_id = ?", subject_type, subject_id)
 	}
 
 	err := query.First(&absence_user).Error
