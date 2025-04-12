@@ -36,11 +36,19 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	}
 
 	// Apply date range filter
-	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("absence_users.created_at >= ?", startDate)
-	}
-	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("absence_users.created_at <= ?", endDate)
+	startDate, hasStart := filters["start_date"]
+	endDate, hasEnd := filters["end_date"]
+
+	if hasStart && startDate != "" && hasEnd && endDate != "" {
+		startDateTime := startDate + " 00:00:00"
+		endDateTime := endDate + " 23:59:59"
+		query = query.Where("absence_users.created_at BETWEEN ? AND ?", startDateTime, endDateTime)
+	} else if hasStart && startDate != "" {
+		startDateTime := startDate + " 00:00:00"
+		query = query.Where("absence_users.created_at >= ?", startDateTime)
+	} else if hasEnd && endDate != "" {
+		endDateTime := endDate + " 23:59:59"
+		query = query.Where("absence_users.created_at <= ?", endDateTime)
 	}
 
 	if month != 0 && year != 0 {
