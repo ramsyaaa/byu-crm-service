@@ -1,7 +1,16 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
 
-func KpiYaeRangeRoutes(app *fiber.App, handler *KpiYaeRangeHandler) {
-	//
+	"github.com/gofiber/fiber/v2"
+)
+
+func KpiYaeRangeRoutes(router fiber.Router, handler *KpiYaeRangeHandler) {
+	authRouter := router.Group("/kpi-yae",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+	authRouter.Get("/current", handler.GetCurrentKpiYaeRanges)
+	authRouter.Post("/", handler.CreateKpiYaeRange)
 }

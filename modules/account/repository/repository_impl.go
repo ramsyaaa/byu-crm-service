@@ -17,7 +17,7 @@ func NewAccountRepository(db *gorm.DB) AccountRepository {
 	return &accountRepository{db: db}
 }
 
-func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int) ([]models.Account, int64, error) {
+func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool) ([]models.Account, int64, error) {
 	var accounts []models.Account
 	var total int64
 
@@ -60,10 +60,14 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 		}
 	}
 
-	// Additional logic for Buddies / DS role
-	if userRole == "Buddies" || userRole == "DS" {
-		query = query.Where("accounts.pic = ? OR accounts.pic IS NULL", userID).
-			Order(fmt.Sprintf("CASE WHEN accounts.pic = %d THEN 0 ELSE 1 END, accounts.account_name ASC", userID))
+	if onlyUserPic && userID > 0 {
+		query = query.Where("accounts.pic = ?", userID)
+	} else {
+		// Additional logic for Buddies / DS role
+		if userRole == "Buddies" || userRole == "DS" {
+			query = query.Where("accounts.pic = ? OR accounts.pic IS NULL", userID).
+				Order(fmt.Sprintf("CASE WHEN accounts.pic = %d THEN 0 ELSE 1 END, accounts.account_name ASC", userID))
+		}
 	}
 
 	// Apply date range filter

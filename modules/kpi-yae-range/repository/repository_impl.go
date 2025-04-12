@@ -2,7 +2,7 @@ package repository
 
 import (
 	"byu-crm-service/models"
-	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -18,16 +18,29 @@ func NewKpiYaeRangeRepository(db *gorm.DB) KpiYaeRangeRepository {
 func (r *kpiYaeRangeRepository) GetKpiYaeRangeByDate(month uint, year uint) (*models.KpiYaeRange, error) {
 	var kpi models.KpiYaeRange
 
-	// Buat batas awal dan akhir bulan
-	startDate := fmt.Sprintf("%04d-%02d-01", year, month)
-	endDate := fmt.Sprintf("%04d-%02d-31", year, month)
+	// Create a time.Time object for the first day of the month
+	start := time.Date(int(year), time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 
-	err := r.db.Where("start_date <= ? AND end_date >= ?", endDate, startDate).
-		First(&kpi).Error
+	// Create a time.Time object for the last day of the month
+	end := start.AddDate(0, 1, -1)
 
+	// Convert to string in the format "YYYY-MM-DD"
+	startDate := start.Format("2006-01-02")
+	endDate := end.Format("2006-01-02")
+
+	err := r.db.Where("start_date <= ? AND end_date >= ?", endDate, startDate).First(&kpi).Error
 	if err != nil {
 		return nil, err
 	}
 
 	return &kpi, nil
+}
+
+func (r *kpiYaeRangeRepository) CreateKpiYaeRange(kpiYaeRange *models.KpiYaeRange) (*models.KpiYaeRange, error) {
+	err := r.db.Create(kpiYaeRange).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return kpiYaeRange, nil
 }
