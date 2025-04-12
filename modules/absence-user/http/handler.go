@@ -276,7 +276,11 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 		existingAbsenceUser, _ := h.absenceUserService.AlreadyAbsenceInSameDay(
 			userID,
+			&req.Type,
 			type_checking,
+			actionType,
+			"",
+			0,
 		)
 		if actionType == "Clock In" {
 			if existingAbsenceUser != nil {
