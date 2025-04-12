@@ -164,10 +164,18 @@ func (r *absenceUserRepository) UpdateAbsenceUser(absence_user *models.AbsenceUs
 
 func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error) {
 	var absence_users []models.AbsenceUser
-	err := r.db.Where("user_id = ? AND type = ? AND clock_out IS NULL", user_id, type_absence).Find(&absence_users).Error
-	if err != nil {
-		return nil, err
+	if type_absence == "" {
+		err := r.db.Where("user_id = ? AND (clock_out IS NULL OR DATE(clock_in) = CURRENT_DATE)", user_id).Find(&absence_users).Error
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := r.db.Where("user_id = ? AND type = ? AND (clock_out IS NULL OR DATE(clock_in) = CURRENT_DATE)", user_id, type_absence).Find(&absence_users).Error
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return absence_users, nil
 }
 
