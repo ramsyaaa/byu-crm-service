@@ -138,7 +138,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 	description := c.FormValue("description")
 
-	if description == "" && actionType == "Clock Out" {
+	if description == "" && actionType == "Clock In" {
 		errors := map[string]string{
 			"description": "Deskripsi harus diisi",
 		}
@@ -274,22 +274,21 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 	} else if req.Type == "Daily" {
 
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
-			true,
+		existingAbsenceUser, _ := h.absenceUserService.AlreadyAbsenceInSameDay(
 			userID,
-			&req.Type,
 			type_checking,
-			actionType,
-			"",
-			0,
 		)
-		if existingAbsenceUser != nil {
-			errors := map[string]string{
-				"message": message,
+		if actionType == "Clock In" {
+			if existingAbsenceUser != nil {
+				errors := map[string]string{
+					"message": "User Already absence today",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
 			}
-			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-			return c.Status(fiber.StatusBadRequest).JSON(response)
+
 		}
+
 	}
 
 	if actionType == "Clock In" {
