@@ -82,10 +82,11 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	userRole := c.Query("user_role", "Super-Admin")
 	territoryID, _ := strconv.Atoi(c.Query("territory_id", "0"))
-	userID, _ := strconv.Atoi(c.Query("user_id", "0"))
+	userID := c.Locals("user_id").(int)
+	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
 
 	// Call service with filters
-	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID)
+	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
