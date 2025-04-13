@@ -20,17 +20,20 @@ func NewAuthService(userRepo repository.AuthRepository) AuthService {
 }
 
 // Generate JWT Token
-func generateJWT(email string, userID int) (string, error) {
+func generateJWT(email string, userID int, userRole string, territoryType string, territoryID int) (string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		return "", errors.New("missing JWT secret")
 	}
 
 	claims := jwt.MapClaims{
-		"email":   email,
-		"user_id": userID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-		"iat":     time.Now().Unix(),
+		"email":          email,
+		"user_id":        userID,
+		"user_role":      userRole,
+		"territory_type": territoryType,
+		"territory_id":   territoryID,
+		"exp":            time.Now().Add(time.Hour * 24).Unix(),
+		"iat":            time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -66,7 +69,7 @@ func (s *authService) Login(email, password string) (string, error) {
 		return "", errors.New("you cannot access this application")
 	}
 
-	token, err := generateJWT(user.Email, int(user.ID))
+	token, err := generateJWT(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID))
 	if err != nil {
 		return "", errors.New("failed to generate token")
 	}
