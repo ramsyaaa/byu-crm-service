@@ -43,6 +43,7 @@ func Route(db *gorm.DB) {
 	routes.AbsenceUserRouter(authGroup, db)
 	routes.UserRouter(authGroup, db)
 	routes.KpiYaeRangeRouter(authGroup, db)
+	routes.VisitChecklistRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
