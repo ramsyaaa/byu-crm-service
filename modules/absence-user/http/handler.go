@@ -5,11 +5,10 @@ import (
 	"byu-crm-service/modules/absence-user/validation"
 	accountService "byu-crm-service/modules/account/service"
 	kpiYaeRange "byu-crm-service/modules/kpi-yae-range/service"
+	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
-	"encoding/json"
 	"fmt"
 	"strconv"
-	"time"
 
 	"byu-crm-service/helper"
 
@@ -17,22 +16,26 @@ import (
 )
 
 type AbsenceUserHandler struct {
-	absenceUserService  service.AbsenceUserService
-	visitHistoryService visitHistoryService.VisitHistoryService
-	accountService      accountService.AccountService
-	KpiYaeRangeService  kpiYaeRange.KpiYaeRangeService
+	absenceUserService    service.AbsenceUserService
+	visitHistoryService   visitHistoryService.VisitHistoryService
+	accountService        accountService.AccountService
+	KpiYaeRangeService    kpiYaeRange.KpiYaeRangeService
+	visitChecklistService visitChecklistService.VisitChecklistService
 }
 
 func NewAbsenceUserHandler(
 	absenceUserService service.AbsenceUserService,
 	visitHistoryService visitHistoryService.VisitHistoryService,
 	accountService accountService.AccountService,
-	kpiYaeRange kpiYaeRange.KpiYaeRangeService) *AbsenceUserHandler {
+	kpiYaeRange kpiYaeRange.KpiYaeRangeService,
+	visitChecklistService visitChecklistService.VisitChecklistService) *AbsenceUserHandler {
 	return &AbsenceUserHandler{
-		absenceUserService:  absenceUserService,
-		visitHistoryService: visitHistoryService,
-		accountService:      accountService,
-		KpiYaeRangeService:  kpiYaeRange}
+		absenceUserService:    absenceUserService,
+		visitHistoryService:   visitHistoryService,
+		accountService:        accountService,
+		KpiYaeRangeService:    kpiYaeRange,
+		visitChecklistService: visitChecklistService,
+	}
 }
 
 func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
@@ -160,6 +163,25 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
 		subjectID = parsedSubjectID
 
+		existingAbsenceUser, _ := h.absenceUserService.AlreadyAbsenceInSameDay(
+			userID,
+			&req.Type,
+			type_checking,
+			actionType,
+			subjectTypeStr,
+			subjectID,
+		)
+		if actionType == "Clock In" {
+			if existingAbsenceUser != nil {
+				errors := map[string]string{
+					"message": "User Already absence today",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+
+		}
+
 		type_checking = "monthly"
 
 		if parsedSubjectID == 0 {
@@ -219,33 +241,19 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 
 		if actionType == "Clock In" {
-			now := time.Now()
-			month := uint(now.Month()) // time.Month ke uint
-			year := uint(now.Year())
 
-			getKpiList, err := h.KpiYaeRangeService.GetKpiYaeRangeByDate(month, year)
+			getVisitList, err := h.visitChecklistService.GetAllVisitChecklist()
 
 			if err != nil {
-				response := helper.APIResponse("Failed to fetch Kpi Yae", fiber.StatusInternalServerError, "error", nil)
-				return c.Status(fiber.StatusInternalServerError).JSON(response)
-			}
-
-			type KpiTargetItem struct {
-				Name   string `json:"name"`
-				Target string `json:"target"`
-			}
-
-			var targetItems []KpiTargetItem
-			err = json.Unmarshal([]byte(getKpiList.Target), &targetItems)
-			if err != nil {
-				response := helper.APIResponse("Gagal parsing data target", fiber.StatusInternalServerError, "error", nil)
+				response := helper.APIResponse("Failed to fetch visit list", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
 
 			errors := make(map[string]string)
 
-			for _, item := range targetItems {
-				formKey := item.Name
+			for _, item := range getVisitList {
+				formKey := item.Key
+				nameKey := item.Name
 				valueBytes := c.Context().FormValue(formKey)
 				valueStr := string(valueBytes)
 
@@ -264,7 +272,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 					errors[formKey] = fmt.Sprintf("%s harus berupa angka", item.Name)
 					continue
 				}
-				kpiYae[formKey] = &parsedValue
+				kpiYae[nameKey] = &parsedValue
 			}
 
 			if len(errors) > 0 {

@@ -12,5 +12,6 @@ func KpiYaeRangeRoutes(router fiber.Router, handler *KpiYaeRangeHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/current", handler.GetCurrentKpiYaeRanges)
+	authRouter.Get("/performance", handler.GetPerformanceUser)
 	authRouter.Post("/", handler.CreateKpiYaeRange)
 }
