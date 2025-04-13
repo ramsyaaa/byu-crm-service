@@ -8,4 +8,6 @@ type AccountFaculty struct {
 	FacultyID *uint     `json:"faculty_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	Faculty Faculty `gorm:"foreignKey:FacultyID" json:"faculty"`
 }

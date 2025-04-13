@@ -13,6 +13,7 @@ func AccountRoutes(router fiber.Router, handler *AccountHandler) {
 	)
 	authRouter.Post("/import", handler.Import)
 	authRouter.Get("/", handler.GetAllAccounts)
+	authRouter.Get("/:id", handler.GetAccountById)
 	authRouter.Post("/", handler.CreateAccount)
 	authRouter.Put("/:id", handler.UpdateAccount)
 }

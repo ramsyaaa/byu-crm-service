@@ -11,5 +11,5 @@ type AccountRepository interface {
 	GetFilteredAccounts(limit, page int, search, userRole, territoryID string) ([]models.Account, int, error)
 	Create(account *models.Account) error
 	UpdateFields(id uint, fields map[string]interface{}) error
-	FindByAccountID(id uint) (*models.Account, error)
+	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error)
 }

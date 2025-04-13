@@ -80,8 +80,8 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
-	userRole := c.Query("user_role", "Super-Admin")
-	territoryID, _ := strconv.Atoi(c.Query("territory_id", "0"))
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
 	userID := c.Locals("user_id").(int)
 	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
 
@@ -102,6 +102,30 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+	// Get id from param
+	idParam := c.Params("id")
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+
+	// Convert to int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	account, err := h.service.FindByAccountID(uint(id), userRole, uint(territoryID), uint(userID))
+	if err != nil {
+		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	response := helper.APIResponse("Success get account", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
@@ -201,6 +225,8 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
+	territoryID := c.Locals("territory_id").(int)
+	userRole := c.Locals("user_role").(string)
 	// Ambil Account ID dari URL
 	accountIDStr := c.Params("id")
 	if accountIDStr == "" {
@@ -247,7 +273,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	userID := 1
 
 	// Panggil service untuk update account
-	account, err := h.service.UpdateAccount(requestBody, accountID, userID)
+	account, err := h.service.UpdateAccount(requestBody, accountID, userRole, territoryID, userID)
 	if err != nil {
 		response := helper.APIResponse("Failed to update account", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)

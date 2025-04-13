@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 	var total int64
 
 	query := r.db.Model(&models.Account{}).
-		Joins("LEFT JOIN cities ON accounts.city = cities.id").
+		Joins("LEFT JOIN cities ON accounts.Accountcity = cities.id").
 		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
@@ -115,12 +116,22 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 
 func (r *accountRepository) CreateAccount(requestBody map[string]string, userID int) ([]models.Account, error) {
 	account := models.Account{
-		AccountName:             func(s string) *string { return &s }(requestBody["account_name"]),
-		AccountImage:            func(s string) *string { return &s }(requestBody["account_image"]),
-		AccountType:             func(s string) *string { return &s }(requestBody["account_type"]),
-		AccountCategory:         func(s string) *string { return &s }(requestBody["account_category"]),
-		AccountCode:             func(s string) *string { return &s }(requestBody["account_code"]),
-		City:                    func(s string) *string { return &s }(requestBody["city"]),
+		AccountName:     func(s string) *string { return &s }(requestBody["account_name"]),
+		AccountImage:    func(s string) *string { return &s }(requestBody["account_image"]),
+		AccountType:     func(s string) *string { return &s }(requestBody["account_type"]),
+		AccountCategory: func(s string) *string { return &s }(requestBody["account_category"]),
+		AccountCode:     func(s string) *string { return &s }(requestBody["account_code"]),
+		City: func(s string) *uint {
+			if s == "" {
+				return nil
+			}
+			val, err := strconv.ParseUint(s, 10, 32)
+			if err != nil {
+				return nil
+			}
+			uval := uint(val)
+			return &uval
+		}(requestBody["city"]),
 		ContactName:             func(s string) *string { return &s }(requestBody["contact_name"]),
 		EmailAccount:            func(s string) *string { return &s }(requestBody["email_account"]),
 		WebsiteAccount:          func(s string) *string { return &s }(requestBody["website_account"]),
@@ -261,14 +272,92 @@ func (r *accountRepository) FindByAccountName(account_name string) (*models.Acco
 	return &account, nil
 }
 
-func (r *accountRepository) FindByAccountID(id uint) (*models.Account, error) {
+func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error) {
 	var account models.Account
-	if err := r.db.Where("id = ?", id).First(&account).Error; err != nil {
+
+	query := r.db.
+		Preload("SocialMedias", "subject_type = ?", "App\\Models\\Account").
+		Preload("AccountTypeCampusDetail").
+		Preload("AccountTypeSchoolDetail").
+		Preload("AccountTypeCommunityDetail").
+		Preload("AccountCity.Cluster.Branch.Region.Area").
+		Preload("AccountFaculties.Faculty")
+
+	err := query.First(&account, id).Error
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Not found is not an error
+			return nil, nil
 		}
 		return nil, err
 	}
+
+	// Validate based on territory and role
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		hasAccess := false
+
+		switch userRole {
+		case "Area":
+			if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+				account.AccountCity.Cluster.Branch.Region != nil && account.AccountCity.Cluster.Branch.Region.Area != nil {
+				hasAccess = account.AccountCity.Cluster.Branch.Region.Area.ID == territoryID
+			}
+		case "Regional":
+			if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+				account.AccountCity.Cluster.Branch.Region != nil {
+				hasAccess = account.AccountCity.Cluster.Branch.Region.ID == territoryID
+			}
+		case "Branch", "Buddies", "DS", "Organic", "YAE":
+			if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil {
+				hasAccess = account.AccountCity.Cluster.Branch.ID == territoryID
+			}
+
+		case "Admin-Tap", "Cluster":
+			if account.AccountCity != nil && account.AccountCity.Cluster != nil {
+				hasAccess = account.AccountCity.Cluster.ID == territoryID
+			}
+		}
+
+		if !hasAccess {
+			return nil, errors.New("unauthorized access to account")
+		}
+
+		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
+			if account.Pic == nil || *account.Pic == fmt.Sprintf("%d", userID) {
+				hasAccess = true
+			} else {
+				hasAccess = false
+			}
+		}
+
+		if !hasAccess {
+			return nil, errors.New("unauthorized access to account")
+		}
+	}
+
+	// Clear Data Based On Category
+	if account.AccountCategory != nil {
+		switch *account.AccountCategory {
+		case "KAMPUS":
+			account.AccountTypeSchoolDetail = nil
+			account.AccountTypeCommunityDetail = nil
+		case "SEKOLAH":
+			account.AccountTypeCampusDetail = nil
+			account.AccountTypeCommunityDetail = nil
+			account.AccountFaculties = nil
+		case "KOMUNITAS":
+			account.AccountTypeCampusDetail = nil
+			account.AccountTypeSchoolDetail = nil
+			account.AccountFaculties = nil
+		default:
+			account.AccountTypeCampusDetail = nil
+			account.AccountTypeSchoolDetail = nil
+			account.AccountTypeCommunityDetail = nil
+			account.AccountFaculties = nil
+		}
+	} else {
+		account.AccountFaculties = nil
+	}
+
 	return &account, nil
 }
 
@@ -276,7 +365,7 @@ func (r *accountRepository) FindByAccountCode(code string) (*models.Account, err
 	var account models.Account
 	if err := r.db.Where("account_code = ?", code).First(&account).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Not found is not an error
+			return nil, nil
 		}
 		return nil, err
 	}

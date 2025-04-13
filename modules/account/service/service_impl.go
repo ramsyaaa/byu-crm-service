@@ -48,8 +48,9 @@ func (s *accountService) CreateAccount(requestBody map[string]interface{}, userI
 	return accounts, nil
 }
 
-func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accountID int, userID int) ([]models.Account, error) {
-	existingAccount, err := s.repo.FindByAccountID(uint(accountID))
+func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error) {
+	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accou
 		"account_type":              getString(existingAccount.AccountType),
 		"account_category":          getString(existingAccount.AccountCategory),
 		"account_code":              getString(existingAccount.AccountCode),
-		"city":                      getString(existingAccount.City),
+		"city":                      getString(stringPointer(fmt.Sprintf("%d", *existingAccount.City))),
 		"contact_name":              getString(existingAccount.ContactName),
 		"email_account":             getString(existingAccount.EmailAccount),
 		"website_account":           getString(existingAccount.WebsiteAccount),
@@ -169,7 +170,7 @@ func (s *accountService) ProcessAccount(data []string) error {
 		AccountType:             &data[6],
 		AccountCategory:         &data[7],
 		AccountCode:             &data[8],
-		City:                    stringPointer(fmt.Sprintf("%d", city.ID)), // Convert city ID to string and set
+		City:                    &city.ID, // Set city ID as *uint
 		ContactName:             &data[9],
 		EmailAccount:            &data[10],
 		WebsiteAccount:          &data[12],
@@ -193,6 +194,10 @@ func isZeroValue(value string) bool {
 	return parsed == 0
 }
 
-func (s *accountService) FindByAccountID(id uint) (*models.Account, error) {
-	return s.repo.FindByAccountID(id)
+func (s *accountService) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error) {
+	account, err := s.repo.FindByAccountID(id, userRole, territoryID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return account, nil
 }
