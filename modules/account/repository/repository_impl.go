@@ -23,7 +23,7 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 	var total int64
 
 	query := r.db.Model(&models.Account{}).
-		Joins("LEFT JOIN cities ON accounts.Accountcity = cities.id").
+		Joins("LEFT JOIN cities ON accounts.City = cities.id").
 		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
