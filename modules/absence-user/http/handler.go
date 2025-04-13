@@ -102,6 +102,8 @@ func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 
 func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
+	territoryID := c.Locals("territory_id").(int)
+	userRole := c.Locals("user_role").(string)
 	req := new(validation.CreateAbsenceUserRequest)
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
@@ -192,7 +194,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID))
+		getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
 		if err != nil {
 			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
@@ -232,7 +234,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				"longitude": req.Longitude,
 				"latitude":  req.Latitude,
 			}
-			_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userID)
+			_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
 			if err != nil {
 				response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)

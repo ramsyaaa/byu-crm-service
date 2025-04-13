@@ -41,10 +41,28 @@ func JWTUserContextMiddleware() fiber.Handler {
 
 		userID, ok := claims["user_id"].(float64)
 		if !ok {
-			return unauthorized(c, "Unauthorized: user_id not found in token")
+			return unauthorized(c, "Unauthorized: user id not found in token")
+		}
+
+		userRole, ok := claims["user_role"].(string)
+		if !ok {
+			return unauthorized(c, "Unauthorized: user role not found in token")
+		}
+
+		territoryType, ok := claims["territory_type"].(string)
+		if !ok {
+			return unauthorized(c, "Unauthorized: territory type not found in token")
+		}
+
+		territoryID, ok := claims["territory_id"].(float64)
+		if !ok {
+			return unauthorized(c, "Unauthorized: territory id not found in token")
 		}
 
 		c.Locals("user_id", int(userID))
+		c.Locals("user_role", userRole)
+		c.Locals("territory_type", territoryType)
+		c.Locals("territory_id", int(territoryID))
 		return c.Next()
 	}
 }
