@@ -409,3 +409,93 @@ func (r *accountRepository) Create(account *models.Account) error {
 func (r *accountRepository) UpdateFields(id uint, fields map[string]interface{}) error {
 	return r.db.Model(&models.Account{}).Where("id = ?", id).Updates(fields).Error
 }
+
+func (r *accountRepository) GetAccountVisitCounts(
+	filters map[string]string,
+	userRole string,
+	territoryID int,
+	userID int,
+) (int64, int64, int64, error) {
+	var visitedCount int64
+	var notVisitedCount int64
+	var totalCount int64
+
+	// Base query
+	baseQuery := r.db.Model(&models.Account{}).
+		Joins("LEFT JOIN cities ON accounts.City = cities.id").
+		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
+		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
+		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
+		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
+
+	// Apply search filter
+	if search, exists := filters["search"]; exists && search != "" {
+		searchTokens := strings.Fields(search)
+		for _, token := range searchTokens {
+			baseQuery = baseQuery.Where(
+				r.db.Where("accounts.account_name LIKE ?", "%"+token+"%").
+					Or("accounts.account_code LIKE ?", "%"+token+"%").
+					Or("accounts.account_type LIKE ?", "%"+token+"%").
+					Or("accounts.account_category LIKE ?", "%"+token+"%").
+					Or("cities.name LIKE ?", "%"+token+"%").
+					Or("clusters.name LIKE ?", "%"+token+"%").
+					Or("branches.name LIKE ?", "%"+token+"%").
+					Or("regions.name LIKE ?", "%"+token+"%").
+					Or("areas.name LIKE ?", "%"+token+"%"),
+			)
+		}
+	}
+
+	// Apply user role and territory filtering
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		switch userRole {
+		case "Area":
+			baseQuery = baseQuery.Where("areas.id = ?", territoryID)
+		case "Regional":
+			baseQuery = baseQuery.Where("regions.id = ?", territoryID)
+		case "Branch", "Buddies", "DS", "Organic":
+			baseQuery = baseQuery.Where("branches.id = ?", territoryID)
+		case "Admin-Tap", "Cluster":
+			baseQuery = baseQuery.Where("clusters.id = ?", territoryID)
+		}
+	}
+
+	if userID > 0 {
+		if userRole == "Buddies" || userRole == "DS" {
+			baseQuery = baseQuery.Where("accounts.pic = ? OR accounts.pic IS NULL", userID)
+		}
+	}
+
+	// Hitung total account terlebih dahulu
+	if err := baseQuery.Count(&totalCount).Error; err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Ambil data kunjungan
+	now := time.Now()
+	var visitedAccountIDs []int
+	err := r.db.Model(&models.AbsenceUser{}).
+		Select("subject_id").
+		Where("user_id = ? AND type = ? AND MONTH(clock_in) = ? AND YEAR(clock_in) = ?", userID, "Visit Account", now.Month(), now.Year()).
+		Where("subject_id IS NOT NULL").
+		Pluck("subject_id", &visitedAccountIDs).Error
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	if len(visitedAccountIDs) == 0 {
+		// Jika tidak ada akun yang dikunjungi, visited = 0, not visited = total
+		return 0, totalCount, totalCount, nil
+	}
+
+	// Hitung visited
+	visitedQuery := baseQuery.Session(&gorm.Session{}).Where("accounts.id IN ?", visitedAccountIDs)
+	if err := visitedQuery.Count(&visitedCount).Error; err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Sisanya dianggap tidak dikunjungi
+	notVisitedCount = totalCount - visitedCount
+
+	return visitedCount, notVisitedCount, totalCount, nil
+}

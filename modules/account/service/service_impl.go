@@ -95,6 +95,10 @@ func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accou
 	return accounts, nil
 }
 
+func (s *accountService) GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error) {
+	return s.repo.GetAccountVisitCounts(filters, userRole, territoryID, userID)
+}
+
 // func (s *accountService) ProcessAccount(data []string) error {
 // 	existingAccount, err := s.repo.FindByAccountCode(data[8]) // AccountCode
 // 	if err != nil {
