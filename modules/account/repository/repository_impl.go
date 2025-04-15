@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -18,7 +19,17 @@ func NewAccountRepository(db *gorm.DB) AccountRepository {
 	return &accountRepository{db: db}
 }
 
-func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool) ([]models.Account, int64, error) {
+func (r *accountRepository) GetAllAccounts(
+	limit int,
+	paginate bool,
+	page int,
+	filters map[string]string,
+	userRole string,
+	territoryID int,
+	userID int,
+	onlyUserPic bool,
+	excludeVisited bool,
+) ([]models.Account, int64, error) {
 	var accounts []models.Account
 	var total int64
 
@@ -71,6 +82,24 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 		}
 	}
 
+	// Apply excludeVisited filter
+	if excludeVisited && userID > 0 {
+		fmt.Println("exclude")
+		now := time.Now()
+		var visitedAccountIDs []int
+
+		r.db.Model(&models.AbsenceUser{}).
+			Select("subject_id").
+			Where("user_id = ? AND type = ? AND MONTH(clock_in) = ? AND YEAR(clock_in) = ?", userID, "Visit Account", now.Month(), now.Year()).
+			Where("subject_id IS NOT NULL").
+			Pluck("subject_id", &visitedAccountIDs)
+		fmt.Println(&visitedAccountIDs)
+
+		if len(visitedAccountIDs) > 0 {
+			query = query.Where("accounts.id NOT IN ?", visitedAccountIDs)
+		}
+	}
+
 	// Apply date range filter
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
 		query = query.Where("accounts.created_at >= ?", startDate)
@@ -88,15 +117,16 @@ func (r *accountRepository) GetAllAccounts(limit int, paginate bool, page int, f
 	if userRole != "Buddies" && userRole != "DS" {
 		if orderBy != "" && orderBy != "id" {
 			query = query.Order(orderBy + " " + order)
-		} else {
+		} else if filters["search"] != "" {
+			search := filters["search"]
 			orderClause := "CASE " +
-				"WHEN accounts.account_name LIKE '%" + filters["search"] + "%' THEN 1 " +
-				"WHEN accounts.account_code LIKE '%" + filters["search"] + "%' THEN 2 " +
-				"WHEN cities.name LIKE '%" + filters["search"] + "%' THEN 3 " +
-				"WHEN clusters.name LIKE '%" + filters["search"] + "%' THEN 4 " +
-				"WHEN branches.name LIKE '%" + filters["search"] + "%' THEN 5 " +
-				"WHEN regions.name LIKE '%" + filters["search"] + "%' THEN 6 " +
-				"WHEN areas.name LIKE '%" + filters["search"] + "%' THEN 7 " +
+				"WHEN accounts.account_name LIKE '%" + search + "%' THEN 1 " +
+				"WHEN accounts.account_code LIKE '%" + search + "%' THEN 2 " +
+				"WHEN cities.name LIKE '%" + search + "%' THEN 3 " +
+				"WHEN clusters.name LIKE '%" + search + "%' THEN 4 " +
+				"WHEN branches.name LIKE '%" + search + "%' THEN 5 " +
+				"WHEN regions.name LIKE '%" + search + "%' THEN 6 " +
+				"WHEN areas.name LIKE '%" + search + "%' THEN 7 " +
 				"ELSE 8 END"
 			query = query.Order(orderClause)
 		}

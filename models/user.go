@@ -10,15 +10,12 @@ type User struct {
 	UserType          string `json:"user_type"`
 	TerritoryID       uint   `json:"territory_id"`
 	TerritoryType     string `json:"territory_type"`
-	EmailVerifiedAt   string `json:"email_verified_at"`
 	Password          string `json:"password"`
 	IsRequestPassword bool   `json:"is_request_password"`
 	RememberToken     string `json:"remember_token"`
 	GoogleID          string `json:"google_id"`
 	OutletIDDigipos   string `json:"outlet_id_digipos"`
 	NamiAgentID       string `json:"nami_agent_id"`
-	CreatedAt         string `json:"created_at"`
-	UpdatedAt         string `json:"updated_at"`
 
 	Roles     []Role   `gorm:"many2many:user_roles"`
 	RoleNames []string `gorm:"-" json:"role_names"`

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -113,8 +114,6 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 		UserType:      user.UserType,
 		TerritoryID:   user.TerritoryID,
 		TerritoryType: user.TerritoryType,
-		CreatedAt:     user.CreatedAt,
-		UpdatedAt:     user.UpdatedAt,
 		RoleNames:     roleNames,
 	}
 
@@ -122,6 +121,7 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 }
 
 func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*UserResponse, error) {
+	// Ambil user yang akan diupdate
 	var existingUser models.User
 	if err := r.db.First(&existingUser, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -130,12 +130,39 @@ func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{})
 		return nil, err
 	}
 
-	existingUser.Password = user["password"].(string)
+	// Siapkan map data update
+	updateData := map[string]interface{}{}
 
-	if err := r.db.Save(&existingUser).Error; err != nil {
+	// Update nama jika tersedia
+	if name, ok := user["name"].(string); ok && name != "" {
+		updateData["name"] = name
+	}
+
+	// Update password jika tersedia dan tidak kosong
+	if password, ok := user["password"].(string); ok && password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		updateData["password"] = string(hashedPassword)
+	}
+
+	// Kalau tidak ada yang diupdate, skip
+	if len(updateData) == 0 {
+		return nil, nil
+	}
+
+	// Jalankan update hanya untuk field yang diperlukan
+	if err := r.db.Model(&models.User{}).Where("id = ?", id).Updates(updateData).Error; err != nil {
 		return nil, err
 	}
 
+	// Ambil ulang data user setelah update
+	if err := r.db.First(&existingUser, id).Error; err != nil {
+		return nil, err
+	}
+
+	// Buat response
 	response := &UserResponse{
 		ID:            existingUser.ID,
 		Name:          existingUser.Name,
@@ -146,8 +173,6 @@ func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{})
 		UserType:      existingUser.UserType,
 		TerritoryID:   existingUser.TerritoryID,
 		TerritoryType: existingUser.TerritoryType,
-		CreatedAt:     existingUser.CreatedAt,
-		UpdatedAt:     existingUser.UpdatedAt,
 	}
 
 	return response, nil

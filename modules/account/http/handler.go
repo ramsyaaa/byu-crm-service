@@ -84,9 +84,10 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	territoryID := c.Locals("territory_id").(int)
 	userID := c.Locals("user_id").(int)
 	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
+	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
 
 	// Call service with filters
-	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic)
+	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
