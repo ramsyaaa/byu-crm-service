@@ -12,4 +12,5 @@ type AccountRepository interface {
 	Create(account *models.Account) error
 	UpdateFields(id uint, fields map[string]interface{}) error
 	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error)
+	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
 }
