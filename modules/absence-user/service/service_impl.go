@@ -14,8 +14,8 @@ func NewAbsenceUserService(repo repository.AbsenceUserRepository) AbsenceUserSer
 	return &absenceUserService{repo: repo}
 }
 
-func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int) ([]models.AbsenceUser, int64, error) {
-	return s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year)
+func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int, absence_type string) ([]models.AbsenceUser, int64, error) {
+	return s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type)
 }
 
 func (s *absenceUserService) GetAbsenceUserByID(id int) (*models.AbsenceUser, error) {
