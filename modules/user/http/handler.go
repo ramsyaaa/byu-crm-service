@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"strconv"
 
 	"byu-crm-service/helper"
@@ -106,8 +105,6 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	fmt.Println("Request Body:", req)
-
 	// Request Validation
 	errors := validation.ValidateUpdate(req)
 	if errors != nil {
@@ -123,28 +120,31 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
-	getUser, _ := h.authService.GetUserByKey("email", user.Email)
-
-	if !h.authService.CheckPassword(req.OldPassword, getUser.Password) {
-		errors := map[string]string{
-			"old_password": "Password lama tidak sesuai",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
 	dataUpdate := make(map[string]interface{})
+	dataUpdate["name"] = req.Name
 
-	dataUpdate["password"] = req.OldPassword
-	new_password := req.NewPassword
-	confirm_password := req.ConfirmPassword
-
-	if new_password != confirm_password {
-		errors := map[string]string{
-			"old_password": "Password baru dan konfirmasi password tidak sama",
+	if req.OldPassword != "" || req.NewPassword != "" || req.ConfirmPassword != "" {
+		getUser, _ := h.authService.GetUserByKey("email", user.Email)
+		// validate old password
+		if !h.authService.CheckPassword(req.OldPassword, getUser.Password) {
+			errors := map[string]string{
+				"old_password": "Password lama tidak sesuai",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+
+		// Validasi kesamaan password baru dan konfirmasi
+		if req.NewPassword != req.ConfirmPassword {
+			errors := map[string]string{
+				"confirm_password": "Password baru dan konfirmasi password tidak sama",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		// Kalau valid, masukkan ke dataUpdate
+		dataUpdate["password"] = req.NewPassword
 	}
 
 	if err := c.BodyParser(user); err != nil {

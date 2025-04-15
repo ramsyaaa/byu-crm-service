@@ -17,8 +17,8 @@ func NewAccountService(repo repository.AccountRepository, cityRepo cityRepositor
 	return &accountService{repo: repo, cityRepo: cityRepo}
 }
 
-func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool) ([]models.Account, int64, error) {
-	return s.repo.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic)
+func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool, excludeVisited bool) ([]models.Account, int64, error) {
+	return s.repo.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 }
 
 func (s *accountService) CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error) {
