@@ -15,4 +15,5 @@ type AbsenceUser struct {
 	Latitude    string     `json:"latitude"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
+	Account     *Account   `gorm:"-" json:"account"`
 }
