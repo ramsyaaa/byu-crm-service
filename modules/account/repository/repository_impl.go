@@ -34,6 +34,14 @@ func (r *accountRepository) GetAllAccounts(
 	var total int64
 
 	query := r.db.Model(&models.Account{}).
+		Select(`
+			accounts.*,
+			cities.name AS city_name,
+			clusters.name AS cluster_name,
+			branches.name AS branch_name,
+			regions.name AS region_name,
+			areas.name AS area_name
+		`).
 		Joins("LEFT JOIN cities ON accounts.City = cities.id").
 		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
@@ -306,14 +314,29 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 	var account models.Account
 
 	query := r.db.
+		Model(&models.Account{}).
+		Select(`
+			accounts.*,
+			cities.name AS city_name,
+			clusters.name AS cluster_name,
+			branches.name AS branch_name,
+			regions.name AS region_name,
+			areas.name AS area_name
+		`).
+		Joins("LEFT JOIN cities ON accounts.city = cities.id").
+		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
+		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
+		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
+		Joins("LEFT JOIN areas ON regions.area_id = areas.id").
 		Preload("SocialMedias", "subject_type = ?", "App\\Models\\Account").
 		Preload("AccountTypeCampusDetail").
 		Preload("AccountTypeSchoolDetail").
 		Preload("AccountTypeCommunityDetail").
 		Preload("AccountCity.Cluster.Branch.Region.Area").
-		Preload("AccountFaculties.Faculty")
+		Preload("AccountFaculties.Faculty").
+		Where("accounts.id = ?", id)
 
-	err := query.First(&account, id).Error
+	err := query.First(&account).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -321,7 +344,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		return nil, err
 	}
 
-	// Validate based on territory and role
+	// --- Validasi akses berdasarkan wilayah dan role ---
 	if userRole != "Super-Admin" && userRole != "HQ" {
 		hasAccess := false
 
@@ -340,7 +363,6 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 			if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil {
 				hasAccess = account.AccountCity.Cluster.Branch.ID == territoryID
 			}
-
 		case "Admin-Tap", "Cluster":
 			if account.AccountCity != nil && account.AccountCity.Cluster != nil {
 				hasAccess = account.AccountCity.Cluster.ID == territoryID
@@ -364,7 +386,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		}
 	}
 
-	// Clear Data Based On Category
+	// --- Kosongkan field berdasarkan kategori akun ---
 	if account.AccountCategory != nil {
 		switch *account.AccountCategory {
 		case "KAMPUS":
