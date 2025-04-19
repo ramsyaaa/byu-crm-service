@@ -201,7 +201,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
 
-		if getAccount.Latitude != nil && getAccount.Longitude != nil {
+		if getAccount.Latitude != nil && getAccount.Longitude != nil &&
+			*getAccount.Latitude != "" && *getAccount.Longitude != "" {
 			latitude, err := strconv.ParseFloat(req.Latitude, 64)
 			if err != nil {
 				response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
