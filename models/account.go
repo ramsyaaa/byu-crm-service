@@ -10,6 +10,11 @@ type Account struct {
 	AccountCategory         *string   `json:"account_category"`
 	AccountCode             *string   `json:"account_code"`
 	City                    *uint     `json:"city"`
+	CityName                *string   `json:"city_name"`
+	ClusterName             *string   `json:"cluster_name"`
+	BranchName              *string   `json:"branch_name"`
+	RegionName              *string   `json:"region_name"`
+	AreaName                *string   `json:"area_name"`
 	ContactName             *string   `json:"contact_name"`
 	EmailAccount            *string   `json:"email_account"`
 	WebsiteAccount          *string   `json:"website_account"`
