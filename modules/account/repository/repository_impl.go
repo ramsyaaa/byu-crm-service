@@ -70,19 +70,14 @@ func (r *accountRepository) GetAllAccounts(
 	// Apply user role and territory filtering
 	if userRole != "Super-Admin" && userRole != "HQ" {
 		// Filter utama berdasarkan user role
-		fmt.Println(territoryID)
 		switch userRole {
 		case "Area":
-			fmt.Println("masuk Area")
 			query = query.Where("areas.id = ?", territoryID)
 		case "Regional":
-			fmt.Println("masuk Regional")
 			query = query.Where("regions.id = ?", territoryID)
 		case "Branch", "Buddies", "DS", "Organic", "YAE":
-			fmt.Println("masuk Branch")
 			query = query.Where("branches.id = ?", territoryID)
 		case "Admin-Tap", "Cluster":
-			fmt.Println("masuk Cluster")
 			query = query.Where("clusters.id = ?", territoryID)
 		}
 
@@ -101,16 +96,12 @@ func (r *accountRepository) GetAllAccounts(
 
 			switch mt.SubjectType {
 			case "App\\Models\\Area":
-				fmt.Println("masuk Area2")
 				orQuery = orQuery.Or("areas.id IN ?", ids)
 			case "App\\Models\\Region":
-				fmt.Println("masuk Regional 2")
 				orQuery = orQuery.Or("regions.id IN ?", ids)
 			case "App\\Models\\Branch":
-				fmt.Println("masuk Branch 2")
 				orQuery = orQuery.Or("branches.id IN ?", ids)
 			case "App\\Models\\Cluster":
-				fmt.Println("masuk Cluster 2")
 				orQuery = orQuery.Or("clusters.id IN ?", ids)
 			}
 		}
@@ -402,6 +393,48 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		case "Admin-Tap", "Cluster":
 			if account.AccountCity != nil && account.AccountCity.Cluster != nil {
 				hasAccess = account.AccountCity.Cluster.ID == territoryID
+			}
+		}
+
+		var multiTerritories []models.MultipleTerritory
+		r.db.Where("user_id = ?", userID).Find(&multiTerritories)
+
+		for _, mt := range multiTerritories {
+			var ids []string
+			err := json.Unmarshal([]byte(mt.SubjectIDs), &ids)
+			if err != nil || len(ids) == 0 {
+				continue
+			}
+
+			// Helper function to check if ID exists in the slice
+			contains := func(slice []string, item string) bool {
+				for _, v := range slice {
+					if v == item {
+						return true
+					}
+				}
+				return false
+			}
+
+			switch mt.SubjectType {
+			case "App\\Models\\Area":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+					account.AccountCity.Cluster.Branch.Region != nil && account.AccountCity.Cluster.Branch.Region.Area != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.Region.Area.ID))
+				}
+			case "App\\Models\\Region":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+					account.AccountCity.Cluster.Branch.Region != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.Region.ID))
+				}
+			case "App\\Models\\Branch":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.ID))
+				}
+			case "App\\Models\\Cluster":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.ID))
+				}
 			}
 		}
 
