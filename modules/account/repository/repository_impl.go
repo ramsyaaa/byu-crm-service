@@ -2,6 +2,7 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -50,7 +51,7 @@ func (r *accountRepository) GetAllAccounts(
 
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
-		searchTokens := strings.Fields(search) // Tokenisasi input berdasarkan spasi
+		searchTokens := strings.Fields(search)
 		for _, token := range searchTokens {
 			query = query.Where(
 				r.db.Where("accounts.account_name LIKE ?", "%"+token+"%").
@@ -68,31 +69,58 @@ func (r *accountRepository) GetAllAccounts(
 
 	// Apply user role and territory filtering
 	if userRole != "Super-Admin" && userRole != "HQ" {
+		// Filter utama berdasarkan user role
 		switch userRole {
 		case "Area":
 			query = query.Where("areas.id = ?", territoryID)
 		case "Regional":
 			query = query.Where("regions.id = ?", territoryID)
-		case "Branch", "Buddies", "DS", "Organic":
+		case "Branch", "Buddies", "DS", "Organic", "YAE":
 			query = query.Where("branches.id = ?", territoryID)
 		case "Admin-Tap", "Cluster":
 			query = query.Where("clusters.id = ?", territoryID)
 		}
+
+		// Tambahan dari multiple_territories
+		var multiTerritories []models.MultipleTerritory
+		r.db.Where("user_id = ?", userID).Find(&multiTerritories)
+
+		orQuery := r.db.Session(&gorm.Session{}).Model(&models.Account{})
+
+		for _, mt := range multiTerritories {
+			var ids []string
+			err := json.Unmarshal([]byte(mt.SubjectIDs), &ids)
+			if err != nil || len(ids) == 0 {
+				continue
+			}
+
+			switch mt.SubjectType {
+			case "App\\Models\\Area":
+				orQuery = orQuery.Or("areas.id IN ?", ids)
+			case "App\\Models\\Region":
+				orQuery = orQuery.Or("regions.id IN ?", ids)
+			case "App\\Models\\Branch":
+				orQuery = orQuery.Or("branches.id IN ?", ids)
+			case "App\\Models\\Cluster":
+				orQuery = orQuery.Or("clusters.id IN ?", ids)
+			}
+		}
+
+		query = query.Or(orQuery)
 	}
 
+	// Only User PIC
 	if onlyUserPic && userID > 0 {
 		query = query.Where("accounts.pic = ?", userID)
 	} else {
-		// Additional logic for Buddies / DS role
 		if userRole == "Buddies" || userRole == "DS" {
 			query = query.Where("accounts.pic = ? OR accounts.pic IS NULL", userID).
 				Order(fmt.Sprintf("CASE WHEN accounts.pic = %d THEN 0 ELSE 1 END, accounts.account_name ASC", userID))
 		}
 	}
 
-	// Apply excludeVisited filter
+	// Exclude visited accounts
 	if excludeVisited && userID > 0 {
-		fmt.Println("exclude")
 		now := time.Now()
 		var visitedAccountIDs []int
 
@@ -101,14 +129,13 @@ func (r *accountRepository) GetAllAccounts(
 			Where("user_id = ? AND type = ? AND MONTH(clock_in) = ? AND YEAR(clock_in) = ?", userID, "Visit Account", now.Month(), now.Year()).
 			Where("subject_id IS NOT NULL").
 			Pluck("subject_id", &visitedAccountIDs)
-		fmt.Println(&visitedAccountIDs)
 
 		if len(visitedAccountIDs) > 0 {
 			query = query.Where("accounts.id NOT IN ?", visitedAccountIDs)
 		}
 	}
 
-	// Apply date range filter
+	// Filter by date range
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
 		query = query.Where("accounts.created_at >= ?", startDate)
 	}
@@ -116,7 +143,7 @@ func (r *accountRepository) GetAllAccounts(
 		query = query.Where("accounts.created_at <= ?", endDate)
 	}
 
-	// Get total count before applying pagination
+	// Count total sebelum pagination
 	query.Count(&total)
 
 	// Apply ordering
@@ -140,7 +167,7 @@ func (r *accountRepository) GetAllAccounts(
 		}
 	}
 
-	// Apply pagination
+	// Pagination
 	if paginate {
 		offset := (page - 1) * limit
 		query = query.Limit(limit).Offset(offset)
@@ -366,6 +393,48 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		case "Admin-Tap", "Cluster":
 			if account.AccountCity != nil && account.AccountCity.Cluster != nil {
 				hasAccess = account.AccountCity.Cluster.ID == territoryID
+			}
+		}
+
+		var multiTerritories []models.MultipleTerritory
+		r.db.Where("user_id = ?", userID).Find(&multiTerritories)
+
+		for _, mt := range multiTerritories {
+			var ids []string
+			err := json.Unmarshal([]byte(mt.SubjectIDs), &ids)
+			if err != nil || len(ids) == 0 {
+				continue
+			}
+
+			// Helper function to check if ID exists in the slice
+			contains := func(slice []string, item string) bool {
+				for _, v := range slice {
+					if v == item {
+						return true
+					}
+				}
+				return false
+			}
+
+			switch mt.SubjectType {
+			case "App\\Models\\Area":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+					account.AccountCity.Cluster.Branch.Region != nil && account.AccountCity.Cluster.Branch.Region.Area != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.Region.Area.ID))
+				}
+			case "App\\Models\\Region":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil &&
+					account.AccountCity.Cluster.Branch.Region != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.Region.ID))
+				}
+			case "App\\Models\\Branch":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil && account.AccountCity.Cluster.Branch != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.Branch.ID))
+				}
+			case "App\\Models\\Cluster":
+				if account.AccountCity != nil && account.AccountCity.Cluster != nil {
+					hasAccess = contains(ids, fmt.Sprintf("%d", account.AccountCity.Cluster.ID))
+				}
 			}
 		}
 
