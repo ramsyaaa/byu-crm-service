@@ -2,7 +2,6 @@ package repository
 
 import (
 	"byu-crm-service/models"
-	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
@@ -77,6 +76,20 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	}
 
 	err := query.Find(&absence_users).Error
+
+	if err != nil {
+		return nil, total, err
+	}
+
+	for i := range absence_users {
+		if absence_users[i].SubjectType != nil && *absence_users[i].SubjectType == "App\\Models\\Account" {
+			var account models.Account
+			if err := r.db.First(&account, absence_users[i].SubjectID).Error; err == nil {
+				absence_users[i].Account = &account
+			}
+		}
+	}
+
 	return absence_users, total, err
 }
 
@@ -178,7 +191,6 @@ func (r *absenceUserRepository) UpdateAbsenceUser(absence_user *models.AbsenceUs
 func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error) {
 	var absence_users []models.AbsenceUser
 
-	fmt.Println("masuk pertama")
 	query := r.db.Where("user_id = ? AND (clock_out IS NULL OR DATE(clock_in) = CURRENT_DATE)", user_id)
 	if type_absence != "" {
 		query = query.Where("type = ?", type_absence)
@@ -189,22 +201,16 @@ func (r *absenceUserRepository) GetAbsenceActive(user_id int, type_absence strin
 		return nil, err
 	}
 
-	fmt.Println("before looping")
-
 	// Ambil data subject berdasarkan subject_type dan subject_id
 	for i, absence := range absence_users {
-		fmt.Println(absence.SubjectType)
 		switch *absence.SubjectType {
 		case "App\\Models\\Account":
 			var account models.Account
 			if err := r.db.First(&account, absence.SubjectID).Error; err == nil {
-				fmt.Println(account)
 				absence_users[i].Account = &account // Ensure the Account field is populated
 			}
-			fmt.Println("tes")
 		}
 	}
-	fmt.Println("AFTER LOOPING")
 
 	return absence_users, nil
 }
