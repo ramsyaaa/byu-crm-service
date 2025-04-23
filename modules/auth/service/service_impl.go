@@ -32,7 +32,7 @@ func generateJWT(email string, userID int, userRole string, territoryType string
 		"user_role":      userRole,
 		"territory_type": territoryType,
 		"territory_id":   territoryID,
-		"exp":            time.Now().Add(time.Hour * 24).Unix(),
+		"exp":            time.Now().Add(time.Hour * 24 * 30).Unix(), // TTL: 1 bulan
 		"iat":            time.Now().Unix(),
 	}
 
