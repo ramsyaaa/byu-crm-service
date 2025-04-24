@@ -438,10 +438,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 			}
 		}
 
-		if !hasAccess {
-			return nil, errors.New("unauthorized access to account")
-		}
-
+		fmt.Println("cHECKING")
 		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
 			if account.Pic == nil || *account.Pic == fmt.Sprintf("%d", userID) {
 				hasAccess = true

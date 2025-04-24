@@ -42,7 +42,7 @@ func (s *absenceUserService) CreateAbsenceUser(user_id int, subject_type string,
 	return s.repo.CreateAbsenceUser(AbsenceUser)
 }
 
-func (s *absenceUserService) UpdateAbsenceUser(absence_id int, user_id int, subject_type string, subject_id int, description *string, type_absence *string, latitude *string, longitude *string) (*models.AbsenceUser, error) {
+func (s *absenceUserService) UpdateAbsenceUser(absence_id int, user_id int, subject_type string, subject_id int, description *string, type_absence *string) (*models.AbsenceUser, error) {
 	AbsenceUser := &models.AbsenceUser{
 		ID:          uint(absence_id),
 		UserID:      func(v int) *uint { u := uint(v); return &u }(user_id),
@@ -50,8 +50,6 @@ func (s *absenceUserService) UpdateAbsenceUser(absence_id int, user_id int, subj
 		SubjectID:   func(v int) *uint { u := uint(v); return &u }(subject_id),
 		Description: *description,
 		Type:        type_absence,
-		Latitude:    *latitude,
-		Longitude:   *longitude,
 		ClockOut:    func(t time.Time) *time.Time { return &t }(time.Now()),
 	}
 	return s.repo.UpdateAbsenceUser(AbsenceUser, absence_id)
