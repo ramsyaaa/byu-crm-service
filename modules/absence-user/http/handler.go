@@ -144,7 +144,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 	description := c.FormValue("description")
 
-	if description == "" && actionType == "Clock In" {
+	if description == "" && actionType == "Clock Out" {
 		errors := map[string]string{
 			"description": "Deskripsi harus diisi",
 		}
@@ -195,57 +195,56 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
-		if err != nil {
-			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
-			return c.Status(fiber.StatusInternalServerError).JSON(response)
-		}
-
-		if getAccount.Latitude != nil && getAccount.Longitude != nil &&
-			*getAccount.Latitude != "" && *getAccount.Longitude != "" {
-			latitude, err := strconv.ParseFloat(req.Latitude, 64)
+		if actionType == "Clock In" {
+			getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
 			if err != nil {
-				response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-			longitude, err := strconv.ParseFloat(req.Longitude, 64)
-			if err != nil {
-				response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-			accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
-			if err != nil {
-				response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-			accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
-			if err != nil {
-				response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-			inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
-			if !inRadius {
-				errors := map[string]string{
-					"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
-				}
-				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-				return c.Status(fiber.StatusBadRequest).JSON(response)
-			}
-		} else {
-			requestBody := map[string]interface{}{
-				"longitude": req.Longitude,
-				"latitude":  req.Latitude,
-			}
-			_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
-
-			if err != nil {
-				response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+				response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
-		}
 
-		if actionType == "Clock In" {
+			if getAccount.Latitude != nil && getAccount.Longitude != nil &&
+				*getAccount.Latitude != "" && *getAccount.Longitude != "" {
+				latitude, err := strconv.ParseFloat(req.Latitude, 64)
+				if err != nil {
+					response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+				longitude, err := strconv.ParseFloat(req.Longitude, 64)
+				if err != nil {
+					response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+				accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
+				if err != nil {
+					response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+				accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
+				if err != nil {
+					response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+				inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+				if !inRadius {
+					errors := map[string]string{
+						"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+					}
+					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+			} else {
+				requestBody := map[string]interface{}{
+					"longitude": req.Longitude,
+					"latitude":  req.Latitude,
+				}
+				_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
+				if err != nil {
+					response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+					return c.Status(fiber.StatusInternalServerError).JSON(response)
+				}
+			}
+		} else if actionType == "Clock Out" {
 			getVisitList, err := h.visitChecklistService.GetAllVisitChecklist()
 
 			if err != nil {
@@ -332,16 +331,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
 
-		if req.Type == "Visit Account" {
-			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description)
-			if err != nil {
-				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
-				return c.Status(fiber.StatusUnauthorized).JSON(response)
-			}
-		}
-
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)
+
 	} else if actionType == "Clock Out" {
 		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
 			false,
@@ -366,11 +358,20 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse("No existing absence user found for Clock In", fiber.StatusBadRequest, "error", nil)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
-		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
 		}
+
+		if req.Type == "Visit Account" {
+			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description)
+			if err != nil {
+				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
+				return c.Status(fiber.StatusUnauthorized).JSON(response)
+			}
+		}
+
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)
 	}
