@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account/repository"
 	cityRepository "byu-crm-service/modules/city/repository"
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -85,6 +86,29 @@ func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accou
 		if val, ok := requestBody[key]; ok && val != nil {
 			accountData[key] = fmt.Sprintf("%v", val)
 		}
+	}
+
+	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return accounts, nil
+}
+
+func (s *accountService) UpdatePic(accountID int, userRole string, territoryID int, userID int) ([]models.Account, error) {
+	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if existingAccount.Pic != nil && *existingAccount.Pic != "" {
+		return nil, errors.New("PIC sudah diatur dan tidak dapat diubah")
+	}
+
+	accountData := map[string]string{
+		"pic": fmt.Sprintf("%d", userID),
 	}
 
 	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)

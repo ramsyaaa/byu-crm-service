@@ -15,6 +15,7 @@ func AccountRoutes(router fiber.Router, handler *AccountHandler) {
 	authRouter.Get("/count-visited", handler.GetAccountVisitCounts)
 	authRouter.Get("/", handler.GetAllAccounts)
 	authRouter.Get("/:id", handler.GetAccountById)
+	authRouter.Post("/update-pic/:id", handler.UpdatePic)
 	authRouter.Post("/", handler.CreateAccount)
 	authRouter.Put("/:id", handler.UpdateAccount)
 }

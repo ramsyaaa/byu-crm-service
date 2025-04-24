@@ -539,16 +539,44 @@ func (r *accountRepository) GetAccountVisitCounts(
 
 	// Apply user role and territory filtering
 	if userRole != "Super-Admin" && userRole != "HQ" {
+		// Filter utama berdasarkan user role
 		switch userRole {
 		case "Area":
 			baseQuery = baseQuery.Where("areas.id = ?", territoryID)
 		case "Regional":
 			baseQuery = baseQuery.Where("regions.id = ?", territoryID)
-		case "Branch", "Buddies", "DS", "Organic":
+		case "Branch", "Buddies", "DS", "Organic", "YAE":
 			baseQuery = baseQuery.Where("branches.id = ?", territoryID)
 		case "Admin-Tap", "Cluster":
 			baseQuery = baseQuery.Where("clusters.id = ?", territoryID)
 		}
+
+		// Tambahan dari multiple_territories
+		var multiTerritories []models.MultipleTerritory
+		r.db.Where("user_id = ?", userID).Find(&multiTerritories)
+
+		orQuery := r.db.Session(&gorm.Session{}).Model(&models.Account{})
+
+		for _, mt := range multiTerritories {
+			var ids []string
+			err := json.Unmarshal([]byte(mt.SubjectIDs), &ids)
+			if err != nil || len(ids) == 0 {
+				continue
+			}
+
+			switch mt.SubjectType {
+			case "App\\Models\\Area":
+				orQuery = orQuery.Or("areas.id IN ?", ids)
+			case "App\\Models\\Region":
+				orQuery = orQuery.Or("regions.id IN ?", ids)
+			case "App\\Models\\Branch":
+				orQuery = orQuery.Or("branches.id IN ?", ids)
+			case "App\\Models\\Cluster":
+				orQuery = orQuery.Or("clusters.id IN ?", ids)
+			}
+		}
+
+		baseQuery = baseQuery.Or(orQuery)
 	}
 
 	if userID > 0 {
