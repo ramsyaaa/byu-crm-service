@@ -439,6 +439,36 @@ func (h *AccountHandler) Import(c *fiber.Ctx) error {
 	})
 }
 
+func (h *AccountHandler) UpdatePic(c *fiber.Ctx) error {
+	territoryID := c.Locals("territory_id").(int)
+	userRole := c.Locals("user_role").(string)
+	userID := c.Locals("user_id").(int)
+	// Ambil Account ID dari URL
+	accountIDStr := c.Params("id")
+	if accountIDStr == "" {
+		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Convert Account ID to integer
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Panggil service untuk update pic
+	account, err := h.service.UpdatePic(accountID, userRole, territoryID, userID)
+	if err != nil {
+		response := helper.APIResponse("Failed to update pic", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Return success response
+	response := helper.APIResponse("PIC Account successfully updated", fiber.StatusOK, "success", account)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func saveFileToLocal(file *multipart.FileHeader, directory string, allowedFormats []string) (*string, error) {
 	// Validate file type
 	ext := filepath.Ext(file.Filename)
