@@ -44,6 +44,9 @@ func Route(db *gorm.DB) {
 	routes.UserRouter(authGroup, db)
 	routes.KpiYaeRangeRouter(authGroup, db)
 	routes.VisitChecklistRouter(authGroup, db)
+	routes.CategoryRouter(authGroup, db)
+	routes.TypeRouter(authGroup, db)
+	routes.ConstantDataRouter(authGroup, db)
 
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
 }
