@@ -185,7 +185,7 @@ func (s *accountService) ProcessAccount(data []string) error {
 	return nil
 
 	// Assuming you have a cityService with a method FindCityByName
-	city, err := s.cityRepo.FindByName(data[4]) // City
+	city, err := s.cityRepo.GetCityByName(data[4]) // City
 	if err != nil {
 		return err
 	}

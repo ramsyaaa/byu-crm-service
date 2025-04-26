@@ -161,13 +161,13 @@ func (h *RegionHandler) UpdateRegion(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	area, err := h.regionService.UpdateRegion(&req.Name, req.AreaID, intID)
+	region, err := h.regionService.UpdateRegion(&req.Name, req.AreaID, intID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Region updated successful", fiber.StatusOK, "success", area)
+	response := helper.APIResponse("Region updated successful", fiber.StatusOK, "success", region)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

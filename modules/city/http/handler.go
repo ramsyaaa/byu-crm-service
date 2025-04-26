@@ -1,20 +1,22 @@
 package http
 
 import (
+	"byu-crm-service/modules/city/service"
+	"byu-crm-service/modules/city/validation"
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
-	"byu-crm-service/modules/city/service"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type CityHandler struct {
-	service service.CityService
+	cityService service.CityService
 }
 
-func NewCityHandler(service service.CityService) *CityHandler {
-	return &CityHandler{service: service}
+func NewCityHandler(cityService service.CityService) *CityHandler {
+	return &CityHandler{cityService: cityService}
 }
 
 func (h *CityHandler) GetAllCities(c *fiber.Ctx) error {
@@ -35,7 +37,7 @@ func (h *CityHandler) GetAllCities(c *fiber.Ctx) error {
 	territoryID := c.Locals("territory_id").(int)
 
 	// Call service with filters
-	cities, total, err := h.service.GetAllCities(limit, paginate, page, filters, userRole, territoryID)
+	cities, total, err := h.cityService.GetAllCities(limit, paginate, page, filters, userRole, territoryID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch cities",
@@ -55,36 +57,98 @@ func (h *CityHandler) GetAllCities(c *fiber.Ctx) error {
 }
 
 func (h *CityHandler) GetCityByID(c *fiber.Ctx) error {
-	idParam := c.Params("id")
-	id, err := strconv.Atoi(idParam)
+	id := c.Params("id")
+	intID, err := strconv.Atoi(id)
 	if err != nil {
-		response := helper.APIResponse("Invalid ID parameter", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusOK).JSON(response)
+		return c.Status(400).JSON(fiber.Map{
+			"message": "Invalid City ID",
+			"error":   err.Error(),
+		})
+	}
+	city, err := h.cityService.GetCityByID(intID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch city",
+			"error":   err.Error(),
+		})
 	}
 
-	city, err := h.service.GetCityByID(uint(id))
-	if err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusOK).JSON(response)
+	// Return response
+	responseData := map[string]interface{}{
+		"city": city,
 	}
 
-	response := helper.APIResponse("Get City Successfully", fiber.StatusOK, "success", city)
+	response := helper.APIResponse("Get City Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *CityHandler) GetCityByName(c *fiber.Ctx) error {
-	name := c.Query("name")
-	if name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "City name is required"})
+func (h *CityHandler) CreateCity(c *fiber.Ctx) error {
+	req := new(validation.CreateCityRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	city, err := h.service.GetCityByName(name)
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
+
+	city, err := h.cityService.CreateCity(&req.Name, req.ClusterID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	if city == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "City not found"})
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
-	return c.JSON(city)
+	// Response
+	response := helper.APIResponse("City created successful", fiber.StatusOK, "success", city)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *CityHandler) UpdateCity(c *fiber.Ctx) error {
+	id := c.Params("id")
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"message": "Invalid city ID",
+			"error":   err.Error(),
+		})
+	}
+	req := new(validation.UpdateCityRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateUpdate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	currentCity, _ := h.cityService.GetCityByID(intID)
+	if currentCity == nil {
+		errors := map[string]string{
+			"name": "City tidak ditemukan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
+
+	city, err := h.cityService.UpdateCity(&req.Name, req.ClusterID, intID)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Response
+	response := helper.APIResponse("City updated successful", fiber.StatusOK, "success", city)
+	return c.Status(fiber.StatusOK).JSON(response)
 }

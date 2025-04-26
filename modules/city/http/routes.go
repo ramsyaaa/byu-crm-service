@@ -11,8 +11,8 @@ func CityRoutes(router fiber.Router, handler *CityHandler) {
 		middleware.JWTMiddleware,
 		middleware.JWTUserContextMiddleware(),
 	)
-
 	authRouter.Get("/", handler.GetAllCities)
 	authRouter.Get("/:id", handler.GetCityByID)
-	authRouter.Get("/", handler.GetCityByName) // Query ?name=cityName
+	authRouter.Post("/", handler.CreateCity)
+	authRouter.Put("/:id", handler.UpdateCity)
 }

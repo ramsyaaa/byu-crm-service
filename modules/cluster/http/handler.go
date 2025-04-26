@@ -98,15 +98,6 @@ func (h *ClusterHandler) CreateCluster(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingCluster, _ := h.clusterService.GetClusterByName(req.Name)
-	if existingCluster != nil {
-		errors := map[string]string{
-			"name": "Nama cluster sudah digunakan",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
 	cluster, err := h.clusterService.CreateCluster(&req.Name, req.BranchID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
@@ -151,23 +142,13 @@ func (h *ClusterHandler) UpdateCluster(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingBranch, _ := h.clusterService.GetClusterByName(req.Name)
-
-	if existingBranch != nil && currentCluster.Name != req.Name {
-		errors := map[string]string{
-			"name": "Nama cluster sudah digunakan",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
-	area, err := h.clusterService.UpdateCluster(&req.Name, req.BranchID, intID)
+	cluster, err := h.clusterService.UpdateCluster(&req.Name, req.BranchID, intID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Cluster updated successful", fiber.StatusOK, "success", area)
+	response := helper.APIResponse("Cluster updated successful", fiber.StatusOK, "success", cluster)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

@@ -98,15 +98,6 @@ func (h *BranchHandler) CreateBranch(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingBranch, _ := h.branchService.GetBranchByName(req.Name)
-	if existingBranch != nil {
-		errors := map[string]string{
-			"name": "Nama branch sudah digunakan",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
 	branch, err := h.branchService.CreateBranch(&req.Name, req.RegionID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
@@ -151,23 +142,13 @@ func (h *BranchHandler) UpdateBranch(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingBranch, _ := h.branchService.GetBranchByName(req.Name)
-
-	if existingBranch != nil && currentBranch.Name != req.Name {
-		errors := map[string]string{
-			"name": "Nama branch sudah digunakan",
-		}
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
-	area, err := h.branchService.UpdateBranch(&req.Name, req.RegionID, intID)
+	branch, err := h.branchService.UpdateBranch(&req.Name, req.RegionID, intID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Branch updated successful", fiber.StatusOK, "success", area)
+	response := helper.APIResponse("Branch updated successful", fiber.StatusOK, "success", branch)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

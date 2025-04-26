@@ -29,12 +29,12 @@ func (s *clusterService) GetClusterByName(name string) (*response.ClusterRespons
 
 func (s *clusterService) CreateCluster(name *string, branch_id int) (*response.ClusterResponse, error) {
 	branchIDStr := fmt.Sprintf("%d", branch_id)
-	branch := &models.Cluster{Name: *name, BranchID: &branchIDStr}
-	return s.repo.CreateCluster(branch)
+	cluster := &models.Cluster{Name: *name, BranchID: &branchIDStr}
+	return s.repo.CreateCluster(cluster)
 }
 
 func (s *clusterService) UpdateCluster(name *string, branch_id int, id int) (*response.ClusterResponse, error) {
 	branchIDStr := fmt.Sprintf("%d", branch_id)
-	branch := &models.Cluster{Name: *name, BranchID: &branchIDStr}
-	return s.repo.UpdateCluster(branch, id)
+	cluster := &models.Cluster{Name: *name, BranchID: &branchIDStr}
+	return s.repo.UpdateCluster(cluster, id)
 }
