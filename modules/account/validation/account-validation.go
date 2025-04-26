@@ -1,10 +1,14 @@
 package validation
 
 import (
+	"byu-crm-service/helper"
 	"byu-crm-service/modules/account/repository"
+	"fmt"
 	"mime/multipart"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -21,11 +25,10 @@ type UploadRequest struct {
 }
 
 type CreateRequest struct {
-	AccountImage            *string `json:"account_image" validate:"omitempty,mime"` // Custom mime validation
 	AccountName             *string `json:"account_name" validate:"required"`
 	AccountType             *string `json:"account_type" validate:"required"`
 	AccountCategory         *string `json:"account_category" validate:"required"`
-	AccountCode             *string `json:"account_code" validate:"required,unique_account_code"`
+	AccountCode             *string `json:"account_code"`
 	City                    *string `json:"city" validate:"required"`
 	ContactName             *string `json:"contact_name"`
 	EmailAccount            *string `json:"email_account" validate:"email"`
@@ -36,13 +39,414 @@ type CreateRequest struct {
 	Ownership               *string `json:"ownership"`
 	Pic                     *string `json:"pic"`
 	PicInternal             *string `json:"pic_internal"`
+
+	// Social Media
+	Category []string `json:"category" validate:"validate_category_url"`
+	Url      []string `json:"url"`
+
+	// account category school
+	DiesNatalis             *string `json:"dies_natalis"`
+	Extracurricular         *string `json:"extracurricular"`
+	FootballFieldBranding   *string `json:"football_field_branding"`
+	BasketballFieldBranding *string `json:"basketball_field_branding"`
+	WallPaintingBranding    *string `json:"wall_painting_branding"`
+	WallMagazineBranding    *string `json:"wall_magazine_branding"`
+
+	// account category campus
+	Faculties               []string `json:"faculties"`
+	YearLecture             []string `json:"year_lecture"`
+	AmountLecture           []string `json:"amount_lecture"`
+	Origin                  []string `json:"origin"`
+	PercentageOrigin        []string `json:"percentage_origin"`
+	OrganizationName        []string `json:"organization_name"`
+	PreferenceTechnologies  []string `json:"preference_technologies"`
+	MemberNeeds             []string `json:"member_needs"`
+	AccessTechnology        *string  `json:"access_technology"`
+	Byod                    *string  `json:"byod"`
+	ItInfrastructures       []string `json:"it_infrastructures"`
+	DigitalCollaborations   []string `json:"digital_collaborations"`
+	CampusAdministrationApp *string  `json:"campus_administration_app"`
+	ProgramIdentification   []string `json:"program_identification"`
+	YearRank                []string `json:"year_rank"`
+	Rank                    []string `json:"rank"`
+	ProgramStudy            []string `json:"program_study"`
+
+	// account category campus & community
+	Year                     []string `json:"year"`
+	Amount                   []string `json:"amount"`
+	Age                      []string `json:"age"`
+	PercentageAge            []string `json:"percentage_age"`
+	ScheduleCategory         []string `json:"schedule_category"`
+	Title                    []string `json:"title"`
+	Date                     []string `json:"date"`
+	PotentionalCollaboration *string  `json:"potentional_collaboration"`
+
+	// account category community
+	AccountSubtype                  *string  `json:"account_subtype"`
+	Group                           *string  `json:"group"`
+	GroupName                       *string  `json:"group_name"`
+	ProductService                  *string  `json:"product_service"`
+	PotentialCollaborationItems     *string  `json:"potential_collaboration_items"`
+	Gender                          []string `json:"gender"`
+	PercentageGender                []string `json:"percentage_gender"`
+	EducationalBackground           []string `json:"educational_background"`
+	PercentageEducationalBackground []string `json:"percentage_educational_background"`
+	Profession                      []string `json:"profession"`
+	PercentageProfession            []string `json:"percentage_profession"`
+	Income                          []string `json:"income"`
+	PercentageIncome                []string `json:"percentage_income"`
+}
+
+var validationMessages = map[string]string{
+	"account_name.required":          "Nama akun wajib diisi",
+	"account_type.required":          "Tipe akun wajib diisi",
+	"account_category.required":      "Kategori akun wajib diisi",
+	"city.required":                  "Kota wajib diisi",
+	"email_account.email":            "Format email tidak valid",
+	"category.validate_category_url": "Kategori dan URL wajib diisi",
 }
 
 var validate = validator.New()
 
 func init() {
-	validate.RegisterValidation("mime", validateMime)
-	validate.RegisterValidation("unique_account_code", uniqueAccountCode)
+	validate.RegisterValidation("validate_category_url", validateCategoryAndUrl)
+}
+
+func ValidateCreate(req *CreateRequest) map[string]string {
+	return helper.ValidateStruct(validate, req, validationMessages)
+}
+
+func ValidateSchool(req *CreateRequest) map[string]string {
+	errors := make(map[string]string)
+
+	// Validate DiesNatalis
+	if req.DiesNatalis != nil && strings.TrimSpace(*req.DiesNatalis) != "" {
+		_, err := time.Parse("2006-01-02", *req.DiesNatalis)
+		if err != nil {
+			errors["dies_natalis"] = "Format Dies Natalis harus berupa tanggal dengan format YYYY-MM-DD"
+		}
+	}
+
+	// Validate branding fields (kecuali Extracurricular)
+	validateBranding := func(fieldValue *string, fieldName string) {
+		if fieldValue != nil && strings.TrimSpace(*fieldValue) != "" {
+			if *fieldValue != "BELUM BRANDING" && *fieldValue != "SUDAH BRANDING" {
+				errors[fieldName] = fmt.Sprintf("%s harus 'BELUM BRANDING' atau 'SUDAH BRANDING'", fieldName)
+			}
+		}
+	}
+
+	validateBranding(req.FootballFieldBranding, "football_field_branding")
+	validateBranding(req.BasketballFieldBranding, "basketball_field_branding")
+	validateBranding(req.WallPaintingBranding, "wall_painting_branding")
+	validateBranding(req.WallMagazineBranding, "wall_magazine_branding")
+
+	// Validate account_code unique
+	if req.AccountCode != nil {
+		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+			errors["account_code"] = msg
+		}
+	}
+
+	// Return nil jika tidak ada error
+	if len(errors) == 0 {
+		return nil
+	}
+
+	return errors
+}
+
+func ValidateCommunity(req *CreateRequest) map[string]string {
+	errors := make(map[string]string)
+
+	// Helper untuk validasi jumlah array dan isinya tidak kosong
+	validateArrayPair := func(a1, a2 []string, field1, field2 string) {
+		if len(a1) != len(a2) {
+			errors[field1] = fmt.Sprintf("Jumlah %s dan %s harus sama", field1, field2)
+			return
+		}
+		for i := range a1 {
+			if strings.TrimSpace(a1[i]) == "" || strings.TrimSpace(a2[i]) == "" {
+				errors[field1] = fmt.Sprintf("%s dan %s tidak boleh kosong", field1, field2)
+				return
+			}
+		}
+	}
+
+	// Helper untuk validasi percentage harus total 100%
+	validatePercentage := func(percentage []string, field string) {
+		total := 0
+		for _, p := range percentage {
+			if p == "" {
+				errors[field] = fmt.Sprintf("Semua data %s harus diisi", field)
+				return
+			}
+			num, err := strconv.Atoi(p)
+			if err != nil {
+				errors[field] = fmt.Sprintf("Semua data %s harus berupa angka", field)
+				return
+			}
+			total += num
+		}
+		if total != 100 {
+			errors[field] = fmt.Sprintf("Total persentase %s harus 100%%", field)
+		}
+	}
+
+	// Validate percentage-related fields
+	validateArrayPair(req.Age, req.PercentageAge, "age", "percentage_age")
+	if len(req.PercentageAge) > 0 {
+		validatePercentage(req.PercentageAge, "percentage_age")
+	}
+
+	validateArrayPair(req.Gender, req.PercentageGender, "gender", "percentage_gender")
+	if len(req.PercentageGender) > 0 {
+		validatePercentage(req.PercentageGender, "percentage_gender")
+
+		// Validate Gender: harus Pria dan Wanita
+		if len(req.Gender) != 2 || !((req.Gender[0] == "Pria" && req.Gender[1] == "Wanita") || (req.Gender[0] == "Wanita" && req.Gender[1] == "Pria")) {
+			errors["gender"] = "Gender harus terdiri dari 'Pria' dan 'Wanita'"
+		}
+	}
+
+	validateArrayPair(req.EducationalBackground, req.PercentageEducationalBackground, "educational_background", "percentage_educational_background")
+	if len(req.PercentageEducationalBackground) > 0 {
+		validatePercentage(req.PercentageEducationalBackground, "percentage_educational_background")
+	}
+
+	validateArrayPair(req.Profession, req.PercentageProfession, "profession", "percentage_profession")
+	if len(req.PercentageProfession) > 0 {
+		validatePercentage(req.PercentageProfession, "percentage_profession")
+	}
+
+	validateArrayPair(req.Income, req.PercentageIncome, "income", "percentage_income")
+	if len(req.PercentageIncome) > 0 {
+		validatePercentage(req.PercentageIncome, "percentage_income")
+	}
+
+	// Validate ScheduleCategory, Title, Date
+	if len(req.ScheduleCategory) != len(req.Title) || len(req.Title) != len(req.Date) {
+		errors["schedule_category_title_date"] = "Jumlah Schedule Category, Title, dan Date harus sama"
+	} else {
+		for i := range req.ScheduleCategory {
+			if strings.TrimSpace(req.ScheduleCategory[i]) == "" {
+				errors[fmt.Sprintf("schedule_category_%d", i)] = "Schedule Category tidak boleh kosong"
+			}
+			if strings.TrimSpace(req.Title[i]) == "" {
+				errors[fmt.Sprintf("title_%d", i)] = "Title tidak boleh kosong"
+			}
+			if strings.TrimSpace(req.Date[i]) == "" {
+				errors[fmt.Sprintf("date_%d", i)] = "Tanggal tidak boleh kosong"
+			} else {
+				// Pastikan Date bisa dikonversi ke tanggal format YYYY-MM-DD
+				_, err := time.Parse("2006-01-02", req.Date[i])
+				if err != nil {
+					errors[fmt.Sprintf("date_%d", i)] = "Format tanggal harus YYYY-MM-DD"
+				}
+			}
+		}
+	}
+
+	// Validate Account Code jika diisi
+	if req.AccountCode != nil && strings.TrimSpace(*req.AccountCode) != "" {
+		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+			errors["account_code"] = msg
+		}
+	}
+
+	// Validate Year dan Amount
+	if len(req.Year) > 0 || len(req.Amount) > 0 {
+		if len(req.Year) != len(req.Amount) {
+			errors["year"] = "Jumlah Year dan Amount harus sama"
+		} else {
+			for i := range req.Year {
+				if strings.TrimSpace(req.Year[i]) == "" || strings.TrimSpace(req.Amount[i]) == "" {
+					errors["year"] = "Year dan Amount tidak boleh kosong"
+					break
+				}
+				if _, err := strconv.Atoi(req.Year[i]); err != nil {
+					errors["year"] = "Year harus berupa angka"
+				}
+				if _, err := strconv.Atoi(req.Amount[i]); err != nil {
+					errors["amount"] = "Amount harus berupa angka"
+				}
+			}
+		}
+	}
+
+	// Return nil jika tidak ada error
+	if len(errors) == 0 {
+		return nil
+	}
+	return errors
+}
+
+func ValidateCampus(req *CreateRequest) map[string]string {
+	errors := make(map[string]string)
+
+	// Helper untuk validasi jumlah array dan isinya tidak kosong
+	validateArrayPair := func(a1, a2 []string, field1, field2 string) {
+		if len(a1) != len(a2) {
+			errors[field1] = fmt.Sprintf("Jumlah %s dan %s harus sama", field1, field2)
+			return
+		}
+		for i := range a1 {
+			if strings.TrimSpace(a1[i]) == "" || strings.TrimSpace(a2[i]) == "" {
+				errors[field1] = fmt.Sprintf("%s dan %s tidak boleh kosong", field1, field2)
+				return
+			}
+		}
+	}
+
+	// Helper untuk validasi percentage harus total 100%
+	validatePercentage := func(percentage []string, field string) {
+		total := 0
+		for _, p := range percentage {
+			if p == "" {
+				errors[field] = fmt.Sprintf("Semua data %s harus diisi", field)
+				return
+			}
+			num, err := strconv.Atoi(p)
+			if err != nil {
+				errors[field] = fmt.Sprintf("Semua data %s harus berupa angka", field)
+				return
+			}
+			total += num
+		}
+		if total != 100 {
+			errors[field] = fmt.Sprintf("Total persentase %s harus 100%%", field)
+		}
+	}
+
+	// Validate percentage-related fields
+	validateArrayPair(req.Age, req.PercentageAge, "age", "percentage_age")
+	if len(req.PercentageAge) > 0 {
+		validatePercentage(req.PercentageAge, "percentage_age")
+	}
+
+	validateArrayPair(req.Rank, req.YearRank, "rank", "year_rank")
+
+	// Validate ScheduleCategory, Title, Date
+	if len(req.ScheduleCategory) != len(req.Title) || len(req.Title) != len(req.Date) {
+		errors["schedule_category_title_date"] = "Jumlah Schedule Category, Title, dan Date harus sama"
+	} else {
+		for i := range req.ScheduleCategory {
+			if strings.TrimSpace(req.ScheduleCategory[i]) == "" {
+				errors[fmt.Sprintf("schedule_category_%d", i)] = "Schedule Category tidak boleh kosong"
+			}
+			if strings.TrimSpace(req.Title[i]) == "" {
+				errors[fmt.Sprintf("title_%d", i)] = "Title tidak boleh kosong"
+			}
+			if strings.TrimSpace(req.Date[i]) == "" {
+				errors[fmt.Sprintf("date_%d", i)] = "Tanggal tidak boleh kosong"
+			} else {
+				// Pastikan Date bisa dikonversi ke tanggal format YYYY-MM-DD
+				_, err := time.Parse("2006-01-02", req.Date[i])
+				if err != nil {
+					errors[fmt.Sprintf("date_%d", i)] = "Format tanggal harus YYYY-MM-DD"
+				}
+			}
+		}
+	}
+
+	// Validate Account Code jika diisi
+	if req.AccountCode != nil {
+		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+			errors["account_code"] = msg
+		}
+	}
+
+	// Validate Year dan Amount
+	if len(req.Year) > 0 || len(req.Amount) > 0 {
+		if len(req.Year) != len(req.Amount) {
+			errors["year"] = "Jumlah Year dan Amount harus sama"
+		} else {
+			for i := range req.Year {
+				if strings.TrimSpace(req.Year[i]) == "" || strings.TrimSpace(req.Amount[i]) == "" {
+					errors["year"] = "Year dan Amount tidak boleh kosong"
+					break
+				}
+				if _, err := strconv.Atoi(req.Year[i]); err != nil {
+					errors["year"] = "Year harus berupa angka"
+					break
+				}
+				if _, err := strconv.Atoi(req.Amount[i]); err != nil {
+					errors["amount"] = "Amount harus berupa angka"
+					break
+				}
+			}
+		}
+	}
+
+	// Validate BYOD
+	if strings.TrimSpace(*req.Byod) != "" {
+		if *req.Byod != "0" && *req.Byod != "1" {
+			errors["byod"] = "BYOD harus berupa '0' atau '1'"
+		}
+	}
+
+	// Return nil jika tidak ada error
+	if len(errors) == 0 {
+		return nil
+	}
+	return errors
+}
+
+func accountCodeUnique(code string, required bool) (bool, string) {
+	trimmedCode := strings.TrimSpace(code)
+
+	if required && trimmedCode == "" {
+		return false, "Kode akun wajib diisi"
+	}
+
+	if trimmedCode == "" {
+		return true, ""
+	}
+
+	if accountRepo == nil {
+		return true, ""
+	}
+
+	account, err := accountRepo.FindByAccountCode(trimmedCode)
+	if err != nil {
+		return true, ""
+	}
+
+	if account != nil {
+		return false, "Kode akun sudah digunakan"
+	}
+
+	return true, ""
+}
+
+func validateCategoryAndUrl(fl validator.FieldLevel) bool {
+	parent := fl.Parent()
+
+	categoryField := parent.FieldByName("Category")
+	urlField := parent.FieldByName("Url")
+
+	if !categoryField.IsValid() || !urlField.IsValid() {
+		return true
+	}
+
+	categories, ok1 := categoryField.Interface().([]string)
+	urls, ok2 := urlField.Interface().([]string)
+
+	if !ok1 || !ok2 {
+		return false
+	}
+
+	if len(categories) != len(urls) {
+		return false
+	}
+
+	for i := range categories {
+		if strings.TrimSpace(categories[i]) == "" || strings.TrimSpace(urls[i]) == "" {
+			return false
+		}
+	}
+
+	return true
 }
 
 func ValidateAccountRequest(c *fiber.Ctx) error {
@@ -83,38 +487,4 @@ func ValidateAccountRequest(c *fiber.Ctx) error {
 func validateFileExtension(file *multipart.FileHeader, allowedExt string) bool {
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	return ext == "."+allowedExt
-}
-
-// Validate mime type for images
-func validateMime(fl validator.FieldLevel) bool {
-	if fl.Field().String() == "" {
-		return true // Allow empty values
-	}
-
-	allowedTypes := []string{".jpg", ".jpeg", ".png", ".gif"}
-	filename := fl.Field().String()
-	ext := strings.ToLower(filepath.Ext(filename))
-
-	// Check if the extension is in the allowed types
-	for _, allowedType := range allowedTypes {
-		if ext == allowedType {
-			return true
-		}
-	}
-	return false
-}
-
-// Validate unique account code
-func uniqueAccountCode(fl validator.FieldLevel) bool {
-	if accountRepo == nil {
-		return true // Skip validation if repository is not set
-	}
-
-	code := fl.Field().String()
-	account, err := accountRepo.FindByAccountCode(code)
-	if err != nil {
-		return false // Error occurred during validation
-	}
-
-	return account == nil // Return true if account doesn't exist (code is unique)
 }

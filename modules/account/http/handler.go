@@ -166,97 +166,76 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
-	// Parse the multipart form data
-	form, err := c.MultipartForm()
-	if err != nil {
-		response := helper.APIResponse("Failed to parse form", fiber.StatusBadRequest, "error", nil)
+	userID := c.Locals("user_id").(int)
+
+	req := new(validation.CreateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Initialize a map to store the form data
-	requestBody := make(map[string]interface{})
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-	// Loop through the form fields and store them in the requestBody map
-	for key, values := range form.Value {
-		// If the field has only one value, take the first element to avoid array
-		if len(values) == 1 {
-			requestBody[key] = values[0]
-		} else {
-			// Otherwise, store the array as is
-			requestBody[key] = values
+	if req.AccountCategory != nil && *req.AccountCategory == "SEKOLAH" {
+
+		errors := validation.ValidateSchool(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else if req.AccountCategory != nil && *req.AccountCategory == "KAMPUS" {
+
+		errors := validation.ValidateCampus(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else if req.AccountCategory != nil && *req.AccountCategory == "KOMUNITAS" {
+
+		errors := validation.ValidateCommunity(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 	}
 
-	// // Handle file upload for account image
-	// accountImage, err := c.FormFile("account_image")
-	// if err == nil && accountImage != nil {
-	// 	// Allowed image formats
-	// 	allowedFormats := []string{".jpg", ".jpeg", ".png", ".gif"}
-
-	// 	// Save the uploaded image
-	// 	accountImagePath, err := saveFileToLocal(accountImage, "uploads/account_images", allowedFormats)
-	// 	if err != nil {
-	// 		response := helper.APIResponse("Failed to save image", fiber.StatusInternalServerError, "error", nil)
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
-
-	// 	// Add the image path to the request body
-	// 	requestBody["account_image"] = *accountImagePath
-	// }
-
-	// // Validate and parse the form data into CreateRequest
-	// req := new(validation.CreateRequest)
-	// // We need to manually populate req with data from requestBody
-	// if err := mapstructure.Decode(requestBody, req); err != nil {
-	// 	response := helper.APIResponse("Invalid request data", fiber.StatusBadRequest, "error", nil)
-	// 	return c.Status(fiber.StatusBadRequest).JSON(response)
-	// }
-
-	// // Request Validation
-	// errors := validation.ValidateCreate(req)
-	// if errors != nil {
-	// 	response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 	return c.Status(fiber.StatusBadRequest).JSON(response)
-	// }
-
-	// Extract user ID from query parameter
-	userID := 1
-	// if err != nil || userID == 0 {
-	// response := helper.APIResponse("Invalid user ID", fiber.StatusBadRequest, "error", requestBody)
-	// return c.Status(fiber.StatusBadRequest).JSON(response)
-	// }
-
 	// Create Account
-	account, err := h.service.CreateAccount(requestBody, userID)
+	reqMap := make(map[string]interface{})
+	reqBytes, _ := json.Marshal(req)
+	_ = json.Unmarshal(reqBytes, &reqMap)
+	account, err := h.service.CreateAccount(reqMap, userID)
 	if err != nil {
 		response := helper.APIResponse("Failed to create account", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
-	if len(account) > 0 {
-		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
-		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
-		if category, exists := requestBody["account_category"]; exists {
-			if categoryStr, ok := category.(string); ok {
-				switch categoryStr {
-				case "SEKOLAH":
-					_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
-				case "KAMPUS":
-					_, _ = h.accountFacultyService.Insert(requestBody, account[0].ID)
-					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
-					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
-					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
-					_, _ = h.accountTypeCampusDetailService.Insert(requestBody, account[0].ID)
-				case "KOMUNITAS":
-					_, _ = h.accountTypeCommunityDetailService.Insert(requestBody, account[0].ID)
-					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
-				}
+	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
+	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
+	if category, exists := reqMap["account_category"]; exists {
+		if categoryStr, ok := category.(string); ok {
+			switch categoryStr {
+			case "SEKOLAH":
+				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
+			case "KAMPUS":
+				_, _ = h.accountFacultyService.Insert(reqMap, account[0].ID)
+				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\Account", account[0].ID, "year", "amount")
+				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
+				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+				_, _ = h.accountTypeCampusDetailService.Insert(reqMap, account[0].ID)
+			case "KOMUNITAS":
+				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
+				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 			}
 		}
 	}
 
 	// Return success response
-	response := helper.APIResponse("Account successfully created", fiber.StatusOK, "success", account)
+	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
