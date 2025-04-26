@@ -9,11 +9,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func CityRouter(app *fiber.App, db *gorm.DB) {
+func CityRouter(router fiber.Router, db *gorm.DB) {
 	cityRepo := repository.NewCityRepository(db)
 	cityService := service.NewCityService(cityRepo)
 	cityHandler := http.NewCityHandler(cityService)
 
-	http.CityRoutes(app, cityHandler)
+	http.CityRoutes(router, cityHandler)
 
 }

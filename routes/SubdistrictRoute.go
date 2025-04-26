@@ -9,11 +9,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func SubdistrictRouter(app *fiber.App, db *gorm.DB) {
+func SubdistrictRouter(router fiber.Router, db *gorm.DB) {
 	subdistrictRepo := repository.NewSubdistrictRepository(db)
 	subdistrictService := service.NewSubdistrictService(subdistrictRepo)
 	subdistrictHandler := http.NewSubdistrictHandler(subdistrictService)
 
-	http.SubdistrictRoutes(app, subdistrictHandler)
+	http.SubdistrictRoutes(router, subdistrictHandler)
 
 }

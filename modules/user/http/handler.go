@@ -2,6 +2,7 @@ package http
 
 import (
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
 	authService "byu-crm-service/modules/auth/service"
@@ -79,11 +80,20 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
+	orderByMostAssignedPic, _ := strconv.ParseBool(c.Query("order_by_most_assigned_pic", "false"))
+	rawOnlyRole := c.Query("only_role", "")
+	onlyRole := []string{}
+	if rawOnlyRole != "" {
+		onlyRole = strings.Split(rawOnlyRole, ",")
+	}
+
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
 
 	// Call service with filters
-	users, total, err := h.service.GetAllUsers(limit, paginate, page, filters)
+	users, total, err := h.service.GetAllUsers(limit, paginate, page, filters, onlyRole, orderByMostAssignedPic, userRole, territoryID)
 	if err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "success", nil)
+		response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 

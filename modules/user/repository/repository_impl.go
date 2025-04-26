@@ -2,6 +2,7 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"byu-crm-service/modules/user/response"
 	"errors"
 	"strings"
 
@@ -13,42 +14,42 @@ type userRepository struct {
 	db *gorm.DB
 }
 
-type UserResponse struct {
-	ID            uint     `json:"id"`
-	Name          string   `json:"name"`
-	Email         string   `json:"email"`
-	Avatar        string   `json:"avatar"`
-	Msisdn        string   `json:"msisdn"`
-	UserStatus    string   `json:"user_status"`
-	UserType      string   `json:"user_type"`
-	TerritoryID   uint     `json:"territory_id"`
-	TerritoryType string   `json:"territory_type"`
-	RoleNames     []string `json:"role_names"`
-	CreatedAt     string   `json:"created_at"`
-	UpdatedAt     string   `json:"updated_at"`
-}
-
 func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) GetAllUsers(limit int, paginate bool, page int, filters map[string]string) ([]models.User, int64, error) {
+func (r *userRepository) GetAllUsers(
+	limit int,
+	paginate bool,
+	page int,
+	filters map[string]string,
+	onlyRole []string,
+	orderByMostAssignedPic bool,
+	userRole string,
+	territoryID interface{},
+) ([]response.UserResponse, int64, error) {
 	var users []models.User
 	var total int64
 
-	query := r.db.Model(&models.User{})
+	query := r.db.Model(&models.User{}).
+		Joins("LEFT JOIN model_has_roles ON model_has_roles.model_id = users.id AND model_has_roles.model_type = ?", "App\\Models\\User").
+		Joins("LEFT JOIN roles ON roles.id = model_has_roles.role_id").
+		Group("users.id")
 
-	// Apply search filter
+	// Filter onlyRole
+	if len(onlyRole) > 0 {
+		query = query.Where("roles.name IN ?", onlyRole)
+	}
+
+	// Filter search
 	if search, exists := filters["search"]; exists && search != "" {
-		searchTokens := strings.Fields(search) // Tokenisasi input berdasarkan spasi
-		for _, token := range searchTokens {
-			query = query.Where(
-				r.db.Where("users.name LIKE ?", "%"+token+"%"),
-			)
+		tokens := strings.Fields(search)
+		for _, token := range tokens {
+			query = query.Where("users.name LIKE ?", "%"+token+"%")
 		}
 	}
 
-	// Apply date range filter
+	// Filter tanggal
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
 		query = query.Where("users.created_at >= ?", startDate)
 	}
@@ -56,15 +57,81 @@ func (r *userRepository) GetAllUsers(limit int, paginate bool, page int, filters
 		query = query.Where("users.created_at <= ?", endDate)
 	}
 
-	// Get total count before applying pagination
-	query.Count(&total)
+	if userRole != "" && territoryID != nil {
+		switch userRole {
+		case "Area":
+			var regionIDs []uint
+			if ids, ok := territoryID.([]uint); ok {
+				r.db.Model(&models.Region{}).Where("area_id IN ?", ids).Pluck("id", &regionIDs)
+			} else {
+				r.db.Model(&models.Region{}).Where("area_id = ?", territoryID).Pluck("id", &regionIDs)
+			}
 
-	// Apply ordering
-	orderBy := filters["order_by"]
-	order := filters["order"]
-	query = query.Order(orderBy + " " + order)
+			var branchIDs []uint
+			r.db.Model(&models.Branch{}).Where("region_id IN ?", regionIDs).Pluck("id", &branchIDs)
 
-	// Apply pagination
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Area", territoryID).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Region", regionIDs).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Branch", branchIDs).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Region":
+			var branchIDs []uint
+			if ids, ok := territoryID.([]uint); ok {
+				r.db.Model(&models.Branch{}).Where("region_id IN ?", ids).Pluck("id", &branchIDs)
+			} else {
+				r.db.Model(&models.Branch{}).Where("region_id = ?", territoryID).Pluck("id", &branchIDs)
+			}
+
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Region", territoryID).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Branch", branchIDs).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Branch", "DS", "Buddies", "YAE":
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id = ?", territoryID).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Branch", territoryID).
+					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Cluster":
+			query = query.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Cluster", territoryID)
+		}
+	}
+
+	// Hitung total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Order
+	if orderByMostAssignedPic {
+		query = query.
+			Select("users.id, users.name, users.avatar, COUNT(accounts.pic) as total_pic").
+			Joins("LEFT JOIN accounts ON accounts.pic = users.id").
+			Group("users.id, users.name, users.avatar").
+			Order("total_pic DESC")
+	} else {
+		orderBy := filters["order_by"]
+		order := filters["order"]
+		if orderBy != "" && order != "" {
+			query = query.Order(orderBy + " " + order)
+		}
+	}
+
+	// Pagination
 	if paginate {
 		offset := (page - 1) * limit
 		query = query.Limit(limit).Offset(offset)
@@ -72,11 +139,41 @@ func (r *userRepository) GetAllUsers(limit int, paginate bool, page int, filters
 		query = query.Limit(limit)
 	}
 
-	err := query.Find(&users).Error
-	return users, total, err
+	// Ambil data user
+	if err := query.Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Bangun response
+	var responses []response.UserResponse
+	for _, user := range users {
+		var roleNames []string
+		r.db.
+			Table("roles").
+			Select("roles.name").
+			Joins("JOIN model_has_roles ON model_has_roles.role_id = roles.id").
+			Where("model_has_roles.model_id = ? AND model_has_roles.model_type = ?", user.ID, "App\\Models\\User").
+			Scan(&roleNames)
+
+		response := response.UserResponse{
+			ID:            user.ID,
+			Name:          user.Name,
+			Email:         user.Email,
+			Avatar:        user.Avatar,
+			Msisdn:        user.Msisdn,
+			UserStatus:    user.UserStatus,
+			UserType:      user.UserType,
+			TerritoryID:   user.TerritoryID,
+			TerritoryType: user.TerritoryType,
+			RoleNames:     roleNames,
+		}
+		responses = append(responses, response)
+	}
+
+	return responses, total, nil
 }
 
-func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
+func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 	var user models.User
 	if err := r.db.First(&user, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -104,7 +201,7 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 	}
 
 	// Build response
-	response := &UserResponse{
+	response := &response.UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
@@ -120,7 +217,7 @@ func (r *userRepository) FindByID(id uint) (*UserResponse, error) {
 	return response, nil
 }
 
-func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*UserResponse, error) {
+func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*response.UserResponse, error) {
 	// Ambil user yang akan diupdate
 	var existingUser models.User
 	if err := r.db.First(&existingUser, id).Error; err != nil {
@@ -163,7 +260,7 @@ func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{})
 	}
 
 	// Buat response
-	response := &UserResponse{
+	response := &response.UserResponse{
 		ID:            existingUser.ID,
 		Name:          existingUser.Name,
 		Email:         existingUser.Email,

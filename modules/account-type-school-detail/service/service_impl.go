@@ -108,7 +108,6 @@ func (s *accountTypeSchoolDetailService) Insert(requestBody map[string]interface
 		}(),
 	}
 
-	// Insert the new contact accounts into the database
 	if err := s.repo.Insert(&accountTypeSchoolDetail); err != nil {
 		return nil, err
 	}
