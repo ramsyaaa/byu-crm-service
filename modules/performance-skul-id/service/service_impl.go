@@ -31,7 +31,7 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 		return fmt.Errorf("account not found")
 	}
 
-	subdistrict, err := s.subdistrictRepo.FindByName(data[13])
+	subdistrict, err := s.subdistrictRepo.GetSubdistrictByName(data[13])
 	if err != nil {
 		return err
 	}

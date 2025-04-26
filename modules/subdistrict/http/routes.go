@@ -1,9 +1,18 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
 
-func SubdistrictRoutes(app *fiber.App, handler *SubdistrictHandler) {
+	"github.com/gofiber/fiber/v2"
+)
 
-	app.Get("/subdistricts/:id", handler.GetSubdistrictByID)
-	app.Get("/subdistricts", handler.GetSubdistrictByName) // Query ?name=SubdistrictName
+func SubdistrictRoutes(router fiber.Router, handler *SubdistrictHandler) {
+	authRouter := router.Group("/subdistricts",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+	authRouter.Get("/", handler.GetAllSubdistricts)
+	authRouter.Get("/:id", handler.GetSubdistrictByID)
+	authRouter.Post("/", handler.CreateSubdistrict)
+	authRouter.Put("/:id", handler.UpdateSubdistrict)
 }

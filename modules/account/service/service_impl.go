@@ -3,6 +3,7 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account/repository"
+	"byu-crm-service/modules/account/response"
 	cityRepository "byu-crm-service/modules/city/repository"
 	"errors"
 	"fmt"
@@ -18,14 +19,13 @@ func NewAccountService(repo repository.AccountRepository, cityRepo cityRepositor
 	return &accountService{repo: repo, cityRepo: cityRepo}
 }
 
-func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool, excludeVisited bool) ([]models.Account, int64, error) {
+func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool, excludeVisited bool) ([]response.AccountResponse, int64, error) {
 	return s.repo.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 }
 
 func (s *accountService) CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error) {
 	accountData := map[string]string{
 		"account_name":              requestBody["account_name"].(string),
-		"account_image":             requestBody["account_image"].(string),
 		"account_type":              requestBody["account_type"].(string),
 		"account_category":          requestBody["account_category"].(string),
 		"account_code":              requestBody["account_code"].(string),
@@ -185,7 +185,7 @@ func (s *accountService) ProcessAccount(data []string) error {
 	return nil
 
 	// Assuming you have a cityService with a method FindCityByName
-	city, err := s.cityRepo.FindByName(data[4]) // City
+	city, err := s.cityRepo.GetCityByName(data[4]) // City
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func isZeroValue(value string) bool {
 	return parsed == 0
 }
 
-func (s *accountService) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error) {
+func (s *accountService) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.AccountResponse, error) {
 	account, err := s.repo.FindByAccountID(id, userRole, territoryID, userID)
 	if err != nil {
 		return nil, err

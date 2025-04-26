@@ -22,7 +22,7 @@ func NewPerformanceNamiService(repo repository.PerformanceNamiRepository, cityRe
 
 func (s *performanceNamiService) ProcessPerformanceNami(data []string) error {
 	// Assuming you have a cityService with a method FindCityByName
-	city, err := s.cityRepo.FindByName(data[15]) // City
+	city, err := s.cityRepo.GetCityByName(data[15]) // City
 	if err != nil {
 		return err
 	}

@@ -4,9 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account-type-campus-detail/repository"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 )
 
@@ -22,82 +20,44 @@ func (s *accountTypeCampusDetailService) GetByAccountID(account_id uint) (*model
 	return s.repo.GetByAccountID(account_id)
 }
 
-func (s *accountTypeCampusDetailService) Insert(requestBody map[string]interface{}, account_id uint) (*models.AccountTypeCampusDetail, error) {
-	// Delete existing social media for the given account_id
-	if err := s.repo.DeleteByAccountID(account_id); err != nil {
+func (s *accountTypeCampusDetailService) Insert(requestBody map[string]interface{}, accountID uint) (*models.AccountTypeCampusDetail, error) {
+	// Delete existing detail by account_id
+	if err := s.repo.DeleteByAccountID(accountID); err != nil {
 		return nil, err
 	}
 
-	jsonOriginResult, err := arrayToJsonEncode(requestBody, []string{"origin", "percentage_origin"})
-	if err != nil {
-		jsonOriginResult = ""
-	}
-	jsonRangeAgeResult, err := arrayToJsonEncode(requestBody, []string{"age", "percentage_age"})
-	if err != nil {
-		jsonRangeAgeResult = ""
-	}
-	jsonOrganizationNameResult, err := arrayToJsonEncode(requestBody, []string{"organization_name"})
-	if err != nil {
-		jsonOrganizationNameResult = ""
-	}
-	jsonPreferenceTechnologiesResult, err := encodeToJSON(requestBody, "preference_technologies")
-	if err != nil {
-		jsonPreferenceTechnologiesResult = ""
-	}
-	jsonMemberNeedsResult, err := encodeToJSON(requestBody, "member_needs")
-	if err != nil {
-		jsonMemberNeedsResult = ""
-	}
-	jsonItInfrastructuresResult, err := encodeToJSON(requestBody, "it_infrastructures")
-	if err != nil {
-		jsonItInfrastructuresResult = ""
-	}
-	jsonDigitalCollaborationsResult, err := encodeToJSON(requestBody, "digital_collaborations")
-	if err != nil {
-		jsonDigitalCollaborationsResult = ""
-	}
-	jsonProgramIdentificationResult, err := encodeToJSON(requestBody, "program_identification")
-	if err != nil {
-		jsonProgramIdentificationResult = ""
-	}
-	jsonUniversityRankResult, err := arrayToJsonEncode(requestBody, []string{"year_rank", "rank"})
-	if err != nil {
-		jsonUniversityRankResult = ""
-	}
-	jsonFocusProgramStudyResult, err := arrayToJsonEncode(requestBody, []string{"program_study"})
-	if err != nil {
-		jsonFocusProgramStudyResult = ""
-	}
+	// Helper encode
+	jsonOriginResult, _ := arrayToJsonEncode(requestBody, []string{"origin", "percentage_origin"})
+	jsonRangeAgeResult, _ := arrayToJsonEncode(requestBody, []string{"age", "percentage_age"})
+	jsonOrganizationNameResult, _ := arrayToJsonEncode(requestBody, []string{"organization_name"})
+	jsonPreferenceTechnologiesResult, _ := encodeToJSON(requestBody, "preference_technologies")
+	jsonMemberNeedsResult, _ := encodeToJSON(requestBody, "member_needs")
+	jsonItInfrastructuresResult, _ := encodeToJSON(requestBody, "it_infrastructures")
+	jsonDigitalCollaborationsResult, _ := encodeToJSON(requestBody, "digital_collaborations")
+	jsonProgramIdentificationResult, _ := encodeToJSON(requestBody, "program_identification")
+	jsonUniversityRankResult, _ := arrayToJsonEncode(requestBody, []string{"year_rank", "rank"})
+	jsonFocusProgramStudyResult, _ := arrayToJsonEncode(requestBody, []string{"program_study"})
 
-	var byodValue uint = 0 // Default 0 jika nil atau tidak valid
-	if byod, exists := requestBody["byod"]; exists {
-		if byodStr, ok := byod.(string); ok { // Pastikan `byod` bertipe string
-			parsedByod, err := strconv.ParseUint(byodStr, 10, 64) // Konversi string ke uint64
-			if err == nil {
-				byodValue = uint(parsedByod) // Konversi ke uint
-			}
-		}
-	}
+	byodValue := getUintFromString(requestBody, "byod")
 
-	var accountTypeCampusDetail = models.AccountTypeCampusDetail{
-		AccountID:                &account_id,
-		RangeAge:                 &jsonRangeAgeResult,
-		Origin:                   &jsonOriginResult,
-		OrganizationName:         &jsonOrganizationNameResult,
-		PreferenceTechnologies:   &jsonPreferenceTechnologiesResult,
-		MemberNeeds:              &jsonMemberNeedsResult,
-		ItInfrastructures:        &jsonItInfrastructuresResult,
-		DigitalCollaborations:    &jsonDigitalCollaborationsResult,
+	accountTypeCampusDetail := models.AccountTypeCampusDetail{
+		AccountID:                &accountID,
+		RangeAge:                 nullableString(jsonRangeAgeResult),
+		Origin:                   nullableString(jsonOriginResult),
+		OrganizationName:         nullableString(jsonOrganizationNameResult),
+		PreferenceTechnologies:   nullableString(jsonPreferenceTechnologiesResult),
+		MemberNeeds:              nullableString(jsonMemberNeedsResult),
+		ItInfrastructures:        nullableString(jsonItInfrastructuresResult),
+		DigitalCollaborations:    nullableString(jsonDigitalCollaborationsResult),
 		Byod:                     &byodValue,
 		AccessTechnology:         getStringPointer(requestBody, "access_technology"),
 		CampusAdministrationApp:  getStringPointer(requestBody, "campus_administration_app"),
 		PotentionalCollaboration: getStringPointer(requestBody, "potentional_collaboration"),
-		UniversityRank:           &jsonUniversityRankResult,
-		FocusProgramStudy:        &jsonFocusProgramStudyResult,
-		ProgramIdentification:    &jsonProgramIdentificationResult,
+		UniversityRank:           nullableString(jsonUniversityRankResult),
+		FocusProgramStudy:        nullableString(jsonFocusProgramStudyResult),
+		ProgramIdentification:    nullableString(jsonProgramIdentificationResult),
 	}
 
-	// Insert the new detail accounts into the database
 	if err := s.repo.Insert(&accountTypeCampusDetail); err != nil {
 		return nil, err
 	}
@@ -106,88 +66,88 @@ func (s *accountTypeCampusDetailService) Insert(requestBody map[string]interface
 }
 
 func arrayToJsonEncode(requestBody map[string]interface{}, keys []string) (string, error) {
-	// Pastikan keys tidak kosong
 	if len(keys) == 0 {
-		return "", errors.New("keys cannot be empty")
+		return "", nil
 	}
 
-	// Cek apakah key pertama tersedia dalam requestBody
-	mainKey := keys[0]
-	rawData, exists := requestBody[mainKey]
-	if !exists {
-		return "", fmt.Errorf("%s is missing", mainKey)
-	}
-
-	// Variabel untuk menyimpan hasil konversi
-	var result []map[string]interface{}
-
-	switch data := rawData.(type) {
-	case []string:
-		// Jika data berupa array string
-		for i := range data {
-			entry := make(map[string]interface{})
-			for _, key := range keys {
-				// Ambil value untuk setiap key
-				if rawValues, ok := requestBody[key]; ok {
-					// Cek jika nilai berupa []string
-					if values, isArray := rawValues.([]string); isArray {
-						if i < len(values) {
-							entry[key] = values[i]
-						} else {
-							entry[key] = nil
-						}
-					} else {
-						entry[key] = rawValues
-					}
-				}
-			}
-			result = append(result, entry)
-		}
-	case string:
-		// Jika hanya satu string, buat satu entri
-		entry := make(map[string]interface{})
-		for _, key := range keys {
-			if val, ok := requestBody[key]; ok {
-				entry[key] = val
+	// Ambil semua array
+	dataArrays := make([][]interface{}, len(keys))
+	for i, key := range keys {
+		if val, ok := requestBody[key]; ok {
+			if arr, ok := val.([]interface{}); ok {
+				dataArrays[i] = arr
 			} else {
-				entry[key] = nil
+				return "", fmt.Errorf("field %s harus berupa array", key)
 			}
+		} else {
+			// Kalau field tidak ada, berarti kosong
+			dataArrays[i] = []interface{}{}
 		}
-		result = append(result, entry)
-	default:
-		return "", fmt.Errorf("invalid data type: %v", reflect.TypeOf(data))
 	}
 
-	// Encode ke JSON string
-	jsonData, err := json.Marshal(result)
+	// Pastikan semua array panjangnya sama
+	length := len(dataArrays[0])
+	for _, arr := range dataArrays {
+		if len(arr) != length {
+			return "", fmt.Errorf("panjang array %v tidak konsisten", keys)
+		}
+	}
+
+	// Gabungkan array jadi slice of map
+	result := make([]map[string]interface{}, length)
+	for i := 0; i < length; i++ {
+		item := make(map[string]interface{})
+		for j, key := range keys {
+			item[key] = dataArrays[j][i]
+		}
+		result[i] = item
+	}
+
+	if len(result) == 0 {
+		return "", nil
+	}
+
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return "", err
 	}
-
-	return string(jsonData), nil
+	return string(jsonBytes), nil
 }
 
 func encodeToJSON(requestBody map[string]interface{}, key string) (string, error) {
-	// Ambil data dari requestBody berdasarkan key
-	data, exists := requestBody[key]
-	if !exists {
-		return "[]", nil // Jika tidak ada, kembalikan JSON kosong
+	if val, ok := requestBody[key]; ok {
+		jsonBytes, err := json.Marshal(val)
+		if err != nil {
+			return "", err
+		}
+		return string(jsonBytes), nil
 	}
-
-	// Encode ke JSON string
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonData), nil
+	return "", nil
 }
 
-func getStringPointer(data map[string]interface{}, key string) *string {
-	if val, exists := data[key]; exists {
-		if strVal, ok := val.(string); ok {
+func getStringPointer(requestBody map[string]interface{}, key string) *string {
+	if val, ok := requestBody[key]; ok {
+		if strVal, ok := val.(string); ok && strVal != "" {
 			return &strVal
 		}
 	}
-	return nil // Jika tidak ada atau bukan string, kembalikan nil
+	return nil
+}
+
+func getUintFromString(requestBody map[string]interface{}, key string) uint {
+	if val, ok := requestBody[key]; ok {
+		if strVal, ok := val.(string); ok {
+			if parsed, err := strconv.ParseUint(strVal, 10, 64); err == nil {
+				return uint(parsed)
+			}
+		}
+	}
+	return 0
+}
+
+func nullableString(str string) *string {
+	if str == "" {
+		return nil
+	}
+	return &str
 }

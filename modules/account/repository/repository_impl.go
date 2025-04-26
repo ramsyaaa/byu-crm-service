@@ -2,6 +2,7 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"byu-crm-service/modules/account/response"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,8 +31,8 @@ func (r *accountRepository) GetAllAccounts(
 	userID int,
 	onlyUserPic bool,
 	excludeVisited bool,
-) ([]models.Account, int64, error) {
-	var accounts []models.Account
+) ([]response.AccountResponse, int64, error) {
+	var accounts []response.AccountResponse
 	var total int64
 
 	query := r.db.Model(&models.Account{}).
@@ -182,7 +183,6 @@ func (r *accountRepository) GetAllAccounts(
 func (r *accountRepository) CreateAccount(requestBody map[string]string, userID int) ([]models.Account, error) {
 	account := models.Account{
 		AccountName:     func(s string) *string { return &s }(requestBody["account_name"]),
-		AccountImage:    func(s string) *string { return &s }(requestBody["account_image"]),
 		AccountType:     func(s string) *string { return &s }(requestBody["account_type"]),
 		AccountCategory: func(s string) *string { return &s }(requestBody["account_category"]),
 		AccountCode:     func(s string) *string { return &s }(requestBody["account_code"]),
@@ -337,8 +337,8 @@ func (r *accountRepository) FindByAccountName(account_name string) (*models.Acco
 	return &account, nil
 }
 
-func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*models.Account, error) {
-	var account models.Account
+func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.AccountResponse, error) {
+	var account response.AccountResponse
 
 	query := r.db.
 		Model(&models.Account{}).

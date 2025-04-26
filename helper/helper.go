@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -38,6 +39,34 @@ func APIResponse(message string, code int, status string, data interface{}) Resp
 	}
 
 	return jsonResponse
+}
+
+func ValidateStruct(validate *validator.Validate, req interface{}, validationMessages map[string]string) map[string]string {
+	err := validate.Struct(req)
+	if err == nil {
+		return nil
+	}
+
+	errors := make(map[string]string)
+	validationErrors := err.(validator.ValidationErrors)
+	ref := reflect.TypeOf(req).Elem()
+
+	for _, e := range validationErrors {
+		// Ambil nama json tag dari field
+		field, _ := ref.FieldByName(e.StructField())
+		jsonTag := field.Tag.Get("json")
+		jsonKey := strings.Split(jsonTag, ",")[0]
+
+		// Cari pesan error dari validationMessages
+		key := jsonKey + "." + e.Tag()
+		msg, found := validationMessages[key]
+		if !found {
+			msg = e.Error() // fallback kalau pesan custom tidak ditemukan
+		}
+		errors[jsonKey] = msg
+	}
+
+	return errors
 }
 
 func ErrorValidationFormat(err error, validationMessages map[string]string) map[string]string {

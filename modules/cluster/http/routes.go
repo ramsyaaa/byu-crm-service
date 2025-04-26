@@ -1,9 +1,18 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
 
-func ClusterRoutes(app *fiber.App, handler *ClusterHandler) {
+	"github.com/gofiber/fiber/v2"
+)
 
-	app.Get("/clusters/:id", handler.GetClusterByID)
-	app.Get("/clusters", handler.GetClusterByName) // Query ?name=ClusterName
+func ClusterRoutes(router fiber.Router, handler *ClusterHandler) {
+	authRouter := router.Group("/clusters",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+	authRouter.Get("/", handler.GetAllClusters)
+	authRouter.Get("/:id", handler.GetClusterByID)
+	authRouter.Post("/", handler.CreateCluster)
+	authRouter.Put("/:id", handler.UpdateCluster)
 }
