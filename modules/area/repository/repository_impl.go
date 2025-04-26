@@ -2,6 +2,7 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"byu-crm-service/modules/area/response"
 	"strings"
 
 	"gorm.io/gorm"
@@ -15,8 +16,8 @@ func NewAreaRepository(db *gorm.DB) AreaRepository {
 	return &areaRepository{db: db}
 }
 
-func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters map[string]string) ([]models.Area, int64, error) {
-	var areas []models.Area
+func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters map[string]string) ([]response.AreaResponse, int64, error) {
+	var areas []response.AreaResponse
 	var total int64
 
 	query := r.db.Model(&models.Area{})
@@ -59,25 +60,37 @@ func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters
 	return areas, total, err
 }
 
-func (r *areaRepository) GetAreaByID(id int) (*models.Area, error) {
+func (r *areaRepository) GetAreaByID(id int) (*response.AreaResponse, error) {
 	var area models.Area
 	err := r.db.First(&area, id).Error
 	if err != nil {
 		return nil, err
 	}
-	return &area, nil
+
+	areaResponse := &response.AreaResponse{
+		ID:   area.ID,
+		Name: area.Name,
+	}
+
+	return areaResponse, nil
 }
 
-func (r *areaRepository) GetAreaByName(name string) (*models.Area, error) {
+func (r *areaRepository) GetAreaByName(name string) (*response.AreaResponse, error) {
 	var area models.Area
 	err := r.db.Where("name = ?", name).First(&area).Error
 	if err != nil {
 		return nil, err
 	}
-	return &area, nil
+
+	areaResponse := &response.AreaResponse{
+		ID:   area.ID,
+		Name: area.Name,
+	}
+
+	return areaResponse, nil
 }
 
-func (r *areaRepository) CreateArea(area *models.Area) (*models.Area, error) {
+func (r *areaRepository) CreateArea(area *models.Area) (*response.AreaResponse, error) {
 	if err := r.db.Create(area).Error; err != nil {
 		return nil, err
 	}
@@ -87,11 +100,17 @@ func (r *areaRepository) CreateArea(area *models.Area) (*models.Area, error) {
 		return nil, err
 	}
 
-	return &createdArea, nil
+	areaResponse := &response.AreaResponse{
+		ID:   createdArea.ID,
+		Name: createdArea.Name,
+	}
+
+	return areaResponse, nil
 }
 
-func (r *areaRepository) UpdateArea(area *models.Area, id int) (*models.Area, error) {
+func (r *areaRepository) UpdateArea(area *models.Area, id int) (*response.AreaResponse, error) {
 	var existingArea models.Area
+
 	if err := r.db.First(&existingArea, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
@@ -104,5 +123,10 @@ func (r *areaRepository) UpdateArea(area *models.Area, id int) (*models.Area, er
 		return nil, err
 	}
 
-	return &existingArea, nil
+	areaResponse := &response.AreaResponse{
+		ID:   existingArea.ID,
+		Name: existingArea.Name,
+	}
+
+	return areaResponse, nil
 }
