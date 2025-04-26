@@ -31,13 +31,16 @@ func Route(db *gorm.DB) {
 	routes.PerformanceNamiRouter(app, db)
 	routes.PerformanceSkulIdRouter(app, db)
 
-	routes.CityRouter(app, db)
 	routes.SubdistrictRouter(app, db)
 	routes.PerformanceDigiposRouter(app, db)
 	routes.DetailCommunityMemberRouter(app, db)
 
 	authGroup := app.Group("/api/v1")
 	routes.AuthRouter(authGroup, db)
+
+	routes.AreaRouter(authGroup, db)
+	routes.CityRouter(authGroup, db)
+
 	routes.AccountRouter(authGroup, db)
 	routes.FacultyRouter(authGroup, db)
 	routes.AbsenceUserRouter(authGroup, db)

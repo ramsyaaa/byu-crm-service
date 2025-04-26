@@ -1,9 +1,18 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
 
-func CityRoutes(app *fiber.App, handler *CityHandler) {
+	"github.com/gofiber/fiber/v2"
+)
 
-	app.Get("/cities/:id", handler.GetCityByID)
-	app.Get("/cities", handler.GetCityByName) // Query ?name=cityName
+func CityRoutes(router fiber.Router, handler *CityHandler) {
+	authRouter := router.Group("/cities",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+
+	authRouter.Get("/", handler.GetAllCities)
+	authRouter.Get("/:id", handler.GetCityByID)
+	authRouter.Get("/", handler.GetCityByName) // Query ?name=cityName
 }
