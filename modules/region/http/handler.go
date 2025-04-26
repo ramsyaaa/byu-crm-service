@@ -1,8 +1,8 @@
 package http
 
 import (
-	"byu-crm-service/modules/area/service"
-	"byu-crm-service/modules/area/validation"
+	"byu-crm-service/modules/region/service"
+	"byu-crm-service/modules/region/validation"
 	"strconv"
 	"strings"
 
@@ -11,15 +11,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type AreaHandler struct {
-	areaService service.AreaService
+type RegionHandler struct {
+	regionService service.RegionService
 }
 
-func NewAreaHandler(areaService service.AreaService) *AreaHandler {
-	return &AreaHandler{areaService: areaService}
+func NewRegionHandler(regionService service.RegionService) *RegionHandler {
+	return &RegionHandler{regionService: regionService}
 }
 
-func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
+func (h *RegionHandler) GetAllRegions(c *fiber.Ctx) error {
 	// Default query params
 	filters := map[string]string{
 		"search":     c.Query("search", ""),
@@ -37,55 +37,55 @@ func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
 	territoryID := c.Locals("territory_id").(int)
 
 	// Call service with filters
-	areas, total, err := h.areaService.GetAllAreas(limit, paginate, page, filters, userRole, territoryID)
+	regions, total, err := h.regionService.GetAllRegions(limit, paginate, page, filters, userRole, territoryID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to fetch areas",
+			"message": "Failed to fetch regions",
 			"error":   err.Error(),
 		})
 	}
 
 	// Return response
 	responseData := map[string]interface{}{
-		"areas": areas,
-		"total": total,
-		"page":  page,
+		"regions": regions,
+		"total":   total,
+		"page":    page,
 	}
 
-	response := helper.APIResponse("Get Areas Successfully", fiber.StatusOK, "success", responseData)
+	response := helper.APIResponse("Get Regions Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AreaHandler) GetAreaByID(c *fiber.Ctx) error {
+func (h *RegionHandler) GetRegionByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
-			"message": "Invalid area ID",
+			"message": "Invalid region ID",
 			"error":   err.Error(),
 		})
 	}
-	area, err := h.areaService.GetAreaByID(intID)
+	region, err := h.regionService.GetRegionByID(intID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to fetch area",
+			"message": "Failed to fetch region",
 			"error":   err.Error(),
 		})
 	}
 
 	// Return response
 	responseData := map[string]interface{}{
-		"area": area,
+		"region": region,
 	}
 
-	response := helper.APIResponse("Get Area Successfully", fiber.StatusOK, "success", responseData)
+	response := helper.APIResponse("Get Region Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AreaHandler) CreateArea(c *fiber.Ctx) error {
-	req := new(validation.CreateAreaRequest)
+func (h *RegionHandler) CreateRegion(c *fiber.Ctx) error {
+	req := new(validation.CreateRegionRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
@@ -98,36 +98,36 @@ func (h *AreaHandler) CreateArea(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingArea, _ := h.areaService.GetAreaByName(req.Name)
-	if existingArea != nil {
+	existingRegion, _ := h.regionService.GetRegionByName(req.Name)
+	if existingRegion != nil {
 		errors := map[string]string{
-			"name": "Nama area sudah digunakan",
+			"name": "Nama regional sudah digunakan",
 		}
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	area, err := h.areaService.CreateArea(&req.Name)
+	region, err := h.regionService.CreateRegion(&req.Name, req.AreaID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Area created successful", fiber.StatusOK, "success", area)
+	response := helper.APIResponse("Region created successful", fiber.StatusOK, "success", region)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AreaHandler) UpdateArea(c *fiber.Ctx) error {
+func (h *RegionHandler) UpdateRegion(c *fiber.Ctx) error {
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
-			"message": "Invalid area ID",
+			"message": "Invalid region ID",
 			"error":   err.Error(),
 		})
 	}
-	req := new(validation.UpdateAreaRequest)
+	req := new(validation.UpdateRegionRequest)
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -140,10 +140,10 @@ func (h *AreaHandler) UpdateArea(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	currentArea, _ := h.areaService.GetAreaByID(intID)
-	if currentArea == nil {
+	currentRegion, _ := h.regionService.GetRegionByID(intID)
+	if currentRegion == nil {
 		errors := map[string]string{
-			"name": "Area tidak ditemukan",
+			"name": "Regional tidak ditemukan",
 		}
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -151,23 +151,23 @@ func (h *AreaHandler) UpdateArea(c *fiber.Ctx) error {
 
 	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-	existingArea, _ := h.areaService.GetAreaByName(req.Name)
+	existingRegion, _ := h.regionService.GetRegionByName(req.Name)
 
-	if existingArea != nil && currentArea.Name != req.Name {
+	if existingRegion != nil && currentRegion.Name != req.Name {
 		errors := map[string]string{
-			"name": "Nama Area sudah digunakan",
+			"name": "Nama reagional sudah digunakan",
 		}
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	area, err := h.areaService.UpdateArea(&req.Name, intID)
+	area, err := h.regionService.UpdateRegion(&req.Name, req.AreaID, intID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Area updated successful", fiber.StatusOK, "success", area)
+	response := helper.APIResponse("Region updated successful", fiber.StatusOK, "success", area)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

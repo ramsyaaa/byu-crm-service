@@ -16,7 +16,7 @@ func NewAreaRepository(db *gorm.DB) AreaRepository {
 	return &areaRepository{db: db}
 }
 
-func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters map[string]string) ([]response.AreaResponse, int64, error) {
+func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.AreaResponse, int64, error) {
 	var areas []response.AreaResponse
 	var total int64
 
@@ -24,7 +24,7 @@ func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters
 
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
-		searchTokens := strings.Fields(search) // Tokenisasi input berdasarkan spasi
+		searchTokens := strings.Fields(search)
 		for _, token := range searchTokens {
 			query = query.Where(
 				r.db.Where("areas.name LIKE ?", "%"+token+"%"),
@@ -38,6 +38,52 @@ func (r *areaRepository) GetAllAreas(limit int, paginate bool, page int, filters
 	}
 	if endDate, exists := filters["end_date"]; exists && endDate != "" {
 		query = query.Where("areas.created_at <= ?", endDate)
+	}
+
+	// UserRole & TerritoryID Filtering
+	if userRole != "" && territoryID != 0 {
+		switch userRole {
+		case "Area":
+			query = query.Where("areas.id = ?", territoryID)
+
+		case "Region":
+			// Cari area_id dari regions
+			var areaID int
+			err := r.db.Table("regions").Select("area_id").Where("id = ?", territoryID).Scan(&areaID).Error
+			if err != nil {
+				return nil, 0, err
+			}
+			query = query.Where("areas.id = ?", areaID)
+
+		case "Branch", "YAE", "Organic", "Buddies", "DS":
+			// Cari area_id dari branches -> regions
+			var areaID int
+			err := r.db.Raw(`
+				SELECT areas.id FROM areas
+				JOIN regions ON regions.area_id = areas.id
+				JOIN branches ON branches.region_id = regions.id
+				WHERE branches.id = ? LIMIT 1
+			`, territoryID).Scan(&areaID).Error
+			if err != nil {
+				return nil, 0, err
+			}
+			query = query.Where("areas.id = ?", areaID)
+
+		case "Cluster", "Admin-Tap":
+			// Cari area_id dari clusters -> branches -> regions
+			var areaID int
+			err := r.db.Raw(`
+				SELECT areas.id FROM areas
+				JOIN regions ON regions.area_id = areas.id
+				JOIN branches ON branches.region_id = regions.id
+				JOIN clusters ON clusters.branch_id = branches.id
+				WHERE clusters.id = ? LIMIT 1
+			`, territoryID).Scan(&areaID).Error
+			if err != nil {
+				return nil, 0, err
+			}
+			query = query.Where("areas.id = ?", areaID)
+		}
 	}
 
 	// Get total count before applying pagination
