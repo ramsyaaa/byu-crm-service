@@ -1,52 +1,173 @@
 package http
 
 import (
-	"strconv"
-
 	"byu-crm-service/modules/cluster/service"
+	"byu-crm-service/modules/cluster/validation"
+	"strconv"
+	"strings"
+
+	"byu-crm-service/helper"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type ClusterHandler struct {
-	service service.ClusterService
+	clusterService service.ClusterService
 }
 
-func NewClusterHandler(service service.ClusterService) *ClusterHandler {
-	return &ClusterHandler{service: service}
+func NewClusterHandler(clusterService service.ClusterService) *ClusterHandler {
+	return &ClusterHandler{clusterService: clusterService}
+}
+
+func (h *ClusterHandler) GetAllClusters(c *fiber.Ctx) error {
+	// Default query params
+	filters := map[string]string{
+		"search":     c.Query("search", ""),
+		"order_by":   c.Query("order_by", "id"),
+		"order":      c.Query("order", "DESC"),
+		"start_date": c.Query("start_date", ""),
+		"end_date":   c.Query("end_date", ""),
+	}
+
+	// Parse integer and boolean values
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+
+	// Call service with filters
+	clusters, total, err := h.clusterService.GetAllClusters(limit, paginate, page, filters, userRole, territoryID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch clusters",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"clusters": clusters,
+		"total":    total,
+		"page":     page,
+	}
+
+	response := helper.APIResponse("Get Clusters Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h *ClusterHandler) GetClusterByID(c *fiber.Ctx) error {
-	idParam := c.Params("id")
-	id, err := strconv.Atoi(idParam)
+	id := c.Params("id")
+	intID, err := strconv.Atoi(id)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
+		return c.Status(400).JSON(fiber.Map{
+			"message": "Invalid cluster ID",
+			"error":   err.Error(),
+		})
+	}
+	cluster, err := h.clusterService.GetClusterByID(intID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch cluster",
+			"error":   err.Error(),
+		})
 	}
 
-	cluster, err := h.service.GetClusterByID(uint(id))
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	if cluster == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Cluster not found"})
+	// Return response
+	responseData := map[string]interface{}{
+		"cluster": cluster,
 	}
 
-	return c.JSON(cluster)
+	response := helper.APIResponse("Get Cluster Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *ClusterHandler) GetClusterByName(c *fiber.Ctx) error {
-	name := c.Query("name")
-	if name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cluster name is required"})
+func (h *ClusterHandler) CreateCluster(c *fiber.Ctx) error {
+	req := new(validation.CreateClusterRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	cluster, err := h.service.GetClusterByName(name)
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
+
+	existingCluster, _ := h.clusterService.GetClusterByName(req.Name)
+	if existingCluster != nil {
+		errors := map[string]string{
+			"name": "Nama cluster sudah digunakan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	cluster, err := h.clusterService.CreateCluster(&req.Name, req.BranchID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	if cluster == nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Cluster not found"})
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
 	}
 
-	return c.JSON(cluster)
+	// Response
+	response := helper.APIResponse("Cluster created successful", fiber.StatusOK, "success", cluster)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *ClusterHandler) UpdateCluster(c *fiber.Ctx) error {
+	id := c.Params("id")
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"message": "Invalid cluster ID",
+			"error":   err.Error(),
+		})
+	}
+	req := new(validation.UpdateClusterRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateUpdate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	currentCluster, _ := h.clusterService.GetClusterByID(intID)
+	if currentCluster == nil {
+		errors := map[string]string{
+			"name": "Cluster tidak ditemukan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
+
+	existingBranch, _ := h.clusterService.GetClusterByName(req.Name)
+
+	if existingBranch != nil && currentCluster.Name != req.Name {
+		errors := map[string]string{
+			"name": "Nama cluster sudah digunakan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	area, err := h.clusterService.UpdateCluster(&req.Name, req.BranchID, intID)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Response
+	response := helper.APIResponse("Cluster updated successful", fiber.StatusOK, "success", area)
+	return c.Status(fiber.StatusOK).JSON(response)
 }

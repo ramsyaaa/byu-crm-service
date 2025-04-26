@@ -19,7 +19,7 @@ func NewPerformanceDigiposService(repo repository.PerformanceDigiposRepository, 
 }
 
 func (s *performanceDigiposService) ProcessPerformanceDigipos(data []string) error {
-	cluster, err := s.clusterRepo.FindByName(data[28]) // Cluster
+	cluster, err := s.clusterRepo.GetClusterByName(data[28]) // Cluster
 	if err != nil {
 		return err
 	}

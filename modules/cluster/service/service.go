@@ -1,8 +1,13 @@
 package service
 
-import "byu-crm-service/models"
+import (
+	"byu-crm-service/modules/cluster/response"
+)
 
 type ClusterService interface {
-	GetClusterByID(id uint) (*models.Cluster, error)
-	GetClusterByName(name string) (*models.Cluster, error)
+	GetAllClusters(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.ClusterResponse, int64, error)
+	GetClusterByID(id int) (*response.ClusterResponse, error)
+	GetClusterByName(name string) (*response.ClusterResponse, error)
+	CreateCluster(name *string, branch_id int) (*response.ClusterResponse, error)
+	UpdateCluster(name *string, branch_id int, id int) (*response.ClusterResponse, error)
 }

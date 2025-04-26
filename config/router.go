@@ -41,6 +41,7 @@ func Route(db *gorm.DB) {
 	routes.AreaRouter(authGroup, db)
 	routes.RegionRouter(authGroup, db)
 	routes.BranchRouter(authGroup, db)
+	routes.ClusterRouter(authGroup, db)
 	routes.CityRouter(authGroup, db)
 
 	routes.AccountRouter(authGroup, db)
