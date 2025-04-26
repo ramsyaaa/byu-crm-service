@@ -31,7 +31,6 @@ func Route(db *gorm.DB) {
 	routes.PerformanceNamiRouter(app, db)
 	routes.PerformanceSkulIdRouter(app, db)
 
-	routes.SubdistrictRouter(app, db)
 	routes.PerformanceDigiposRouter(app, db)
 	routes.DetailCommunityMemberRouter(app, db)
 
@@ -43,6 +42,7 @@ func Route(db *gorm.DB) {
 	routes.BranchRouter(authGroup, db)
 	routes.ClusterRouter(authGroup, db)
 	routes.CityRouter(authGroup, db)
+	routes.SubdistrictRouter(authGroup, db)
 
 	routes.AccountRouter(authGroup, db)
 	routes.FacultyRouter(authGroup, db)
