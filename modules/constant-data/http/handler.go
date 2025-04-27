@@ -35,9 +35,10 @@ func (h *ConstantDataHandler) GetAllConstants(c *fiber.Ctx) error {
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	type_constant := c.Query("type", "")
+	other_group := c.Query("other_group", "")
 
 	// Call service with filters
-	constants, total, err := h.constantDataService.GetAllConstants(limit, paginate, page, filters, type_constant)
+	constants, total, err := h.constantDataService.GetAllConstants(limit, paginate, page, filters, type_constant, other_group)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch constants",

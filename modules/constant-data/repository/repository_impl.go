@@ -15,7 +15,7 @@ func NewConstantDataRepository(db *gorm.DB) ConstantDataRepository {
 	return &constantDataRepository{db: db}
 }
 
-func (r *constantDataRepository) GetAllConstants(limit int, paginate bool, page int, filters map[string]string, type_constant string) ([]models.ConstantData, int64, error) {
+func (r *constantDataRepository) GetAllConstants(limit int, paginate bool, page int, filters map[string]string, type_constant string, other_group string) ([]models.ConstantData, int64, error) {
 	var constant_data []models.ConstantData
 	var total int64
 
@@ -40,6 +40,11 @@ func (r *constantDataRepository) GetAllConstants(limit int, paginate bool, page 
 	// Apply type_constant filter
 	if type_constant != "" {
 		query = query.Where("constant_data.type = ?", type_constant)
+	}
+
+	// Apply other_group filter
+	if other_group != "" {
+		query = query.Where("constant_data.other_group = ?", other_group)
 	}
 
 	// Get total count before applying pagination

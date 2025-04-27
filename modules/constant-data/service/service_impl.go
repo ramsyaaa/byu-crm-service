@@ -13,8 +13,8 @@ func NewConstantDataService(repo repository.ConstantDataRepository) ConstantData
 	return &constantDataService{repo: repo}
 }
 
-func (s *constantDataService) GetAllConstants(limit int, paginate bool, page int, filters map[string]string, type_constant string) ([]models.ConstantData, int64, error) {
-	return s.repo.GetAllConstants(limit, paginate, page, filters, type_constant)
+func (s *constantDataService) GetAllConstants(limit int, paginate bool, page int, filters map[string]string, type_constant string, other_group string) ([]models.ConstantData, int64, error) {
+	return s.repo.GetAllConstants(limit, paginate, page, filters, type_constant, other_group)
 }
 
 func (s *constantDataService) CreateConstant(requestBody map[string]interface{}) (models.ConstantData, error) {
