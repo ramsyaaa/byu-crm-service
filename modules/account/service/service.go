@@ -11,6 +11,6 @@ type AccountService interface {
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
 	UpdatePic(accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
 	ProcessAccount(data []string) error
-	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.AccountResponse, error)
+	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.SingleAccountResponse, error)
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
 }

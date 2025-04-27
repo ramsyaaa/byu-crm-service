@@ -340,6 +340,8 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		Preload("AccountTypeCommunityDetail").
 		Preload("AccountCity.Cluster.Branch.Region.Area").
 		Preload("AccountFaculties.Faculty").
+		Preload("AccountMembers", "subject_type = ? AND subject_id = ?", "App\\Models\\Account", id).
+		Preload("AccountLectures", "subject_type = ? AND subject_id = ?", "App\\Models\\AccountLecture", id).
 		Where("accounts.id = ?", id)
 
 	err := query.First(&account).Error
@@ -417,7 +419,6 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 			}
 		}
 
-		fmt.Println("cHECKING")
 		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
 			if account.Pic == nil || *account.Pic == fmt.Sprintf("%d", userID) {
 				hasAccess = true
@@ -438,6 +439,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 			account.AccountTypeSchoolDetail = nil
 			account.AccountTypeCommunityDetail = nil
 		case "SEKOLAH":
+			account.AccountTypeSchoolDetail = nil
 			account.AccountTypeCampusDetail = nil
 			account.AccountTypeCommunityDetail = nil
 			account.AccountFaculties = nil
