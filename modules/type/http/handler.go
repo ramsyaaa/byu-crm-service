@@ -183,6 +183,6 @@ func (h *TypeHandler) UpdateType(c *fiber.Ctx) error {
 	}
 
 	// Response
-	response := helper.APIResponse("Type created successful", fiber.StatusOK, "success", typeData)
+	response := helper.APIResponse("Type updated successful", fiber.StatusOK, "success", typeData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

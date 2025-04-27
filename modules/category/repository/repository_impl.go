@@ -68,50 +68,42 @@ func (r *categoryRepository) GetAllCategories(limit int, paginate bool, page int
 	return categories, total, err
 }
 
-func (r *categoryRepository) GetFacultyByID(id int) (*models.Faculty, error) {
-	var faculty models.Faculty
-	err := r.db.First(&faculty, id).Error
+func (r *categoryRepository) GetCategoryByID(id int) (*models.Category, error) {
+	var category models.Category
+	err := r.db.First(&category, id).Error
 	if err != nil {
 		return nil, err
 	}
-	return &faculty, nil
+	return &category, nil
 }
 
-func (r *categoryRepository) GetFacultyByName(name string) (*models.Faculty, error) {
-	var faculty models.Faculty
-	err := r.db.Where("name = ?", name).First(&faculty).Error
+func (r *categoryRepository) GetCategoryByNameAndModuleType(name string, moduleType string) (*models.Category, error) {
+	var category models.Category
+	err := r.db.Where("name = ? AND module_type = ?", name, moduleType).First(&category).Error
 	if err != nil {
 		return nil, err
 	}
-	return &faculty, nil
+	return &category, nil
 }
 
-func (r *categoryRepository) CreateFaculty(faculty *models.Faculty) (*models.Faculty, error) {
-	if err := r.db.Create(faculty).Error; err != nil {
+func (r *categoryRepository) CreateCategory(requestBody models.Category) (*models.Category, error) {
+	err := r.db.Create(&requestBody).Error
+	if err != nil {
 		return nil, err
 	}
-
-	var createdFaculty models.Faculty
-	if err := r.db.First(&createdFaculty, "id = ?", faculty.ID).Error; err != nil {
-		return nil, err
-	}
-
-	return &createdFaculty, nil
+	return &requestBody, nil
 }
 
-func (r *categoryRepository) UpdateFaculty(faculty *models.Faculty, id int) (*models.Faculty, error) {
-	var existingFaculty models.Faculty
-	if err := r.db.First(&existingFaculty, "id = ?", id).Error; err != nil {
-		return nil, err
+func (r *categoryRepository) UpdateCategory(id int, updateCategory models.Category) (models.Category, error) {
+	err := r.db.Model(&models.Category{}).Where("id = ?", id).Updates(updateCategory).Error
+	if err != nil {
+		return models.Category{}, err
 	}
 
-	if err := r.db.Model(&existingFaculty).Updates(faculty).Error; err != nil {
-		return nil, err
+	updatedCategory, err := r.GetCategoryByID(id)
+	if err != nil {
+		return models.Category{}, err
 	}
 
-	if err := r.db.First(&existingFaculty, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-
-	return &existingFaculty, nil
+	return *updatedCategory, nil
 }

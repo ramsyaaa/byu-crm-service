@@ -121,5 +121,6 @@ func (r *typeRepository) UpdateType(id int, updateType models.Type) (models.Type
 	if err != nil {
 		return models.Type{}, err
 	}
-	return updateType, nil
+
+	return r.GetTypeByID(id)
 }

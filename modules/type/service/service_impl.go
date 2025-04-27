@@ -52,26 +52,26 @@ func (s *typeService) CreateType(requestBody map[string]interface{}) (models.Typ
 }
 
 func (s *typeService) UpdateType(id int, requestBody map[string]interface{}) (models.Type, error) {
-	var newType models.Type
+	var typeData models.Type
 
 	if val, ok := requestBody["category_id"].(string); ok && val != "" {
 		if parsedVal, err := strconv.ParseUint(val, 10, 64); err == nil {
 			temp := uint(parsedVal)
-			newType.CategoryID = &temp
+			typeData.CategoryID = &temp
 		}
 	}
 
 	if val, ok := requestBody["module_type"].(string); ok && val != "" {
-		newType.ModuleType = &val
+		typeData.ModuleType = &val
 	}
 
 	if val, ok := requestBody["name"].(string); ok && val != "" {
-		newType.Name = &val
+		typeData.Name = &val
 	}
 
 	if val, ok := requestBody["description"].(string); ok && val != "" {
-		newType.Description = &val
+		typeData.Description = &val
 	}
 
-	return s.repo.UpdateType(id, newType)
+	return s.repo.UpdateType(id, typeData)
 }

@@ -26,8 +26,8 @@ type UpdateTypeRequest struct {
 
 // Mapping Validation Messages
 var validationMessages = map[string]string{
-	"Name.required":       "Nama Tipe harus diisi",
-	"ModuleType.required": "Tipe modul harus diisi",
+	"name.required":        "Nama Tipe harus diisi",
+	"module_type.required": "Tipe modul harus diisi",
 }
 
 // ValidateCreate function to validate CreateTypeRequest

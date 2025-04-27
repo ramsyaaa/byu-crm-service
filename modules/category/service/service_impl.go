@@ -17,20 +17,38 @@ func (s *categoryService) GetAllCategories(limit int, paginate bool, page int, f
 	return s.repo.GetAllCategories(limit, paginate, page, filters, module)
 }
 
-func (s *categoryService) GetFacultyByID(id int) (*models.Faculty, error) {
-	return s.repo.GetFacultyByID(id)
+func (s *categoryService) GetCategoryByID(id int) (*models.Category, error) {
+	return s.repo.GetCategoryByID(id)
 }
 
-func (s *categoryService) GetFacultyByName(name string) (*models.Faculty, error) {
-	return s.repo.GetFacultyByName(name)
+func (s *categoryService) GetCategoryByNameAndModuleType(name string, moduleType string) (*models.Category, error) {
+	return s.repo.GetCategoryByNameAndModuleType(name, moduleType)
 }
 
-func (s *categoryService) CreateFaculty(name *string) (*models.Faculty, error) {
-	faculty := &models.Faculty{Name: name}
-	return s.repo.CreateFaculty(faculty)
+func (s *categoryService) CreateCategory(requestBody map[string]interface{}) (*models.Category, error) {
+	var newCategory models.Category
+
+	if val, ok := requestBody["module_type"].(string); ok && val != "" {
+		newCategory.ModuleType = &val
+	}
+
+	if val, ok := requestBody["name"].(string); ok && val != "" {
+		newCategory.Name = &val
+	}
+
+	return s.repo.CreateCategory(newCategory)
 }
 
-func (s *categoryService) UpdateFaculty(name *string, id int) (*models.Faculty, error) {
-	faculty := &models.Faculty{Name: name}
-	return s.repo.UpdateFaculty(faculty, id)
+func (s *categoryService) UpdateCategory(id int, requestBody map[string]interface{}) (models.Category, error) {
+	var category models.Category
+
+	if val, ok := requestBody["module_type"].(string); ok && val != "" {
+		category.ModuleType = &val
+	}
+
+	if val, ok := requestBody["name"].(string); ok && val != "" {
+		category.Name = &val
+	}
+
+	return s.repo.UpdateCategory(id, category)
 }
