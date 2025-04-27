@@ -67,3 +67,17 @@ func (r *constantDataRepository) GetAllConstants(limit int, paginate bool, page 
 	err = query.Find(&constant_data).Error
 	return constant_data, total, err
 }
+
+func (r *constantDataRepository) CreateConstant(constantData models.ConstantData) (models.ConstantData, error) {
+	err := r.db.Create(&constantData).Error
+	return constantData, err
+}
+
+func (r *constantDataRepository) GetConstantByTypeAndValue(type_constant string, value string) (models.ConstantData, error) {
+	var constantData models.ConstantData
+	err := r.db.Where("type = ? AND value = ?", type_constant, value).First(&constantData).Error
+	if err != nil {
+		return constantData, err
+	}
+	return constantData, nil
+}

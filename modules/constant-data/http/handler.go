@@ -2,7 +2,10 @@ package http
 
 import (
 	"byu-crm-service/modules/constant-data/service"
+	"byu-crm-service/modules/constant-data/validation"
+	"encoding/json"
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
 
@@ -50,5 +53,46 @@ func (h *ConstantDataHandler) GetAllConstants(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Constants Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *ConstantDataHandler) CreateConstant(c *fiber.Ctx) error {
+	req := new(validation.CreateConstantDataRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Value = strings.ToUpper(strings.TrimSpace(req.Value))
+	req.Label = strings.ToUpper(strings.TrimSpace(req.Label))
+
+	_, err := h.constantDataService.GetConstantByTypeAndValue(req.Type, req.Value)
+	if err == nil {
+		errors := map[string]string{
+			"value": "Constant sudah tersedia",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	reqMap := make(map[string]interface{})
+	reqBytes, _ := json.Marshal(req)
+	_ = json.Unmarshal(reqBytes, &reqMap)
+
+	constant, err := h.constantDataService.CreateConstant(reqMap)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Response
+	response := helper.APIResponse("Constant created successful", fiber.StatusOK, "success", constant)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
