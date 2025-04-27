@@ -230,6 +230,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 				_, _ = h.accountTypeCampusDetailService.Insert(reqMap, account[0].ID)
 			case "KOMUNITAS":
+				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\Account", account[0].ID, "year", "amount")
 				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 			}
