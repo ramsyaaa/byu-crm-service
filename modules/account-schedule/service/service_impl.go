@@ -23,11 +23,6 @@ func (s *accountScheduleService) GetBySubject(subject_type string, account_id ui
 }
 
 func (s *accountScheduleService) Insert(requestBody map[string]interface{}, subject_type string, subject_id uint) ([]models.AccountSchedule, error) {
-	// Delete existing Schedule for the given subject_type and subject_id
-	if err := s.repo.DeleteBySubject(subject_type, subject_id); err != nil {
-		return nil, err
-	}
-
 	dateSchedule, exists := requestBody["date"]
 	if !exists {
 		return nil, errors.New("date is missing")

@@ -167,8 +167,10 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
+	territoryID := c.Locals("territory_id").(int)
+	userRole := c.Locals("user_role").(string)
 
-	req := new(validation.CreateRequest)
+	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -183,21 +185,21 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	if req.AccountCategory != nil && *req.AccountCategory == "SEKOLAH" {
 
-		errors := validation.ValidateSchool(req)
+		errors := validation.ValidateSchool(req, true, 0, userRole, territoryID, userID)
 		if errors != nil {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 	} else if req.AccountCategory != nil && *req.AccountCategory == "KAMPUS" {
 
-		errors := validation.ValidateCampus(req)
+		errors := validation.ValidateCampus(req, true, 0, userRole, territoryID, userID)
 		if errors != nil {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 	} else if req.AccountCategory != nil && *req.AccountCategory == "KOMUNITAS" {
 
-		errors := validation.ValidateCommunity(req)
+		errors := validation.ValidateCommunity(req, true, 0, userRole, territoryID, userID)
 		if errors != nil {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -240,84 +242,90 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
-	// Ambil Account ID dari URL
+
 	accountIDStr := c.Params("id")
 	if accountIDStr == "" {
 		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Convert Account ID to integer
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Parse the multipart form data
-	form, err := c.MultipartForm()
-	if err != nil {
-		response := helper.APIResponse("Failed to parse form", fiber.StatusBadRequest, "error", nil)
+	req := new(validation.ValidateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Initialize a map to store the form data
-	requestBody := make(map[string]interface{})
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-	// Loop through the form fields and store them in the requestBody map
-	for key, values := range form.Value {
-		if len(values) == 1 {
-			requestBody[key] = values[0]
-		} else {
-			requestBody[key] = values
+	if req.AccountCategory != nil && *req.AccountCategory == "SEKOLAH" {
+		errors := validation.ValidateSchool(req, false, accountID, userRole, territoryID, userID)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else if req.AccountCategory != nil && *req.AccountCategory == "KAMPUS" {
+
+		errors := validation.ValidateCampus(req, false, accountID, userRole, territoryID, userID)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else if req.AccountCategory != nil && *req.AccountCategory == "KOMUNITAS" {
+
+		errors := validation.ValidateCommunity(req, false, accountID, userRole, territoryID, userID)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 	}
 
-	// Handle "byod" field (convert from string to uint)
-	if byodStr, exists := requestBody["byod"].(string); exists {
-		byodValue, err := strconv.ParseUint(byodStr, 10, 32)
-		if err != nil {
-			byodValue = 0 // Default ke 0 jika gagal parsing
-		}
-		requestBody["byod"] = uint(byodValue)
-	}
+	// Create Account
+	reqMap := make(map[string]interface{})
+	reqBytes, _ := json.Marshal(req)
+	_ = json.Unmarshal(reqBytes, &reqMap)
 
-	// Ambil user ID dari sesi atau token (sementara default ke 1)
-	userID := 1
-
-	// Panggil service untuk update account
-	account, err := h.service.UpdateAccount(requestBody, accountID, userRole, territoryID, userID)
+	account, err := h.service.UpdateAccount(reqMap, accountID, userRole, territoryID, userID)
 	if err != nil {
 		response := helper.APIResponse("Failed to update account", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
-	if len(account) > 0 {
-		_, _ = h.contactAccountService.InsertContactAccount(requestBody, account[0].ID)
-		_, _ = h.socialMediaService.InsertSocialMedia(requestBody, "App\\Models\\Account", account[0].ID)
-		if category, exists := requestBody["account_category"]; exists {
-			if categoryStr, ok := category.(string); ok {
-				switch categoryStr {
-				case "SEKOLAH":
-					_, _ = h.accountTypeSchoolDetailService.Insert(requestBody, account[0].ID)
-				case "KAMPUS":
-					_, _ = h.accountFacultyService.Insert(requestBody, account[0].ID)
-					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\Account", account[0].ID, "year", "amount")
-					_, _ = h.accountMemberService.Insert(requestBody, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
-					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
-					_, _ = h.accountTypeCampusDetailService.Insert(requestBody, account[0].ID)
-				case "KOMUNITAS":
-					_, _ = h.accountTypeCommunityDetailService.Insert(requestBody, account[0].ID)
-					_, _ = h.accountScheduleService.Insert(requestBody, "App\\Models\\Account", account[0].ID)
-				}
+	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
+	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
+	if category, exists := reqMap["account_category"]; exists {
+		if categoryStr, ok := category.(string); ok {
+			switch categoryStr {
+			case "SEKOLAH":
+				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
+			case "KAMPUS":
+				_, _ = h.accountFacultyService.Insert(reqMap, account[0].ID)
+				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\Account", account[0].ID, "year", "amount")
+				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\AccountLecture", account[0].ID, "year_lecture", "amount_lecture")
+				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+				_, _ = h.accountTypeCampusDetailService.Insert(reqMap, account[0].ID)
+			case "KOMUNITAS":
+				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
+				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 			}
 		}
 	}
 
 	// Return success response
-	response := helper.APIResponse("Account successfully updated", fiber.StatusOK, "success", account)
+	response := helper.APIResponse("Update Account Succsesfully", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 

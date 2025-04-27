@@ -50,42 +50,21 @@ func (s *accountService) CreateAccount(requestBody map[string]interface{}, userI
 }
 
 func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error) {
-	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
-
-	if err != nil {
-		return nil, err
-	}
-
-	getString := func(val *string) string {
-		if val != nil {
-			return *val
-		}
-		return ""
-	}
-
 	accountData := map[string]string{
-		"account_name":              getString(existingAccount.AccountName),
-		"account_image":             getString(existingAccount.AccountImage),
-		"account_type":              getString(existingAccount.AccountType),
-		"account_category":          getString(existingAccount.AccountCategory),
-		"account_code":              getString(existingAccount.AccountCode),
-		"city":                      getString(stringPointer(fmt.Sprintf("%d", *existingAccount.City))),
-		"contact_name":              getString(existingAccount.ContactName),
-		"email_account":             getString(existingAccount.EmailAccount),
-		"website_account":           getString(existingAccount.WebsiteAccount),
-		"system_informasi_akademik": getString(existingAccount.SystemInformasiAkademik),
-		"ownership":                 getString(existingAccount.Ownership),
-		"pic":                       getString(existingAccount.Pic),
-		"pic_internal":              getString(existingAccount.PicInternal),
-		"latitude":                  getString(existingAccount.Latitude),
-		"longitude":                 getString(existingAccount.Longitude),
-	}
-
-	// Override field hanya jika tersedia di requestBody
-	for key := range accountData {
-		if val, ok := requestBody[key]; ok && val != nil {
-			accountData[key] = fmt.Sprintf("%v", val)
-		}
+		"account_name":              getStringValue(requestBody["account_name"]),
+		"account_type":              getStringValue(requestBody["account_type"]),
+		"account_category":          getStringValue(requestBody["account_category"]),
+		"account_code":              getStringValue(requestBody["account_code"]),
+		"city":                      getStringValue(requestBody["city"]),
+		"contact_name":              getStringValue(requestBody["contact_name"]),
+		"email_account":             getStringValue(requestBody["email_account"]),
+		"website_account":           getStringValue(requestBody["website_account"]),
+		"system_informasi_akademik": getStringValue(requestBody["system_informasi_akademik"]),
+		"ownership":                 getStringValue(requestBody["ownership"]),
+		"pic":                       getStringValue(requestBody["pic"]),
+		"pic_internal":              getStringValue(requestBody["pic_internal"]),
+		"latitude":                  getStringValue(requestBody["latitude"]),
+		"longitude":                 getStringValue(requestBody["longitude"]),
 	}
 
 	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
@@ -228,4 +207,14 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 		return nil, err
 	}
 	return account, nil
+}
+
+func getStringValue(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	if str, ok := val.(string); ok {
+		return str
+	}
+	return fmt.Sprintf("%v", val)
 }

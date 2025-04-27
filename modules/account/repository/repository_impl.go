@@ -223,66 +223,45 @@ func (r *accountRepository) CreateAccount(requestBody map[string]string, userID 
 func (r *accountRepository) UpdateAccount(requestBody map[string]string, accountID int, userID int) ([]models.Account, error) {
 	var account models.Account
 
-	// Cek apakah akun dengan accountID ada
+	// Cek dulu apakah account dengan ID itu ada
 	if err := r.db.First(&account, accountID).Error; err != nil {
-		return nil, err // Akun tidak ditemukan
-	}
-
-	// Menyiapkan data yang akan diupdate
-	updateData := map[string]interface{}{}
-
-	if v, exists := requestBody["account_name"]; exists {
-		updateData["account_name"] = v
-	}
-	if v, exists := requestBody["account_image"]; exists {
-		updateData["account_image"] = v
-	}
-	if v, exists := requestBody["account_type"]; exists {
-		updateData["account_type"] = v
-	}
-	if v, exists := requestBody["account_category"]; exists {
-		updateData["account_category"] = v
-	}
-	if v, exists := requestBody["account_code"]; exists {
-		updateData["account_code"] = v
-	}
-	if v, exists := requestBody["city"]; exists {
-		updateData["city"] = v
-	}
-	if v, exists := requestBody["contact_name"]; exists {
-		updateData["contact_name"] = v
-	}
-	if v, exists := requestBody["email_account"]; exists {
-		updateData["email_account"] = v
-	}
-	if v, exists := requestBody["website_account"]; exists {
-		updateData["website_account"] = v
-	}
-	if v, exists := requestBody["system_informasi_akademik"]; exists {
-		updateData["system_informasi_akademik"] = v
-	}
-	if v, exists := requestBody["latitude"]; exists {
-		updateData["latitude"] = v
-	}
-	if v, exists := requestBody["longitude"]; exists {
-		updateData["longitude"] = v
-	}
-	if v, exists := requestBody["ownership"]; exists {
-		updateData["ownership"] = v
-	}
-	if v, exists := requestBody["pic"]; exists {
-		updateData["pic"] = v
-	}
-	if v, exists := requestBody["pic_internal"]; exists {
-		updateData["pic_internal"] = v
-	}
-
-	// Eksekusi update
-	if err := r.db.Model(&account).Where("id = ?", accountID).Updates(updateData).Error; err != nil {
 		return nil, err
 	}
 
-	// Mengambil data yang telah diperbarui
+	// Mapping ulang semua field kayak CreateAccount
+	updatedAccount := models.Account{
+		AccountName:     func(s string) *string { return &s }(requestBody["account_name"]),
+		AccountType:     func(s string) *string { return &s }(requestBody["account_type"]),
+		AccountCategory: func(s string) *string { return &s }(requestBody["account_category"]),
+		AccountCode:     func(s string) *string { return &s }(requestBody["account_code"]),
+		City: func(s string) *uint {
+			if s == "" {
+				return nil
+			}
+			val, err := strconv.ParseUint(s, 10, 32)
+			if err != nil {
+				return nil
+			}
+			uval := uint(val)
+			return &uval
+		}(requestBody["city"]),
+		ContactName:             func(s string) *string { return &s }(requestBody["contact_name"]),
+		EmailAccount:            func(s string) *string { return &s }(requestBody["email_account"]),
+		WebsiteAccount:          func(s string) *string { return &s }(requestBody["website_account"]),
+		SystemInformasiAkademik: func(s string) *string { return &s }(requestBody["system_informasi_akademik"]),
+		Latitude:                func(s string) *string { return &s }(requestBody["latitude"]),
+		Longitude:               func(s string) *string { return &s }(requestBody["longitude"]),
+		Ownership:               func(s string) *string { return &s }(requestBody["ownership"]),
+		Pic:                     func(s string) *string { return &s }(requestBody["pic"]),
+		PicInternal:             func(s string) *string { return &s }(requestBody["pic_internal"]),
+	}
+
+	// Update semua kolom
+	if err := r.db.Model(&account).Updates(updatedAccount).Error; err != nil {
+		return nil, err
+	}
+
+	// Ambil hasil yang sudah diupdate
 	var updatedAccounts []models.Account
 	if err := r.db.Where("id = ?", accountID).Find(&updatedAccounts).Error; err != nil {
 		return nil, err

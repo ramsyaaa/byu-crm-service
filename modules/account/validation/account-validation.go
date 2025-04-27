@@ -24,7 +24,7 @@ type UploadRequest struct {
 	UserID string `form:"user_id" validate:"required"`
 }
 
-type CreateRequest struct {
+type ValidateRequest struct {
 	AccountName             *string `json:"account_name" validate:"required"`
 	AccountType             *string `json:"account_type" validate:"required"`
 	AccountCategory         *string `json:"account_category" validate:"required"`
@@ -112,11 +112,11 @@ func init() {
 	validate.RegisterValidation("validate_category_url", validateCategoryAndUrl)
 }
 
-func ValidateCreate(req *CreateRequest) map[string]string {
+func ValidateCreate(req *ValidateRequest) map[string]string {
 	return helper.ValidateStruct(validate, req, validationMessages)
 }
 
-func ValidateSchool(req *CreateRequest) map[string]string {
+func ValidateSchool(req *ValidateRequest, isCreate bool, accountID int, userRole string, territoryID int, userID int) map[string]string {
 	errors := make(map[string]string)
 
 	// Validate DiesNatalis
@@ -143,8 +143,23 @@ func ValidateSchool(req *CreateRequest) map[string]string {
 
 	// Validate account_code unique
 	if req.AccountCode != nil {
-		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
-			errors["account_code"] = msg
+		shouldCheckUnique := true
+
+		if !isCreate {
+			// Kalau update, ambil data account lama
+			existingAccount, err := accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+			if err == nil && existingAccount != nil && existingAccount.AccountCode != nil {
+				// Bandingkan account_code lama dengan yang baru
+				if *existingAccount.AccountCode == *req.AccountCode {
+					shouldCheckUnique = false // tidak perlu cek unik kalau sama
+				}
+			}
+		}
+
+		if shouldCheckUnique {
+			if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+				errors["account_code"] = msg
+			}
 		}
 	}
 
@@ -156,7 +171,7 @@ func ValidateSchool(req *CreateRequest) map[string]string {
 	return errors
 }
 
-func ValidateCommunity(req *CreateRequest) map[string]string {
+func ValidateCommunity(req *ValidateRequest, isCreate bool, accountID int, userRole string, territoryID int, userID int) map[string]string {
 	errors := make(map[string]string)
 
 	// Helper untuk validasi jumlah array dan isinya tidak kosong
@@ -249,8 +264,20 @@ func ValidateCommunity(req *CreateRequest) map[string]string {
 
 	// Validate Account Code jika diisi
 	if req.AccountCode != nil && strings.TrimSpace(*req.AccountCode) != "" {
-		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
-			errors["account_code"] = msg
+		if isCreate {
+			if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+				errors["account_code"] = msg
+			}
+		} else {
+			// Update, cek kalau account_code berubah
+			oldData, err := accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+			if err != nil {
+				errors["account_code"] = "Gagal mengambil data lama untuk validasi"
+			} else if *oldData.AccountCode != *req.AccountCode {
+				if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+					errors["account_code"] = msg
+				}
+			}
 		}
 	}
 
@@ -281,7 +308,7 @@ func ValidateCommunity(req *CreateRequest) map[string]string {
 	return errors
 }
 
-func ValidateCampus(req *CreateRequest) map[string]string {
+func ValidateCampus(req *ValidateRequest, isCreate bool, accountID int, userRole string, territoryID int, userID int) map[string]string {
 	errors := make(map[string]string)
 
 	// Helper untuk validasi jumlah array dan isinya tidak kosong
@@ -351,8 +378,23 @@ func ValidateCampus(req *CreateRequest) map[string]string {
 
 	// Validate Account Code jika diisi
 	if req.AccountCode != nil {
-		if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
-			errors["account_code"] = msg
+		shouldCheckUnique := true
+
+		if !isCreate {
+			// Kalau update, ambil data account lama
+			existingAccount, err := accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+			if err == nil && existingAccount != nil && existingAccount.AccountCode != nil {
+				// Bandingkan account_code lama dengan yang baru
+				if *existingAccount.AccountCode == *req.AccountCode {
+					shouldCheckUnique = false // tidak perlu cek unik kalau sama
+				}
+			}
+		}
+
+		if shouldCheckUnique {
+			if ok, msg := accountCodeUnique(*req.AccountCode, true); !ok {
+				errors["account_code"] = msg
+			}
 		}
 	}
 
