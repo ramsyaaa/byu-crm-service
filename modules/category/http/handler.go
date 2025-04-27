@@ -2,7 +2,10 @@ package http
 
 import (
 	"byu-crm-service/modules/category/service"
+	"byu-crm-service/modules/category/validation"
+	"encoding/json"
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
 
@@ -53,120 +56,120 @@ func (h *CategoryHandler) GetAllCategories(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-// func (h *CategoryHandler) GetFacultyByID(c *fiber.Ctx) error {
-// 	id := c.Params("id")
-// 	intID, err := strconv.Atoi(id)
-// 	if err != nil {
-// 		return c.Status(400).JSON(fiber.Map{
-// 			"message": "Invalid faculty ID",
-// 			"error":   err.Error(),
-// 		})
-// 	}
-// 	faculty, err := h.facultyService.GetFacultyByID(intID)
-// 	if err != nil {
-// 		return c.Status(500).JSON(fiber.Map{
-// 			"message": "Failed to fetch faculty",
-// 			"error":   err.Error(),
-// 		})
-// 	}
+func (h *CategoryHandler) GetCategoryByID(c *fiber.Ctx) error {
 
-// 	// Return response
-// 	responseData := map[string]interface{}{
-// 		"faculty": faculty,
-// 	}
+	id := c.Params("id")
+	if id == "" {
+		response := helper.APIResponse("ID not found", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	response := helper.APIResponse("Get Faculty Successfully", fiber.StatusOK, "success", responseData)
-// 	return c.Status(fiber.StatusOK).JSON(response)
-// }
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// func (h *CategoryHandler) CreateFaculty(c *fiber.Ctx) error {
-// 	req := new(validation.CreateFacultyRequest)
-// 	if err := c.BodyParser(req); err != nil {
-// 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+	category, err := h.categoryService.GetCategoryByID(intID)
+	if err != nil {
+		response := helper.APIResponse("category not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
 
-// 	// Request Validation
-// 	errors := validation.ValidateCreate(req)
-// 	if errors != nil {
-// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+	response := helper.APIResponse("Get Category Successfully", fiber.StatusOK, "success", category)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
 
-// 	existingFaculty, _ := h.facultyService.GetFacultyByName(req.Name)
-// 	if existingFaculty != nil {
-// 		errors := map[string]string{
-// 			"name": "Nama Fakultas sudah digunakan",
-// 		}
-// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
+	req := new(validation.CreateCategoryRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	faculty, err := h.facultyService.CreateFaculty(&req.Name)
-// 	if err != nil {
-// 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
-// 		return c.Status(fiber.StatusUnauthorized).JSON(response)
-// 	}
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	// Response
-// 	response := helper.APIResponse("Faculty created successful", fiber.StatusOK, "success", faculty)
-// 	return c.Status(fiber.StatusOK).JSON(response)
-// }
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
 
-// func (h *CategoryHandler) UpdateFaculty(c *fiber.Ctx) error {
-// 	id := c.Params("id")
-// 	intID, err := strconv.Atoi(id)
-// 	if err != nil {
-// 		return c.Status(400).JSON(fiber.Map{
-// 			"message": "Invalid faculty ID",
-// 			"error":   err.Error(),
-// 		})
-// 	}
-// 	req := new(validation.UpdateFacultyRequest)
-// 	if err := c.BodyParser(req); err != nil {
-// 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+	_, err := h.categoryService.GetCategoryByNameAndModuleType(req.Name, *req.ModuleType)
+	if err == nil {
+		errors := map[string]string{
+			"value": "Kategori sudah tersedia",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	// Request Validation
-// 	errors := validation.ValidateUpdate(req)
-// 	if errors != nil {
-// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+	reqMap := make(map[string]interface{})
+	reqBytes, _ := json.Marshal(req)
+	_ = json.Unmarshal(reqBytes, &reqMap)
 
-// 	currentFaculty, _ := h.facultyService.GetFacultyByID(intID)
-// 	if currentFaculty == nil {
-// 		errors := map[string]string{
-// 			"name": "Fakultas tidak ditemukan",
-// 		}
-// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+	category, err := h.categoryService.CreateCategory(reqMap)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
 
-// 	existingFaculty, err := h.facultyService.GetFacultyByName(req.Name)
-// 	if err != nil {
-// 		return c.Status(500).JSON(fiber.Map{
-// 			"message": "Failed to fetch faculty",
-// 			"error":   err.Error(),
-// 		})
-// 	}
+	// Response
+	response := helper.APIResponse("Category created successful", fiber.StatusOK, "success", category)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
 
-// 	if existingFaculty != nil && *currentFaculty.Name != req.Name {
-// 		errors := map[string]string{
-// 			"name": "Nama Fakultas sudah digunakan",
-// 		}
-// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-// 	}
+func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		response := helper.APIResponse("ID not found", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	faculty, err := h.facultyService.UpdateFaculty(&req.Name, intID)
-// 	if err != nil {
-// 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
-// 		return c.Status(fiber.StatusUnauthorized).JSON(response)
-// 	}
+	idUint, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
 
-// 	// Response
-// 	response := helper.APIResponse("Faculty updated successful", fiber.StatusOK, "success", faculty)
-// 	return c.Status(fiber.StatusOK).JSON(response)
-// }
+	req := new(validation.UpdateCategoryRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateUpdate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req.Name = strings.ToUpper(strings.TrimSpace(req.Name))
+
+	typeData, err := h.categoryService.GetCategoryByNameAndModuleType(req.Name, *req.ModuleType)
+	if err == nil {
+		if typeData.ID != uint(idUint) {
+			errors := map[string]string{
+				"value": "Tipe sudah tersedia",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	reqMap := make(map[string]interface{})
+	reqBytes, _ := json.Marshal(req)
+	_ = json.Unmarshal(reqBytes, &reqMap)
+
+	category, err := h.categoryService.UpdateCategory(int(idUint), reqMap)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Response
+	response := helper.APIResponse("Category updated successful", fiber.StatusOK, "success", category)
+	return c.Status(fiber.StatusOK).JSON(response)
+}

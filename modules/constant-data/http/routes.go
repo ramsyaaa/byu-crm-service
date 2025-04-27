@@ -12,4 +12,5 @@ func ConstantDataRoutes(router fiber.Router, handler *ConstantDataHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllConstants)
+	authRouter.Post("/", handler.CreateConstant)
 }

@@ -83,3 +83,44 @@ func (r *typeRepository) GetAllTypes(limit int, paginate bool, page int, filters
 	err = query.Find(&categories).Error
 	return categories, total, err
 }
+
+func (r *typeRepository) GetTypeByID(id int) (models.Type, error) {
+	var typeData models.Type
+	err := r.db.Where("id = ?", id).First(&typeData).Error
+	if err != nil {
+		return models.Type{}, err
+	}
+	return typeData, nil
+}
+
+func (r *typeRepository) GetTypeByNameAndModuleType(name string, moduleType string, categoryID int) (models.Type, error) {
+	var category models.Type
+	query := r.db.Where("name = ? AND module_type = ?", name, moduleType)
+
+	if categoryID != 0 {
+		query = query.Where("category_id = ?", categoryID)
+	}
+
+	err := query.First(&category).Error
+	if err != nil {
+		return models.Type{}, err
+	}
+	return category, nil
+}
+
+func (r *typeRepository) CreateType(newType models.Type) (models.Type, error) {
+	err := r.db.Create(&newType).Error
+	if err != nil {
+		return models.Type{}, err
+	}
+	return newType, nil
+}
+
+func (r *typeRepository) UpdateType(id int, updateType models.Type) (models.Type, error) {
+	err := r.db.Model(&models.Type{}).Where("id = ?", id).Updates(updateType).Error
+	if err != nil {
+		return models.Type{}, err
+	}
+
+	return r.GetTypeByID(id)
+}

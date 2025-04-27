@@ -4,8 +4,8 @@ import "byu-crm-service/models"
 
 type CategoryRepository interface {
 	GetAllCategories(limit int, paginate bool, page int, filters map[string]string, module string) ([]models.Category, int64, error)
-	GetFacultyByID(id int) (*models.Faculty, error)
-	GetFacultyByName(name string) (*models.Faculty, error)
-	CreateFaculty(faculty *models.Faculty) (*models.Faculty, error)
-	UpdateFaculty(faculty *models.Faculty, id int) (*models.Faculty, error)
+	GetCategoryByID(id int) (*models.Category, error)
+	GetCategoryByNameAndModuleType(name string, moduleType string) (*models.Category, error)
+	CreateCategory(requestBody models.Category) (*models.Category, error)
+	UpdateCategory(id int, updateCategory models.Category) (models.Category, error)
 }

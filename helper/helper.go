@@ -174,3 +174,18 @@ func IsWithinRadius(radius, targetLat, targetLon, mainLat, mainLon float64) bool
 	distance := haversine(mainLat, mainLon, targetLat, targetLon)
 	return distance <= radius // in meters
 }
+
+func getUintPointer(m map[string]interface{}, key string) *uint {
+	if val, ok := m[key].(float64); ok && val != 0 {
+		temp := uint(val)
+		return &temp
+	}
+	return nil
+}
+
+func getStringPointer(m map[string]interface{}, key string) *string {
+	if val, ok := m[key].(string); ok && val != "" {
+		return &val
+	}
+	return nil
+}
