@@ -36,7 +36,7 @@ func (s *accountTypeCampusDetailService) Insert(requestBody map[string]interface
 	jsonDigitalCollaborationsResult, _ := encodeToJSON(requestBody, "digital_collaborations")
 	jsonProgramIdentificationResult, _ := encodeToJSON(requestBody, "program_identification")
 	jsonUniversityRankResult, _ := arrayToJsonEncode(requestBody, []string{"year_rank", "rank"})
-	jsonFocusProgramStudyResult, _ := arrayToJsonEncode(requestBody, []string{"program_study"})
+	jsonFocusProgramStudyResult, _ := encodeToJSON(requestBody, "program_study")
 
 	byodValue := getUintFromString(requestBody, "byod")
 
