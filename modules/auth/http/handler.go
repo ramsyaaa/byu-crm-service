@@ -35,8 +35,8 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	// Get Token
 	token, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
-		return c.Status(fiber.StatusUnauthorized).JSON(response)
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
 	// Response
