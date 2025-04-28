@@ -56,27 +56,32 @@ func (h *CategoryHandler) GetAllCategories(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *CategoryHandler) GetCategoryByID(c *fiber.Ctx) error {
-
-	id := c.Params("id")
-	if id == "" {
+func (h *CategoryHandler) GetCategory(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	if idParam == "" {
 		response := helper.APIResponse("ID not found", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	intID, err := strconv.Atoi(id)
-	if err != nil {
-		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+	var (
+		category interface{}
+		err      error
+	)
+
+	if idInt, errConv := strconv.Atoi(idParam); errConv == nil {
+		// id bisa dikonversi ke int, cari berdasarkan ID
+		category, err = h.categoryService.GetCategoryByID(idInt)
+	} else {
+		// id bukan angka, cari berdasarkan Nama
+		category, err = h.categoryService.GetCategoryByName(idParam)
 	}
 
-	category, err := h.categoryService.GetCategoryByID(intID)
 	if err != nil {
-		response := helper.APIResponse("category not found", fiber.StatusNotFound, "error", nil)
+		response := helper.APIResponse("Category not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Get Category Successfully", fiber.StatusOK, "success", category)
+	response := helper.APIResponse("Success", fiber.StatusOK, "success", category)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 

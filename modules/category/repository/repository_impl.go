@@ -77,6 +77,15 @@ func (r *categoryRepository) GetCategoryByID(id int) (*models.Category, error) {
 	return &category, nil
 }
 
+func (r *categoryRepository) GetCategoryByName(name string) (*models.Category, error) {
+	var category models.Category
+	err := r.db.Where("name = ?", name).First(&category).Error
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
+}
+
 func (r *categoryRepository) GetCategoryByNameAndModuleType(name string, moduleType string) (*models.Category, error) {
 	var category models.Category
 	err := r.db.Where("name = ? AND module_type = ?", name, moduleType).First(&category).Error

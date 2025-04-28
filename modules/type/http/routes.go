@@ -12,7 +12,7 @@ func TypeRoutes(router fiber.Router, handler *TypeHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllTypes)
-	authRouter.Get("/:id", handler.GetTypeByID)
+	authRouter.Get("/:id", handler.GetType)
 	authRouter.Post("/", handler.CreateType)
 	authRouter.Put("/:id", handler.UpdateType)
 }

@@ -22,6 +22,10 @@ func (s *typeService) GetTypeByID(id int) (models.Type, error) {
 	return s.repo.GetTypeByID(id)
 }
 
+func (s *typeService) GetTypeByName(name string) (models.Type, error) {
+	return s.repo.GetTypeByName(name)
+}
+
 func (s *typeService) GetTypeByNameAndModuleType(name string, moduleType string, categoryID int) (models.Type, error) {
 	return s.repo.GetTypeByNameAndModuleType(name, moduleType, categoryID)
 }
