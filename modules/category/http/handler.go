@@ -81,7 +81,11 @@ func (h *CategoryHandler) GetCategory(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Success", fiber.StatusOK, "success", category)
+	responseData := map[string]interface{}{
+		"category": category,
+	}
+
+	response := helper.APIResponse("Success", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
