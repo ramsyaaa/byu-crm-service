@@ -88,7 +88,11 @@ func (h *TypeHandler) GetType(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Get Type Successfully", fiber.StatusOK, "success", typeData)
+	responseData := map[string]interface{}{
+		"type": typeData,
+	}
+
+	response := helper.APIResponse("Get Type Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
