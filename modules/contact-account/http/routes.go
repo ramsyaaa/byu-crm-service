@@ -12,8 +12,7 @@ func ContactAccountRoutes(router fiber.Router, handler *ContactAccountHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllContacts)
-	// authRouter.Get("/:id", handler.GetAccountById)
-	// authRouter.Post("/update-pic/:id", handler.UpdatePic)
-	// authRouter.Post("/", handler.CreateAccount)
-	// authRouter.Put("/:id", handler.UpdateAccount)
+	authRouter.Get("/:id", handler.GetContactById)
+	authRouter.Post("/", handler.CreateContact)
+	authRouter.Put("/:id", handler.UpdateContact)
 }

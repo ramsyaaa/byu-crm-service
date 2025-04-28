@@ -3,7 +3,10 @@ package http
 import (
 	"byu-crm-service/helper"
 	"byu-crm-service/modules/contact-account/service"
+	"byu-crm-service/modules/contact-account/validation"
+	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -51,5 +54,148 @@ func (h *ContactAccountHandler) GetAllContacts(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Contacts Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *ContactAccountHandler) GetContactById(c *fiber.Ctx) error {
+	// Get id from param
+	idParam := c.Params("id")
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+
+	// Convert to int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	contact, err := h.service.FindByContactID(uint(id), userRole, uint(territoryID))
+	if err != nil {
+		response := helper.APIResponse("Contact not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	responseData := map[string]interface{}{
+		"contact": contact,
+	}
+
+	response := helper.APIResponse("Success get contact", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
+	req := new(validation.ValidateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if *req.Birthday != "" {
+		_, err := time.Parse("2006-01-02", *req.Birthday)
+		if err != nil {
+			errors := map[string]string{
+				"birthday": "Format tanggal lahir tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	// Create Account
+	reqMap := make(map[string]interface{})
+
+	// Melakukan marshal dan menangani error
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Melakukan unmarshal
+	err = json.Unmarshal(reqBytes, &reqMap)
+	if err != nil {
+		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+	contact, err := h.service.CreateContact(reqMap)
+	if err != nil {
+		response := helper.APIResponse("Failed to create contact", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
+
+	// Return success response
+	response := helper.APIResponse("Create Contact Succsesfully", fiber.StatusOK, "success", contact)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
+	contactIDStr := c.Params("id")
+	contactID, err := strconv.Atoi(contactIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid contact ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	req := new(validation.ValidateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if *req.Birthday != "" {
+		_, err := time.Parse("2006-01-02", *req.Birthday)
+		if err != nil {
+			errors := map[string]string{
+				"birthday": "Format tanggal lahir tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	// Create Account
+	reqMap := make(map[string]interface{})
+
+	// Melakukan marshal dan menangani error
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Melakukan unmarshal
+	err = json.Unmarshal(reqBytes, &reqMap)
+	if err != nil {
+		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	contact, err := h.service.UpdateContact(reqMap, contactID)
+	if err != nil {
+		response := helper.APIResponse("Failed to update contact", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
+
+	// Return success response
+	response := helper.APIResponse("Update Contact Succsesfully", fiber.StatusOK, "success", contact)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
