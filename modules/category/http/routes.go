@@ -12,7 +12,7 @@ func CategoryRoutes(router fiber.Router, handler *CategoryHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllCategories)
-	authRouter.Get("/:id", handler.GetCategoryByID)
+	authRouter.Get("/:id", handler.GetCategory)
 	authRouter.Post("/", handler.CreateCategory)
 	authRouter.Put("/:id", handler.UpdateCategory)
 }
