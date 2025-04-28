@@ -1,6 +1,7 @@
 package http
 
 import (
+	"byu-crm-service/models"
 	"byu-crm-service/modules/type/service"
 	"byu-crm-service/modules/type/validation"
 	"encoding/json"
@@ -61,23 +62,29 @@ func (h *TypeHandler) GetAllTypes(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *TypeHandler) GetTypeByID(c *fiber.Ctx) error {
-
+func (h *TypeHandler) GetType(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		response := helper.APIResponse("ID not found", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	intID, err := strconv.Atoi(id)
-	if err != nil {
-		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+	var (
+		typeData models.Type // ganti dengan model Type kamu
+		err      error
+	)
+
+	intID, convErr := strconv.Atoi(id)
+	if convErr == nil {
+		// Jika bisa di-convert ke integer, cari berdasarkan ID
+		typeData, err = h.typeService.GetTypeByID(intID)
+	} else {
+		// Kalau tidak bisa di-convert ke integer, cari berdasarkan Name
+		typeData, err = h.typeService.GetTypeByName(id)
 	}
 
-	typeData, err := h.typeService.GetTypeByID(intID)
 	if err != nil {
-		response := helper.APIResponse("type not found", fiber.StatusNotFound, "error", nil)
+		response := helper.APIResponse("Type not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 

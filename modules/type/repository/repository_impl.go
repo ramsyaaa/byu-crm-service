@@ -93,6 +93,15 @@ func (r *typeRepository) GetTypeByID(id int) (models.Type, error) {
 	return typeData, nil
 }
 
+func (r *typeRepository) GetTypeByName(name string) (models.Type, error) {
+	var typeData models.Type
+	err := r.db.Where("name = ?", name).First(&typeData).Error
+	if err != nil {
+		return models.Type{}, err
+	}
+	return typeData, nil
+}
+
 func (r *typeRepository) GetTypeByNameAndModuleType(name string, moduleType string, categoryID int) (models.Type, error) {
 	var category models.Type
 	query := r.db.Where("name = ? AND module_type = ?", name, moduleType)
