@@ -39,6 +39,7 @@ type AccountResponse struct {
 	AccountFaculties           []models.AccountFaculty            `gorm:"foreignKey:AccountID" json:"account_faculties"`
 	AccountMembers             []models.AccountMember             `json:"account_members" gorm:"foreignKey:SubjectID;references:ID;where:subject_type='App\\Models\\Account'"`
 	AccountLectures            []models.AccountMember             `json:"account_lectures" gorm:"foreignKey:SubjectID;references:ID;where:subject_type='App\\Models\\AccountLecture'"`
+	Contacts                   []models.Contact                   `gorm:"many2many:contact_accounts;foreignKey:ID;joinForeignKey:account_id;References:ID;joinReferences:contact_id" json:"contacts"`
 }
 
 type SingleAccountResponse struct {
@@ -66,6 +67,9 @@ type SingleAccountResponse struct {
 	PicInternal             *string   `json:"pic_internal"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
+
+	Contacts  []models.Contact `json:"contacts"`
+	ContactID []string         `json:"contact_id"`
 
 	// only for account category school
 	DiesNatalis             *time.Time `json:"dies_natalis"`
