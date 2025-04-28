@@ -241,7 +241,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 			}
 		}
 	}
-	log.Printf("End create account")
+	log.Printf("End create new account")
 
 	// Return success response
 	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account)
