@@ -207,20 +207,31 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		}
 	}
 
-	log.Printf("Creating account with data: %+v\n", req)
+	LogToFile()
 
 	// Create Account
 	reqMap := make(map[string]interface{})
-	reqBytes, _ := json.Marshal(req)
-	_ = json.Unmarshal(reqBytes, &reqMap)
+
+	// Melakukan marshal dan menangani error
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Melakukan unmarshal
+	err = json.Unmarshal(reqBytes, &reqMap)
+	if err != nil {
+		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
 	account, err := h.service.CreateAccount(reqMap, userID)
 	if err != nil {
 		response := helper.APIResponse("Failed to create account", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
-	log.Printf("After create account")
-	log.Printf("Start create detail account")
+	LogToFile()
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
 	if category, exists := reqMap["account_category"]; exists {
@@ -241,11 +252,67 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 			}
 		}
 	}
-	log.Printf("End create new account")
+	LogToFile()
 
 	// Return success response
 	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func LogToFile() fiber.Handler {
+	fmt.Println("LogToFile middleware initialized")
+	// Determine the log file path based on current date
+	filePath := "logs/" + time.Now().Format("20060102") + "-log.log"
+
+	// Check if the log file for today already exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// If the file doesn't exist, create a new one
+		if err := os.MkdirAll(filepath.Dir(filePath), 0666); err != nil {
+			log.Fatalf("error creating directory: %v", err)
+		}
+		if _, err := os.Create(filePath); err != nil {
+			log.Fatalf("error creating file: %v", err)
+		}
+	}
+
+	// Open the file with read/write, create or append mode
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	fmt.Println("final")
+	// Create a middleware chain
+	return func(c *fiber.Ctx) error {
+		// Store the start time
+		startTime := time.Now()
+		c.Locals("start_time", startTime)
+
+		// Process the request
+		err := c.Next()
+
+		// After the request is processed, log the details
+		// Get the response body
+		message := "-" // Default value if no message found
+
+		// Create a new log entry with the response message
+		statusCode := strconv.Itoa(c.Response().Header.StatusCode())
+		latency := time.Since(startTime).String()
+
+		logEntry := time.Now().Format(time.RFC3339) +
+			" | " + statusCode +
+			" | " + latency +
+			" | " + c.IP() +
+			" | " + c.Method() +
+			" | " + c.Path() +
+			" | " + message + "\n"
+
+		// Append the log entry to the file
+		if _, err := file.WriteString(logEntry); err != nil {
+			log.Printf("Error writing to log file: %v", err)
+		}
+
+		return err
+	}
 }
 
 func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
