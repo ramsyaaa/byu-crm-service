@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -206,6 +207,8 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		}
 	}
 
+	log.Printf("Creating account with data: %+v\n", req)
+
 	// Create Account
 	reqMap := make(map[string]interface{})
 	reqBytes, _ := json.Marshal(req)
@@ -216,6 +219,8 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
+	log.Printf("After create account")
+	log.Printf("Start create detail account")
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
 	if category, exists := reqMap["account_category"]; exists {
@@ -236,6 +241,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 			}
 		}
 	}
+	log.Printf("End create account")
 
 	// Return success response
 	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account)
