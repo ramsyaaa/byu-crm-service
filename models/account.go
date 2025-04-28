@@ -22,3 +22,11 @@ type Account struct {
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 }
+
+type AccountSimple struct {
+	ID              uint    `gorm:"primaryKey;autoIncrement" json:"id"`
+	AccountName     *string `json:"account_name"`
+	AccountType     *string `json:"account_type"`
+	AccountCategory *string `json:"account_category"`
+	AccountCode     *string `json:"account_code"`
+}

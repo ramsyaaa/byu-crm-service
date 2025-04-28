@@ -2,6 +2,8 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"byu-crm-service/modules/contact-account/response"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -12,6 +14,129 @@ type contactAccountRepository struct {
 
 func NewContactAccountRepository(db *gorm.DB) ContactAccountRepository {
 	return &contactAccountRepository{db: db}
+}
+
+func (r *contactAccountRepository) GetAllContacts(
+	limit int,
+	paginate bool,
+	page int,
+	filters map[string]string,
+	userRole string,
+	territoryID int,
+	accountID int,
+) ([]response.ContactResponse, int64, error) {
+	var contacts []models.Contact
+	var total int64
+
+	query := r.db.Model(&models.Contact{}).
+		Preload("Accounts")
+
+	// Apply search filter
+	if search, exists := filters["search"]; exists && search != "" {
+		searchTokens := strings.Fields(search)
+		for _, token := range searchTokens {
+			query = query.Where(
+				r.db.Where("contacts.contact_name LIKE ?", "%"+token+"%").
+					Or("contacts.phone_number LIKE ?", "%"+token+"%").
+					Or("contacts.position LIKE ?", "%"+token+"%"),
+			)
+		}
+	}
+
+	// Apply date filter
+	if startDate, exists := filters["start_date"]; exists && startDate != "" {
+		query = query.Where("contacts.created_at >= ?", startDate)
+	}
+	if endDate, exists := filters["end_date"]; exists && endDate != "" {
+		query = query.Where("contacts.created_at <= ?", endDate)
+	}
+
+	// Apply userRole and territoryID filter
+	if userRole != "" && territoryID != 0 {
+		// Subquery untuk yang sesuai territory
+		subQuery := r.db.Model(&models.ContactAccount{}).
+			Select("1").
+			Joins("JOIN accounts ON contact_accounts.account_id = accounts.id").
+			Joins("JOIN cities ON accounts.city = cities.id").
+			Joins("JOIN clusters ON cities.cluster_id = clusters.id").
+			Joins("JOIN branches ON clusters.branch_id = branches.id").
+			Joins("JOIN regions ON branches.region_id = regions.id").
+			Joins("JOIN areas ON regions.area_id = areas.id").
+			Where("contact_accounts.contact_id = contacts.id")
+
+		switch userRole {
+		case "Area":
+			subQuery = subQuery.Where("areas.id = ?", territoryID)
+		case "Regional":
+			subQuery = subQuery.Where("regions.id = ?", territoryID)
+		case "Branch", "Buddies", "DS", "Organic", "YAE":
+			subQuery = subQuery.Where("branches.id = ?", territoryID)
+		case "Admin-Tap":
+			subQuery = subQuery.Where("clusters.id = ?", territoryID)
+		}
+
+		// Subquery for contact not having any accounts
+		emptyAccountSubquery := r.db.Model(&models.ContactAccount{}).
+			Select("1").
+			Where("contact_accounts.contact_id = contacts.id")
+
+		// Gabungkan dua kondisi
+		query = query.Where(
+			r.db.Where("EXISTS (?)", subQuery).
+				Or("NOT EXISTS (?)", emptyAccountSubquery),
+		)
+	}
+
+	// Count total sebelum pagination
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply ordering
+	orderBy := filters["order_by"]
+	order := filters["order"]
+	if orderBy != "" && order != "" {
+		query = query.Order(orderBy + " " + order)
+	}
+
+	// Pagination
+	if paginate {
+		offset := (page - 1) * limit
+		query = query.Limit(limit).Offset(offset)
+	} else if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	// Ambil data
+	if err := query.Find(&contacts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Mapping ke response
+	var contactResponses []response.ContactResponse
+	for _, contact := range contacts {
+		var accountResponses []models.Account
+		for _, account := range contact.Accounts {
+			accountResponses = append(accountResponses, models.Account{
+				ID:          account.ID,
+				AccountName: account.AccountName,
+				AccountType: account.AccountType,
+			})
+		}
+
+		contactResponses = append(contactResponses, response.ContactResponse{
+			ID:          contact.ID,
+			ContactName: contact.ContactName,
+			PhoneNumber: contact.PhoneNumber,
+			Position:    contact.Position,
+			Birthday:    contact.Birthday,
+			Accounts:    accountResponses,
+			CreatedAt:   contact.CreatedAt,
+			UpdatedAt:   contact.UpdatedAt,
+		})
+	}
+
+	return contactResponses, total, nil
 }
 
 func (r *contactAccountRepository) GetByAccountID(account_id uint) ([]models.ContactAccount, error) {
