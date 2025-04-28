@@ -25,11 +25,11 @@ type UploadRequest struct {
 }
 
 type ValidateRequest struct {
-	AccountName             *string `json:"account_name" validate:"required"`
-	AccountType             *string `json:"account_type" validate:"required"`
-	AccountCategory         *string `json:"account_category" validate:"required"`
+	AccountName             string  `json:"account_name" validate:"required"`
+	AccountType             string  `json:"account_type" validate:"required"`
+	AccountCategory         string  `json:"account_category" validate:"required"`
 	AccountCode             *string `json:"account_code"`
-	City                    *string `json:"city" validate:"required"`
+	City                    string  `json:"city" validate:"required"`
 	ContactName             *string `json:"contact_name"`
 	EmailAccount            *string `json:"email_account" validate:"email"`
 	WebsiteAccount          *string `json:"website_account"`
