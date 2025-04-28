@@ -228,47 +228,60 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	accountResponse.Pic = account.Pic
 	accountResponse.PicInternal = account.PicInternal
 	accountResponse.SocialMedias = account.SocialMedias
+	accountResponse.Contacts = account.Contacts
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 
-	if *account.AccountCategory == "SEKOLAH" {
+	if len(account.Contacts) > 0 {
+		var contactIDs []string
+		for _, contact := range account.Contacts {
+			if contact.ID != 0 {
+				contactIDs = append(contactIDs, fmt.Sprintf("%d", contact.ID))
+			}
+		}
+		accountResponse.ContactID = contactIDs
+	}
 
-		accountResponse.DiesNatalis = &account.AccountTypeSchoolDetail.DiesNatalis
-		accountResponse.Extracurricular = account.AccountTypeSchoolDetail.Extracurricular
-		accountResponse.FootballFieldBranding = account.AccountTypeSchoolDetail.FootballFieldBrannnding
-		accountResponse.BasketballFieldBranding = account.AccountTypeSchoolDetail.BasketballFieldBranding
-		accountResponse.WallPaintingBranding = account.AccountTypeSchoolDetail.WallPaintingBranding
-		accountResponse.WallMagazineBranding = account.AccountTypeSchoolDetail.WallMagazineBranding
+	if *account.AccountCategory == "SEKOLAH" {
+		if account.AccountTypeSchoolDetail != nil {
+			accountResponse.DiesNatalis = &account.AccountTypeSchoolDetail.DiesNatalis
+			accountResponse.Extracurricular = account.AccountTypeSchoolDetail.Extracurricular
+			accountResponse.FootballFieldBranding = account.AccountTypeSchoolDetail.FootballFieldBrannnding
+			accountResponse.BasketballFieldBranding = account.AccountTypeSchoolDetail.BasketballFieldBranding
+			accountResponse.WallPaintingBranding = account.AccountTypeSchoolDetail.WallPaintingBranding
+			accountResponse.WallMagazineBranding = account.AccountTypeSchoolDetail.WallMagazineBranding
+		}
 
 	} else if *account.AccountCategory == "KAMPUS" {
-
-		rangeAge, _ := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
-		accountResponse.Age = rangeAge["age"]
-		accountResponse.PercentageAge = rangeAge["percentage_age"]
-		origin, _ := SplitFields(*account.AccountTypeCampusDetail.Origin, []string{"origin", "percentage_origin"})
-		accountResponse.Origin = origin["origin"]
-		accountResponse.PercentageOrigin = origin["percentage_origin"]
-		organization_name, _ := SplitFields(*account.AccountTypeCampusDetail.OrganizationName, []string{"organization_name"})
-		accountResponse.OrganizationName = organization_name["organization_name"]
-		accountResponse.PreferenceTechnologies, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.PreferenceTechnologies)
-		accountResponse.MemberNeeds, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.MemberNeeds)
-		accountResponse.ItInfrastructures, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ItInfrastructures)
-		accountResponse.DigitalCollaborations, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.DigitalCollaborations)
-		accountResponse.AccessTechnology = account.AccountTypeCampusDetail.AccessTechnology
-		accountResponse.CampusAdministrationApp = account.AccountTypeCampusDetail.CampusAdministrationApp
 		if account.AccountTypeCampusDetail != nil {
+			rangeAge, _ := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
+			accountResponse.Age = rangeAge["age"]
+			accountResponse.PercentageAge = rangeAge["percentage_age"]
+			origin, _ := SplitFields(*account.AccountTypeCampusDetail.Origin, []string{"origin", "percentage_origin"})
+			accountResponse.Origin = origin["origin"]
+			accountResponse.PercentageOrigin = origin["percentage_origin"]
+			organization_name, _ := SplitFields(*account.AccountTypeCampusDetail.OrganizationName, []string{"organization_name"})
+			accountResponse.OrganizationName = organization_name["organization_name"]
+			accountResponse.PreferenceTechnologies, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.PreferenceTechnologies)
+			accountResponse.MemberNeeds, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.MemberNeeds)
+			accountResponse.ItInfrastructures, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ItInfrastructures)
+			accountResponse.DigitalCollaborations, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.DigitalCollaborations)
+			accountResponse.AccessTechnology = account.AccountTypeCampusDetail.AccessTechnology
+			accountResponse.CampusAdministrationApp = account.AccountTypeCampusDetail.CampusAdministrationApp
+
 			accountResponse.PotentionalCollaboration = account.AccountTypeCampusDetail.PotentionalCollaboration
-		}
-		rank, _ := SplitFields(*account.AccountTypeCampusDetail.UniversityRank, []string{"rank", "year_rank"})
-		accountResponse.Rank = rank["rank"]
-		accountResponse.YearRank = rank["year_rank"]
-		accountResponse.ProgramStudy, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.FocusProgramStudy)
-		accountResponse.ProgramIdentification, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ProgramIdentification)
-		if account.AccountTypeCampusDetail.Byod != nil {
-			byodStr := fmt.Sprintf("%d", *account.AccountTypeCampusDetail.Byod)
-			accountResponse.Byod = &byodStr
-		} else {
-			accountResponse.Byod = nil
+
+			rank, _ := SplitFields(*account.AccountTypeCampusDetail.UniversityRank, []string{"rank", "year_rank"})
+			accountResponse.Rank = rank["rank"]
+			accountResponse.YearRank = rank["year_rank"]
+			accountResponse.ProgramStudy, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.FocusProgramStudy)
+			accountResponse.ProgramIdentification, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ProgramIdentification)
+			if account.AccountTypeCampusDetail.Byod != nil {
+				byodStr := fmt.Sprintf("%d", *account.AccountTypeCampusDetail.Byod)
+				accountResponse.Byod = &byodStr
+			} else {
+				accountResponse.Byod = nil
+			}
 		}
 
 		var years []string

@@ -340,6 +340,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		Preload("AccountTypeCommunityDetail").
 		Preload("AccountCity.Cluster.Branch.Region.Area").
 		Preload("AccountFaculties.Faculty").
+		Preload("Contacts").
 		Preload("AccountMembers", "subject_type = ? AND subject_id = ?", "App\\Models\\Account", id).
 		Preload("AccountLectures", "subject_type = ? AND subject_id = ?", "App\\Models\\AccountLecture", id).
 		Where("accounts.id = ?", id)
