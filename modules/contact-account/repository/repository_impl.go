@@ -3,7 +3,9 @@ package repository
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/contact-account/response"
+	"errors"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -139,6 +141,93 @@ func (r *contactAccountRepository) GetAllContacts(
 	return contactResponses, total, nil
 }
 
+func (r *contactAccountRepository) FindByContactID(id uint, userRole string, territoryID uint) (*models.Contact, error) {
+	var contact models.Contact
+
+	query := r.db.
+		Model(&models.Contact{}).
+		Preload("Accounts").
+		Where("contacts.id = ?", id)
+
+	err := query.First(&contact).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &contact, nil
+}
+
+func (r *contactAccountRepository) CreateContact(requestBody map[string]string) (*models.Contact, error) {
+	contact := models.Contact{
+		ContactName: func(s string) *string { return &s }(requestBody["contact_name"]),
+		PhoneNumber: func(s string) *string { return &s }(requestBody["phone_number"]),
+		Position:    func(s string) *string { return &s }(requestBody["position"]),
+		Birthday: func(s string) *time.Time {
+			if s == "" {
+				return nil
+			}
+			parsedTime, err := time.Parse("2006-01-02", s)
+			if err != nil {
+				return nil
+			}
+			return &parsedTime
+		}(requestBody["birthday"]),
+	}
+
+	if err := r.db.Create(&contact).Error; err != nil {
+		return nil, err
+	}
+
+	var newContact *models.Contact
+	if err := r.db.Preload("Accounts").Where("id = ?", contact.ID).First(&newContact).Error; err != nil {
+		return nil, err
+	}
+
+	return newContact, nil
+}
+
+func (r *contactAccountRepository) UpdateContact(requestBody map[string]string, contactID int) (*models.Contact, error) {
+	var contact models.Contact
+
+	// Cek dulu apakah contact dengan ID itu ada
+	if err := r.db.First(&contact, contactID).Error; err != nil {
+		return nil, err
+	}
+
+	// Mapping ulang semua field kayak Createcontact
+	updatedContact := models.Contact{
+		ContactName: func(s string) *string { return &s }(requestBody["contact_name"]),
+		PhoneNumber: func(s string) *string { return &s }(requestBody["phone_number"]),
+		Position:    func(s string) *string { return &s }(requestBody["position"]),
+		Birthday: func(s string) *time.Time {
+			if s == "" {
+				return nil
+			}
+			parsedTime, err := time.Parse("2006-01-02", s)
+			if err != nil {
+				return nil
+			}
+			return &parsedTime
+		}(requestBody["birthday"]),
+	}
+
+	// Update semua kolom
+	if err := r.db.Model(&contact).Updates(updatedContact).Error; err != nil {
+		return nil, err
+	}
+
+	// Ambil hasil yang sudah diupdate
+	var updated *models.Contact
+	if err := r.db.Where("id = ?", contactID).First(&updated).Error; err != nil {
+		return nil, err
+	}
+
+	return updated, nil
+}
+
 func (r *contactAccountRepository) GetByAccountID(account_id uint) ([]models.ContactAccount, error) {
 	var contactAccounts []models.ContactAccount
 
@@ -151,6 +240,10 @@ func (r *contactAccountRepository) GetByAccountID(account_id uint) ([]models.Con
 
 func (r *contactAccountRepository) DeleteByAccountID(accountID uint) error {
 	return r.db.Where("account_id = ?", accountID).Delete(&models.ContactAccount{}).Error
+}
+
+func (r *contactAccountRepository) DeleteAccountByContactID(contactID uint) error {
+	return r.db.Where("contact_id = ?", contactID).Delete(&models.ContactAccount{}).Error
 }
 
 func (r *contactAccountRepository) Insert(contactAccounts []models.ContactAccount) error {
