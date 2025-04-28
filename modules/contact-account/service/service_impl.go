@@ -3,6 +3,7 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/contact-account/repository"
+	"byu-crm-service/modules/contact-account/response"
 	"errors"
 	"fmt"
 	"reflect"
@@ -15,6 +16,10 @@ type contactAccountService struct {
 
 func NewContactAccountService(repo repository.ContactAccountRepository) ContactAccountService {
 	return &contactAccountService{repo: repo}
+}
+
+func (s *contactAccountService) GetAllContacts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, accountID int) ([]response.ContactResponse, int64, error) {
+	return s.repo.GetAllContacts(limit, paginate, page, filters, userRole, territoryID, accountID)
 }
 
 func (s *contactAccountService) GetContactAccountByAccountID(account_id uint) ([]models.ContactAccount, error) {

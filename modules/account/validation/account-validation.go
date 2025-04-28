@@ -41,8 +41,9 @@ type ValidateRequest struct {
 	PicInternal             *string `json:"pic_internal"`
 
 	// Social Media
-	Category []string `json:"category" validate:"validate_category_url"`
-	Url      []string `json:"url"`
+	Category  []string `json:"category" validate:"validate_category_url"`
+	Url       []string `json:"url"`
+	ContactID []string `json:"contact_id"`
 
 	// account category school
 	DiesNatalis             *string `json:"dies_natalis"`
@@ -214,12 +215,16 @@ func ValidateCommunity(req *ValidateRequest, isCreate bool, accountID int, userR
 		validatePercentage(req.PercentageAge, "percentage_age")
 	}
 
-	validateArrayPair(req.Gender, req.PercentageGender, "gender", "percentage_gender")
-	if len(req.PercentageGender) > 0 {
-		validatePercentage(req.PercentageGender, "percentage_gender")
+	if len(req.Gender) != 2 {
+		errors["gender"] = "Gender harus mengirim 2 data yaitu 'Pria' dan 'Wanita'"
+	} else {
+		// Kalau 2 datanya ada, cek apakah isinya Pria dan Wanita
+		validGenders := map[string]bool{
+			"Pria":   true,
+			"Wanita": true,
+		}
 
-		// Validate Gender: harus Pria dan Wanita
-		if len(req.Gender) != 2 || !((req.Gender[0] == "Pria" && req.Gender[1] == "Wanita") || (req.Gender[0] == "Wanita" && req.Gender[1] == "Pria")) {
+		if !validGenders[req.Gender[0]] || !validGenders[req.Gender[1]] {
 			errors["gender"] = "Gender harus terdiri dari 'Pria' dan 'Wanita'"
 		}
 	}

@@ -45,6 +45,7 @@ func Route(db *gorm.DB) {
 	routes.SubdistrictRouter(authGroup, db)
 
 	routes.AccountRouter(authGroup, db)
+	routes.ContactRouter(authGroup, db)
 	routes.FacultyRouter(authGroup, db)
 	routes.AbsenceUserRouter(authGroup, db)
 	routes.UserRouter(authGroup, db)
