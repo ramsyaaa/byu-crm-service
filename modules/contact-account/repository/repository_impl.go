@@ -147,6 +147,7 @@ func (r *contactAccountRepository) FindByContactID(id uint, userRole string, ter
 	query := r.db.
 		Model(&models.Contact{}).
 		Preload("Accounts").
+		Preload("SocialMedias", "subject_type = ?", "App\\Models\\Contact").
 		Where("contacts.id = ?", id)
 
 	err := query.First(&contact).Error

@@ -7,7 +7,7 @@ import (
 
 type ContactAccountService interface {
 	GetAllContacts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, accountID int) ([]response.ContactResponse, int64, error)
-	FindByContactID(id uint, userRole string, territoryID uint) (*models.Contact, error)
+	FindByContactID(id uint, userRole string, territoryID uint) (*response.SingleContactResponse, error)
 	CreateContact(requestBody map[string]interface{}) (*models.Contact, error)
 	UpdateContact(requestBody map[string]interface{}, contactID int) (*models.Contact, error)
 	GetContactAccountByAccountID(account_id uint) ([]models.ContactAccount, error)

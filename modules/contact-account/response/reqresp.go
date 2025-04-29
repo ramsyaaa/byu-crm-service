@@ -17,3 +17,19 @@ type ContactResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type SingleContactResponse struct {
+	ID          uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	ContactName *string    `json:"contact_name"`
+	PhoneNumber *string    `json:"phone_number"`
+	Position    *string    `json:"position"`
+	Birthday    *time.Time `json:"birthday"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+
+	Url      []string `json:"url"`
+	Category []string `json:"category"`
+
+	SocialMedias []models.SocialMedia `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
+	Accounts     []models.Account     `gorm:"many2many:contact_accounts;foreignKey:ID;joinForeignKey:contact_id;References:ID;joinReferences:account_id" json:"accounts"`
+}
