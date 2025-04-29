@@ -440,7 +440,6 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 			account.AccountTypeSchoolDetail = nil
 			account.AccountTypeCommunityDetail = nil
 		case "SEKOLAH":
-			account.AccountTypeSchoolDetail = nil
 			account.AccountTypeCampusDetail = nil
 			account.AccountTypeCommunityDetail = nil
 			account.AccountFaculties = nil
