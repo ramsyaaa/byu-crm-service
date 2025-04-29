@@ -13,5 +13,6 @@ type Contact struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 
-	Accounts []Account `gorm:"many2many:contact_accounts;foreignKey:ID;joinForeignKey:contact_id;References:ID;joinReferences:account_id" json:"accounts"`
+	SocialMedias []SocialMedia `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
+	Accounts     []Account     `gorm:"many2many:contact_accounts;foreignKey:ID;joinForeignKey:contact_id;References:ID;joinReferences:account_id" json:"accounts"`
 }

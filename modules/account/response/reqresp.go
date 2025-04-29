@@ -71,6 +71,9 @@ type SingleAccountResponse struct {
 	Contacts  []models.Contact `json:"contacts"`
 	ContactID []string         `json:"contact_id"`
 
+	Url      []string `json:"url"`
+	Category []string `json:"category"`
+
 	// only for account category school
 	DiesNatalis             *time.Time `json:"dies_natalis"`
 	Extracurricular         *string    `json:"extracurricular"`

@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/helper"
 	"byu-crm-service/modules/contact-account/service"
 	"byu-crm-service/modules/contact-account/validation"
+	socialMediaService "byu-crm-service/modules/social-media/service"
 	"encoding/json"
 	"strconv"
 	"time"
@@ -12,11 +13,12 @@ import (
 )
 
 type ContactAccountHandler struct {
-	service service.ContactAccountService
+	service            service.ContactAccountService
+	socialMediaService socialMediaService.SocialMediaService
 }
 
-func NewContactAccountHandler(service service.ContactAccountService) *ContactAccountHandler {
-	return &ContactAccountHandler{service: service}
+func NewContactAccountHandler(service service.ContactAccountService, socialMediaService socialMediaService.SocialMediaService) *ContactAccountHandler {
+	return &ContactAccountHandler{service: service, socialMediaService: socialMediaService}
 }
 
 func (h *ContactAccountHandler) GetAllContacts(c *fiber.Ctx) error {
@@ -132,6 +134,7 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 	}
 
 	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
+	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Contact", contact.ID)
 
 	// Return success response
 	response := helper.APIResponse("Create Contact Succsesfully", fiber.StatusOK, "success", contact)
@@ -194,6 +197,7 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 	}
 
 	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
+	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Contact", contact.ID)
 
 	// Return success response
 	response := helper.APIResponse("Update Contact Succsesfully", fiber.StatusOK, "success", contact)

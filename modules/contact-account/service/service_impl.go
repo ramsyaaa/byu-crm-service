@@ -26,8 +26,28 @@ func (s *contactAccountService) GetContactAccountByAccountID(account_id uint) ([
 	return s.repo.GetByAccountID(account_id)
 }
 
-func (s *contactAccountService) FindByContactID(id uint, userRole string, territoryID uint) (*models.Contact, error) {
-	return s.repo.FindByContactID(id, userRole, territoryID)
+func (s *contactAccountService) FindByContactID(id uint, userRole string, territoryID uint) (*response.SingleContactResponse, error) {
+	contact, err := s.repo.FindByContactID(id, userRole, territoryID)
+	if err != nil {
+		return nil, err
+	}
+	var contactResponse response.SingleContactResponse
+	contactResponse.ID = contact.ID
+	contactResponse.ContactName = contact.ContactName
+	contactResponse.PhoneNumber = contact.PhoneNumber
+	contactResponse.Position = contact.Position
+	contactResponse.Birthday = contact.Birthday
+	contactResponse.CreatedAt = contact.CreatedAt
+	contactResponse.UpdatedAt = contact.UpdatedAt
+	contactResponse.SocialMedias = contact.SocialMedias
+	contactResponse.Accounts = contact.Accounts
+
+	for _, sm := range contactResponse.SocialMedias {
+		contactResponse.Category = append(contactResponse.Category, *sm.Category)
+		contactResponse.Url = append(contactResponse.Url, *sm.Url)
+	}
+
+	return &contactResponse, nil
 }
 
 func (s *contactAccountService) CreateContact(requestBody map[string]interface{}) (*models.Contact, error) {
