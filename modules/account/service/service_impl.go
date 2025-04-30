@@ -25,6 +25,7 @@ func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filt
 }
 
 func (s *accountService) CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error) {
+	// Use getStringValue to safely handle nil values and type conversions
 	accountData := map[string]string{
 		"account_name":              getStringValue(requestBody["account_name"]),
 		"account_type":              getStringValue(requestBody["account_type"]),

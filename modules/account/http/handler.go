@@ -303,8 +303,15 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
-	if category, exists := reqMap["account_category"]; exists {
-		if categoryStr, ok := category.(string); ok {
+
+	// Safely handle account_category - check if it exists and is not nil
+	if category, exists := reqMap["account_category"]; exists && category != nil {
+		// Try to convert to string, with proper type assertion check
+		categoryStr, ok := category.(string)
+		if !ok {
+			// Log the error but don't panic
+			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+		} else {
 			switch categoryStr {
 			case "SEKOLAH":
 				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
@@ -318,8 +325,17 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\Account", account[0].ID, "year", "amount")
 				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+			default:
+				// Log unexpected category value
+				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
+	} else if !exists {
+		// Log missing account_category
+		helper.LogError(c, "account_category field is missing in the request")
+	} else {
+		// Log nil account_category
+		helper.LogError(c, "account_category field is nil")
 	}
 
 	// Return success response
@@ -476,8 +492,15 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
-	if category, exists := reqMap["account_category"]; exists {
-		if categoryStr, ok := category.(string); ok {
+
+	// Safely handle account_category - check if it exists and is not nil
+	if category, exists := reqMap["account_category"]; exists && category != nil {
+		// Try to convert to string, with proper type assertion check
+		categoryStr, ok := category.(string)
+		if !ok {
+			// Log the error but don't panic
+			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+		} else {
 			switch categoryStr {
 			case "SEKOLAH":
 				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
@@ -490,8 +513,17 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 			case "KOMUNITAS":
 				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+			default:
+				// Log unexpected category value
+				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
+	} else if !exists {
+		// Log missing account_category
+		helper.LogError(c, "account_category field is missing in the request")
+	} else {
+		// Log nil account_category
+		helper.LogError(c, "account_category field is nil")
 	}
 
 	// Return success response
