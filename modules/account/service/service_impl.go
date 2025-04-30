@@ -232,6 +232,9 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 
+	accountResponse.Category = []string{}
+	accountResponse.Url = []string{}
+
 	for _, sm := range accountResponse.SocialMedias {
 		accountResponse.Category = append(accountResponse.Category, *sm.Category)
 		accountResponse.Url = append(accountResponse.Url, *sm.Url)
