@@ -13,6 +13,6 @@ func OpportunityRoutes(router fiber.Router, handler *OpportunityHandler) {
 	)
 	authRouter.Get("/", handler.GetAllOpportunities)
 	authRouter.Get("/:id", handler.GetOpportunityByID)
-	// authRouter.Post("/", handler.CreateOpportunity)
+	authRouter.Post("/", handler.CreateOpportunity)
 	// authRouter.Put("/:id", handler.UpdateOpportunity)
 }

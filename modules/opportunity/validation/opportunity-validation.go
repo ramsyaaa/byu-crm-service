@@ -9,26 +9,23 @@ import (
 // Validator instance
 var validate = validator.New()
 
-// CreateAreaRequest struct for creating a Area
-type CreateAreaRequest struct {
-	Name string `json:"name" validate:"required"`
-}
-
-type UpdateAreaRequest struct {
-	Name string `json:"name" validate:"required"`
+// ValidateRequest struct for creating a Area
+type ValidateRequest struct {
+	OpportunityName string  `json:"opportunity_name" validate:"required"`
+	Description     string  `json:"description" validate:"required"`
+	OpenDate        *string `json:"open_date"`
+	CloseDate       *string `json:"close_date"`
+	AccountID       *string `json:"account_id"`
+	ContactID       *string `json:"contact_id"`
 }
 
 // Mapping Validation Messages
 var validationMessages = map[string]string{
-	"name.required": "Nama Area harus diisi",
+	"OpportunityName.required": "Opportunity name is required",
+	"Description.required":     "Description is required",
 }
 
-// ValidateCreate function to validate CreateAreaRequest
-func ValidateCreate(req *CreateAreaRequest) map[string]string {
-	return helper.ValidateStruct(validate, req, validationMessages)
-}
-
-// ValidateUpdate function to validate UpdateAreaRequest
-func ValidateUpdate(req *UpdateAreaRequest) map[string]string {
+// ValidateCreate function to validate ValidateRequest
+func ValidateCreate(req *ValidateRequest) map[string]string {
 	return helper.ValidateStruct(validate, req, validationMessages)
 }

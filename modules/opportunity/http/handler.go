@@ -2,7 +2,10 @@ package http
 
 import (
 	"byu-crm-service/modules/opportunity/service"
+	"byu-crm-service/modules/opportunity/validation"
+	"encoding/json"
 	"strconv"
+	"time"
 
 	"byu-crm-service/helper"
 
@@ -79,5 +82,71 @@ func (h *OpportunityHandler) GetOpportunityByID(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Success get Opportunity", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
+	req := new(validation.ValidateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if *req.OpenDate != "" {
+		_, err := time.Parse("2006-01-02", *req.OpenDate)
+		if err != nil {
+			errors := map[string]string{
+				"open_date": "Format tanggal open tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	if *req.CloseDate != "" {
+		_, err := time.Parse("2006-01-02", *req.CloseDate)
+		if err != nil {
+			errors := map[string]string{
+				"close_date": "Format tanggal close tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	// Create Account
+	reqMap := make(map[string]interface{})
+
+	// Melakukan marshal dan menangani error
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Melakukan unmarshal
+	err = json.Unmarshal(reqBytes, &reqMap)
+	if err != nil {
+		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// userID := c.Locals("user_id").(int)
+
+	// opportunity, err := h.opportunityService.CreateOpportunity(reqMap, userID)
+	// if err != nil {
+	// 	response := helper.APIResponse("Failed to create opportunity", fiber.StatusInternalServerError, "error", err.Error())
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// }
+
+	// Return success response
+	response := helper.APIResponse("Create Opportunity Succsesfully", fiber.StatusOK, "success", nil)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
