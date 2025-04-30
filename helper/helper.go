@@ -48,20 +48,30 @@ func ValidateStruct(validate *validator.Validate, req interface{}, validationMes
 	}
 
 	errors := make(map[string]string)
-	validationErrors := err.(validator.ValidationErrors)
-	ref := reflect.TypeOf(req).Elem()
 
-	for _, e := range validationErrors {
-		// Ambil nama json tag dari field
-		field, _ := ref.FieldByName(e.StructField())
-		jsonTag := field.Tag.Get("json")
-		jsonKey := strings.Split(jsonTag, ",")[0]
+	// Ambil refleksi tipe yang tepat (harus struct, bukan pointer)
+	var ref reflect.Type
+	t := reflect.TypeOf(req)
+	if t.Kind() == reflect.Ptr {
+		ref = t.Elem()
+	} else {
+		ref = t
+	}
 
-		// Cari pesan error dari validationMessages
+	for _, e := range err.(validator.ValidationErrors) {
+		field, ok := ref.FieldByName(e.StructField())
+		var jsonKey string
+		if ok {
+			jsonTag := field.Tag.Get("json")
+			jsonKey = strings.Split(jsonTag, ",")[0]
+		} else {
+			jsonKey = e.Field()
+		}
+
 		key := jsonKey + "." + e.Tag()
 		msg, found := validationMessages[key]
 		if !found {
-			msg = e.Error() // fallback kalau pesan custom tidak ditemukan
+			msg = e.Error()
 		}
 		errors[jsonKey] = msg
 	}

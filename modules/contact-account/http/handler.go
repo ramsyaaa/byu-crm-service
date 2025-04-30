@@ -2,10 +2,13 @@ package http
 
 import (
 	"byu-crm-service/helper"
+	"byu-crm-service/models"
 	"byu-crm-service/modules/contact-account/service"
 	"byu-crm-service/modules/contact-account/validation"
 	socialMediaService "byu-crm-service/modules/social-media/service"
+	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -87,50 +90,106 @@ func (h *ContactAccountHandler) GetContactById(c *fiber.Ctx) error {
 }
 
 func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Create Contact: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
 	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
 	// Request Validation
-	errors := validation.ValidateCreate(req)
-	if errors != nil {
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
-	if *req.Birthday != "" {
-		_, err := time.Parse("2006-01-02", *req.Birthday)
-		if err != nil {
-			errors := map[string]string{
-				"birthday": "Format tanggal lahir tidak benar",
-			}
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		if *req.Birthday != "" {
+			_, err := time.Parse("2006-01-02", *req.Birthday)
+			if err != nil {
+				errors := map[string]string{
+					"birthday": "Format tanggal lahir tidak benar",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 		}
 	}
 
 	// Create Account
+	// Create Account with context and error handling
 	reqMap := make(map[string]interface{})
 
-	// Melakukan marshal dan menangani error
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	// Melakukan unmarshal
-	err = json.Unmarshal(reqBytes, &reqMap)
-	if err != nil {
-		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
-	contact, err := h.service.CreateContact(reqMap)
-	if err != nil {
-		response := helper.APIResponse("Failed to create contact", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+
+	var contact *models.Contact
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during account creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		contact, serviceErr = h.service.CreateContact(reqMap)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to create account: %v", serviceErr))
+			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
 	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
@@ -142,7 +201,25 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 }
 
 func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Update Contact: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
 	contactIDStr := c.Params("id")
+	if contactIDStr == "" {
+		response := helper.APIResponse("Contact ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
 	contactID, err := strconv.Atoi(contactIDStr)
 	if err != nil {
 		response := helper.APIResponse("Invalid contact ID format", fiber.StatusBadRequest, "error", nil)
@@ -151,49 +228,90 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 
 	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
 	// Request Validation
-	errors := validation.ValidateCreate(req)
-	if errors != nil {
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
-	}
-
-	if *req.Birthday != "" {
-		_, err := time.Parse("2006-01-02", *req.Birthday)
-		if err != nil {
-			errors := map[string]string{
-				"birthday": "Format tanggal lahir tidak benar",
-			}
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		if *req.Birthday != "" {
+			_, err := time.Parse("2006-01-02", *req.Birthday)
+			if err != nil {
+				errors := map[string]string{
+					"birthday": "Format tanggal lahir tidak benar",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 		}
 	}
 
 	// Create Account
 	reqMap := make(map[string]interface{})
 
-	// Melakukan marshal dan menangani error
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	// Melakukan unmarshal
-	err = json.Unmarshal(reqBytes, &reqMap)
-	if err != nil {
-		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	contact, err := h.service.UpdateContact(reqMap, contactID)
-	if err != nil {
-		response := helper.APIResponse("Failed to update contact", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	var contact *models.Contact
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during contact update", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		contact, serviceErr = h.service.UpdateContact(reqMap, contactID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to update contact: %v", serviceErr))
+			response := helper.APIResponse("Failed to update contact: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
 	_, _ = h.service.InsertContactAccountByContactID(reqMap, contact.ID)
