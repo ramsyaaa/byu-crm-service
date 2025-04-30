@@ -25,21 +25,22 @@ func (s *accountService) GetAllAccounts(limit int, paginate bool, page int, filt
 }
 
 func (s *accountService) CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error) {
+	// Use getStringValue to safely handle nil values and type conversions
 	accountData := map[string]string{
-		"account_name":              requestBody["account_name"].(string),
-		"account_type":              requestBody["account_type"].(string),
-		"account_category":          requestBody["account_category"].(string),
-		"account_code":              requestBody["account_code"].(string),
-		"city":                      requestBody["city"].(string),
-		"contact_name":              requestBody["contact_name"].(string),
-		"email_account":             requestBody["email_account"].(string),
-		"website_account":           requestBody["website_account"].(string),
-		"system_informasi_akademik": requestBody["system_informasi_akademik"].(string),
-		"ownership":                 requestBody["ownership"].(string),
-		"pic":                       requestBody["pic"].(string),
-		"pic_internal":              requestBody["pic_internal"].(string),
-		"latitude":                  requestBody["latitude"].(string),
-		"longitude":                 requestBody["longitude"].(string),
+		"account_name":              getStringValue(requestBody["account_name"]),
+		"account_type":              getStringValue(requestBody["account_type"]),
+		"account_category":          getStringValue(requestBody["account_category"]),
+		"account_code":              getStringValue(requestBody["account_code"]),
+		"city":                      getStringValue(requestBody["city"]),
+		"contact_name":              getStringValue(requestBody["contact_name"]),
+		"email_account":             getStringValue(requestBody["email_account"]),
+		"website_account":           getStringValue(requestBody["website_account"]),
+		"system_informasi_akademik": getStringValue(requestBody["system_informasi_akademik"]),
+		"ownership":                 getStringValue(requestBody["ownership"]),
+		"pic":                       getStringValue(requestBody["pic"]),
+		"pic_internal":              getStringValue(requestBody["pic_internal"]),
+		"latitude":                  getStringValue(requestBody["latitude"]),
+		"longitude":                 getStringValue(requestBody["longitude"]),
 	}
 
 	accounts, err := s.repo.CreateAccount(accountData, userID)

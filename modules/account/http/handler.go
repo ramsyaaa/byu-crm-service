@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"byu-crm-service/helper"
+	"byu-crm-service/models"
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
 
@@ -166,21 +167,62 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
-	territoryID := c.Locals("territory_id").(int)
-	userRole := c.Locals("user_role").(string)
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
 
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Create Account: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get user information from context
+	userID, ok := c.Locals("user_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	territoryID, ok := c.Locals("territory_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid territory ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	userRole, ok := c.Locals("user_role").(string)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user role", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Parse request body with error handling
 	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Request Validation
-	errors := validation.ValidateCreate(req)
-	if errors != nil {
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 	}
 
 	if req.AccountCategory != "" && req.AccountCategory == "SEKOLAH" {
@@ -206,32 +248,70 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		}
 	}
 
-	// Create Account
+	// Create Account with context and error handling
 	reqMap := make(map[string]interface{})
 
-	// Melakukan marshal dan menangani error
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	// Melakukan unmarshal
-	err = json.Unmarshal(reqBytes, &reqMap)
-	if err != nil {
-		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
-	account, err := h.service.CreateAccount(reqMap, userID)
-	if err != nil {
-		response := helper.APIResponse("Failed to create account", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+
+	// Call service with timeout
+	var account []models.Account
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during account creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		account, serviceErr = h.service.CreateAccount(reqMap, userID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to create account: %v", serviceErr))
+			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
-	if category, exists := reqMap["account_category"]; exists {
-		if categoryStr, ok := category.(string); ok {
+
+	// Safely handle account_category - check if it exists and is not nil
+	if category, exists := reqMap["account_category"]; exists && category != nil {
+		// Try to convert to string, with proper type assertion check
+		categoryStr, ok := category.(string)
+		if !ok {
+			// Log the error but don't panic
+			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+		} else {
 			switch categoryStr {
 			case "SEKOLAH":
 				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
@@ -245,8 +325,17 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 				_, _ = h.accountMemberService.Insert(reqMap, "App\\Models\\Account", account[0].ID, "year", "amount")
 				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+			default:
+				// Log unexpected category value
+				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
+	} else if !exists {
+		// Log missing account_category
+		helper.LogError(c, "account_category field is missing in the request")
+	} else {
+		// Log nil account_category
+		helper.LogError(c, "account_category field is nil")
 	}
 
 	// Return success response
@@ -255,10 +344,39 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
-	territoryID := c.Locals("territory_id").(int)
-	userRole := c.Locals("user_role").(string)
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
 
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Update Account: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get user information from context
+	userID, ok := c.Locals("user_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	territoryID, ok := c.Locals("territory_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid territory ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	userRole, ok := c.Locals("user_role").(string)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user role", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Get and validate account ID
 	accountIDStr := c.Params("id")
 	if accountIDStr == "" {
 		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
@@ -271,17 +389,30 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
+	// Parse request body with error handling
 	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Request Validation
-	errors := validation.ValidateCreate(req)
-	if errors != nil {
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 	}
 
 	if req.AccountCategory != "" && req.AccountCategory == "SEKOLAH" {
@@ -306,21 +437,70 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		}
 	}
 
-	// Create Account
+	// Update Account with context and error handling
 	reqMap := make(map[string]interface{})
-	reqBytes, _ := json.Marshal(req)
-	_ = json.Unmarshal(reqBytes, &reqMap)
 
-	account, err := h.service.UpdateAccount(reqMap, accountID, userRole, territoryID, userID)
-	if err != nil {
-		response := helper.APIResponse("Failed to update account", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Call service with timeout
+	var account []models.Account
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during account update", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		account, serviceErr = h.service.UpdateAccount(reqMap, accountID, userRole, territoryID, userID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to update account: %v", serviceErr))
+			response := helper.APIResponse("Failed to update account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
-	if category, exists := reqMap["account_category"]; exists {
-		if categoryStr, ok := category.(string); ok {
+
+	// Safely handle account_category - check if it exists and is not nil
+	if category, exists := reqMap["account_category"]; exists && category != nil {
+		// Try to convert to string, with proper type assertion check
+		categoryStr, ok := category.(string)
+		if !ok {
+			// Log the error but don't panic
+			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+		} else {
 			switch categoryStr {
 			case "SEKOLAH":
 				_, _ = h.accountTypeSchoolDetailService.Insert(reqMap, account[0].ID)
@@ -333,8 +513,17 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 			case "KOMUNITAS":
 				_, _ = h.accountTypeCommunityDetailService.Insert(reqMap, account[0].ID)
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
+			default:
+				// Log unexpected category value
+				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
+	} else if !exists {
+		// Log missing account_category
+		helper.LogError(c, "account_category field is missing in the request")
+	} else {
+		// Log nil account_category
+		helper.LogError(c, "account_category field is nil")
 	}
 
 	// Return success response
