@@ -42,6 +42,9 @@ func (s *contactAccountService) FindByContactID(id uint, userRole string, territ
 	contactResponse.SocialMedias = contact.SocialMedias
 	contactResponse.Accounts = contact.Accounts
 
+	contactResponse.Category = []string{}
+	contactResponse.Url = []string{}
+
 	for _, sm := range contactResponse.SocialMedias {
 		contactResponse.Category = append(contactResponse.Category, *sm.Category)
 		contactResponse.Url = append(contactResponse.Url, *sm.Url)
