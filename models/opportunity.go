@@ -8,7 +8,7 @@ type Opportunity struct {
 	AccountID       *uint      `json:"account_id"`
 	ContactID       *uint      `json:"contact_id"`
 	Description     *string    `json:"description"`
-	OpenDate        time.Time  `json:"open_date"`
+	OpenDate        *time.Time `json:"open_date"`
 	CloseDate       *time.Time `json:"close_date"`
 	Amount          *string    `json:"amount"`
 	CreatedBy       *uint      `json:"created_by"`

@@ -1,9 +1,12 @@
 package http
 
 import (
+	"byu-crm-service/models"
 	"byu-crm-service/modules/opportunity/service"
 	"byu-crm-service/modules/opportunity/validation"
+	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -86,17 +89,50 @@ func (h *OpportunityHandler) GetOpportunityByID(c *fiber.Ctx) error {
 }
 
 func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Create Opportunity: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get user information from context
+	userID, ok := c.Locals("user_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Parse request body with error handling
 	req := new(validation.ValidateRequest)
 	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Request Validation
-	errors := validation.ValidateCreate(req)
-	if errors != nil {
-		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateData(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 	}
 
 	if *req.OpenDate != "" {
@@ -121,32 +157,199 @@ func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
 		}
 	}
 
-	// Create Account
+	// Create Opportunity with context and error handling
 	reqMap := make(map[string]interface{})
 
-	// Melakukan marshal dan menangani error
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		response := helper.APIResponse("Failed to marshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	// Melakukan unmarshal
-	err = json.Unmarshal(reqBytes, &reqMap)
-	if err != nil {
-		response := helper.APIResponse("Failed to unmarshal request", fiber.StatusInternalServerError, "error", err.Error())
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
-	// userID := c.Locals("user_id").(int)
+	// Call service with timeout
+	var opportunity *models.Opportunity
+	var serviceErr error
 
-	// opportunity, err := h.opportunityService.CreateOpportunity(reqMap, userID)
-	// if err != nil {
-	// 	response := helper.APIResponse("Failed to create opportunity", fiber.StatusInternalServerError, "error", err.Error())
-	// 	return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// }
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during opportunity creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		opportunity, serviceErr = h.opportunityService.CreateOpportunity(reqMap, userID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to create opportunity: %v", serviceErr))
+			response := helper.APIResponse("Failed to create opportunity: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
 
 	// Return success response
-	response := helper.APIResponse("Create Opportunity Succsesfully", fiber.StatusOK, "success", nil)
+	response := helper.APIResponse("Create Opportunity Succsesfully", fiber.StatusOK, "success", opportunity)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *OpportunityHandler) UpdateOpportunity(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Update Opportunity: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get user information from context
+	userID, ok := c.Locals("user_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	opportunityIDStr := c.Params("id")
+	if opportunityIDStr == "" {
+		response := helper.APIResponse("Opportunity ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	opportunityID, err := strconv.Atoi(opportunityIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Opportunity ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Parse request body with error handling
+	req := new(validation.ValidateRequest)
+	if err := c.BodyParser(req); err != nil {
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateData(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	if *req.OpenDate != "" {
+		_, err := time.Parse("2006-01-02", *req.OpenDate)
+		if err != nil {
+			errors := map[string]string{
+				"open_date": "Format tanggal open tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	if *req.CloseDate != "" {
+		_, err := time.Parse("2006-01-02", *req.CloseDate)
+		if err != nil {
+			errors := map[string]string{
+				"close_date": "Format tanggal close tidak benar",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	// Create Opportunity with context and error handling
+	reqMap := make(map[string]interface{})
+
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Call service with timeout
+	var opportunity *models.Opportunity
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during opportunity creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		opportunity, serviceErr = h.opportunityService.UpdateOpportunity(reqMap, userID, opportunityID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to update opportunity: %v", serviceErr))
+			response := helper.APIResponse("Failed to update opportunity: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Return success response
+	response := helper.APIResponse("Update Opportunity Succsesfully", fiber.StatusOK, "success", opportunity)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
