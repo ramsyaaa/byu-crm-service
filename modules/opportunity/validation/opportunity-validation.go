@@ -21,11 +21,11 @@ type ValidateRequest struct {
 
 // Mapping Validation Messages
 var validationMessages = map[string]string{
-	"OpportunityName.required": "Opportunity name is required",
-	"Description.required":     "Description is required",
+	"opportunity_name.required": "Nama opportunity wajib diisi",
+	"description.required":      "Deskripsi wajib diisi",
 }
 
-// ValidateCreate function to validate ValidateRequest
-func ValidateCreate(req *ValidateRequest) map[string]string {
+// ValidateData function to validate ValidateRequest
+func ValidateData(req *ValidateRequest) map[string]string {
 	return helper.ValidateStruct(validate, req, validationMessages)
 }
