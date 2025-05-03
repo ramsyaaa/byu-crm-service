@@ -16,6 +16,16 @@ type ValidateCreateRequest struct {
 	StatusCommunication *string `json:"status_communication"`
 }
 
+type ValidateUpdateRequest struct {
+	CommunicationType   string  `json:"communication_type" validate:"required"`
+	Note                string  `json:"note" validate:"required"`
+	AccountID           *string `json:"account_id" validate:"required"`
+	ContactID           *string `json:"contact_id"`
+	CheckOpportunity    *string `json:"check_opportunity" validate:"omitempty,oneof=0 1"`
+	OpportunityName     *string `json:"opportunity_name"`
+	StatusCommunication *string `json:"status_communication"`
+}
+
 var validationMessages = map[string]string{
 	"account_id.required":         "Account ID wajib diisi",
 	"communication_type.required": "Tipe komunikasi wajib diisi",
@@ -26,6 +36,10 @@ var validationMessages = map[string]string{
 var validate = validator.New()
 
 func ValidateCreate(req *ValidateCreateRequest) map[string]string {
+	return helper.ValidateStruct(validate, req, validationMessages)
+}
+
+func ValidateUpdate(req *ValidateUpdateRequest) map[string]string {
 	return helper.ValidateStruct(validate, req, validationMessages)
 }
 
