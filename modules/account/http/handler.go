@@ -339,7 +339,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	}
 
 	// Return success response
-	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account)
+	response := helper.APIResponse("Create Account Succsesfully", fiber.StatusOK, "success", account[0])
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
@@ -527,7 +527,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	}
 
 	// Return success response
-	response := helper.APIResponse("Update Account Succsesfully", fiber.StatusOK, "success", account)
+	response := helper.APIResponse("Update Account Succsesfully", fiber.StatusOK, "success", account[0])
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
