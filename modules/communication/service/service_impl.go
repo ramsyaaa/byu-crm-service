@@ -19,32 +19,6 @@ func (s *communicationService) GetAllCommunications(limit int, paginate bool, pa
 	return s.repo.GetAllCommunications(limit, paginate, page, filters, accountID)
 }
 
-func (s *communicationService) UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error) {
-	accountData := map[string]string{
-		"account_name":              getStringValue(requestBody["account_name"]),
-		"account_type":              getStringValue(requestBody["account_type"]),
-		"account_category":          getStringValue(requestBody["account_category"]),
-		"account_code":              getStringValue(requestBody["account_code"]),
-		"city":                      getStringValue(requestBody["city"]),
-		"contact_name":              getStringValue(requestBody["contact_name"]),
-		"email_account":             getStringValue(requestBody["email_account"]),
-		"website_account":           getStringValue(requestBody["website_account"]),
-		"system_informasi_akademik": getStringValue(requestBody["system_informasi_akademik"]),
-		"ownership":                 getStringValue(requestBody["ownership"]),
-		"pic":                       getStringValue(requestBody["pic"]),
-		"pic_internal":              getStringValue(requestBody["pic_internal"]),
-		"latitude":                  getStringValue(requestBody["latitude"]),
-		"longitude":                 getStringValue(requestBody["longitude"]),
-	}
-
-	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return accounts, nil
-}
-
 func (s *communicationService) FindByCommunicationID(id uint) (*models.Communication, error) {
 	communication, err := s.repo.FindByCommunicationID(id)
 	if err != nil {
@@ -57,16 +31,61 @@ func (s *communicationService) FindByCommunicationID(id uint) (*models.Communica
 func (s *communicationService) CreateCommunication(requestBody map[string]interface{}, userID int) (*models.Communication, error) {
 	// Use getStringValue to safely handle nil values and type conversions
 	communicationData := map[string]string{
-		"communication_type":   getStringValue(requestBody["communication_type"]),
-		"note":                 getStringValue(requestBody["note"]),
-		"account_id":           getStringValue(requestBody["account_id"]),
-		"contact_id":           getStringValue(requestBody["contact_id"]),
-		"created_by":           getStringValue(userID),
-		"opportunity_id":       getStringValue(requestBody["opportunity_id"]),
-		"status_communication": getStringValue(requestBody["status_communication"]),
+		"communication_type":    getStringValue(requestBody["communication_type"]),
+		"note":                  getStringValue(requestBody["note"]),
+		"account_id":            getStringValue(requestBody["account_id"]),
+		"contact_id":            getStringValue(requestBody["contact_id"]),
+		"created_by":            getStringValue(userID),
+		"opportunity_id":        getStringValue(requestBody["opportunity_id"]),
+		"status_communication":  getStringValue(requestBody["status_communication"]),
+		"main_communication_id": getStringValue(""),
 	}
 
 	communication, err := s.repo.CreateCommunication(communicationData)
+	if err != nil {
+		return nil, err
+	}
+
+	return communication, nil
+}
+
+func (s *communicationService) UpdateCommunication(requestBody map[string]interface{}, userID int, communicationID int) (*models.Communication, error) {
+	// Use getStringValue to safely handle nil values and type conversions
+
+	previousCommunication, err := s.repo.FindByCommunicationID(uint(communicationID))
+	if err != nil {
+		return nil, err
+	}
+	if previousCommunication == nil {
+		return nil, fmt.Errorf("communication with ID %d not found", communicationID)
+	}
+
+	var main_communication_id string
+	if previousCommunication.MainCommunicationID != nil {
+		main_communication_id = fmt.Sprintf("%d", *previousCommunication.MainCommunicationID)
+	} else {
+		main_communication_id = fmt.Sprintf("%d", previousCommunication.ID)
+	}
+
+	communicationData := map[string]string{
+		"communication_type":    getStringValue(requestBody["communication_type"]),
+		"note":                  getStringValue(requestBody["note"]),
+		"account_id":            getStringValue(requestBody["account_id"]),
+		"contact_id":            getStringValue(requestBody["contact_id"]),
+		"created_by":            getStringValue(userID),
+		"opportunity_id":        getStringValue(requestBody["opportunity_id"]),
+		"status_communication":  getStringValue(requestBody["status_communication"]),
+		"main_communication_id": main_communication_id,
+	}
+
+	communication, err := s.repo.CreateCommunication(communicationData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the next communication ID in the previous communication record
+	err = s.repo.UpdateFields(previousCommunication.ID, map[string]interface{}{"next_communication_id": communication.ID})
+
 	if err != nil {
 		return nil, err
 	}

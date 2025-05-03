@@ -218,3 +218,154 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 	response := helper.APIResponse("Create Communication Succsesfully", fiber.StatusOK, "success", communication)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			helper.LogError(c, fmt.Sprintf("Panic in Update Communication: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get user information from context
+	userID, ok := c.Locals("user_id").(int)
+	if !ok {
+		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Get and validate communication ID
+	communicationIDStr := c.Params("id")
+	if communicationIDStr == "" {
+		response := helper.APIResponse("Communication ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	communicationID, err := strconv.Atoi(communicationIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Communication ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Parse request body with error handling
+	req := new(validation.ValidateCreateRequest)
+	if err := c.BodyParser(req); err != nil {
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	if req.CommunicationType != "" && req.CommunicationType == "MENAWARKAN PROGRAM" {
+
+		errors := validation.ValidateStatus(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else {
+		req.StatusCommunication = nil
+	}
+
+	if req.CheckOpportunity != nil && *req.CheckOpportunity == "1" && req.OpportunityName == nil {
+		errors := map[string]string{
+			"opportunity_name": "Nama opportunity wajib diisi",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Create Account with context and error handling
+	reqMap := make(map[string]interface{})
+
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	reqMap["created_by"] = userID
+	reqMap["opportunity_id"] = nil
+	if reqMap["check_opportunity"] == "1" {
+		reqMap["description"] = reqMap["note"]
+		opportunity, err := h.opportunityService.CreateOpportunity(reqMap, userID)
+		if err != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to create opportunity: %v", err))
+			response := helper.APIResponse("Failed to create opportunity: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		reqMap["opportunity_id"] = opportunity.ID
+	}
+
+	// Call service with timeout
+	var communication *models.Communication
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during communication update", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		communication, serviceErr = h.service.UpdateCommunication(reqMap, userID, communicationID)
+		if serviceErr != nil {
+			helper.LogError(c, fmt.Sprintf("Failed to update communication: %v", serviceErr))
+			response := helper.APIResponse("Failed to update communication: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Return success response
+	response := helper.APIResponse("Update Communication Succsesfully", fiber.StatusOK, "success", communication)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
