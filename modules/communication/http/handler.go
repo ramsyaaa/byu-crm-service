@@ -77,7 +77,11 @@ func (h *CommunicationHandler) GetCommunicationByID(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Success get communication", fiber.StatusOK, "success", communication)
+	responseData := map[string]interface{}{
+		"communication": communication,
+	}
+
+	response := helper.APIResponse("Success get communication", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
