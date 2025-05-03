@@ -14,5 +14,5 @@ func CommunicationRoutes(router fiber.Router, handler *CommunicationHandler) {
 	authRouter.Get("/", handler.GetAllCommunications)
 	authRouter.Get("/:id", handler.GetCommunicationByID)
 	authRouter.Post("/", handler.CreateCommunication)
-	// authRouter.Put("/:id", handler.UpdateAccount)
+	authRouter.Put("/:id", handler.UpdateCommunication)
 }
