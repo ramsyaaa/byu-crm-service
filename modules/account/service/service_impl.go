@@ -77,7 +77,7 @@ func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accou
 	return accounts, nil
 }
 
-func (s *accountService) UpdatePic(accountID int, userRole string, territoryID int, userID int) ([]models.Account, error) {
+func (s *accountService) UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error) {
 	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 
 	if err != nil {
@@ -88,16 +88,18 @@ func (s *accountService) UpdatePic(accountID int, userRole string, territoryID i
 		return nil, errors.New("PIC sudah diatur dan tidak dapat diubah")
 	}
 
-	accountData := map[string]string{
-		"pic": fmt.Sprintf("%d", userID),
-	}
-
-	accounts, err := s.repo.UpdateAccount(accountData, accountID, userID)
+	err = s.repo.UpdateFields(uint(accountID), map[string]interface{}{"pic": userID})
 	if err != nil {
 		return nil, err
 	}
 
-	return accounts, nil
+	existingAccount, err = s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return existingAccount, nil
 }
 
 func (s *accountService) GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error) {
