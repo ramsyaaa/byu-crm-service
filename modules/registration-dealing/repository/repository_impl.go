@@ -86,7 +86,13 @@ func (r *registrationDealingRepository) FindByRegistrationDealingID(id uint) (*r
 	return &registrationDealing, nil
 }
 
-func (r *registrationDealingRepository) CreateRegistrationDealing(requestBody map[string]string, userID int) (*response.RegistrationDealingResponse, error) {
+func (r *registrationDealingRepository) CreateRegistrationDealing(requestBody map[string]string, userID *int) (*response.RegistrationDealingResponse, error) {
+	var uid *uint
+	if userID != nil {
+		u := uint(*userID)
+		uid = &u
+	}
+
 	registrationDealing := models.RegistrationDealing{
 		PhoneNumber: func(s string) *string { return &s }(requestBody["phone_number"]),
 		AccountID: func(s string) *uint {
@@ -106,18 +112,8 @@ func (r *registrationDealingRepository) CreateRegistrationDealing(requestBody ma
 		WhatsappNumber:       func(s string) *string { return &s }(requestBody["whatsapp_number"]),
 		Class:                func(s string) *string { return &s }(requestBody["class"]),
 		Email:                func(s string) *string { return &s }(requestBody["email"]),
-		UserID: func(s string) *uint {
-			if s == "" {
-				return nil
-			}
-			val, err := strconv.ParseUint(s, 10, 32)
-			if err != nil {
-				return nil
-			}
-			uval := uint(val)
-			return &uval
-		}(requestBody["user_id"]),
-		SchoolType: func(s string) *string { return &s }(requestBody["school_type"]),
+		UserID:               uid,
+		SchoolType:           func(s string) *string { return &s }(requestBody["school_type"]),
 	}
 
 	if err := r.db.Create(&registrationDealing).Error; err != nil {
