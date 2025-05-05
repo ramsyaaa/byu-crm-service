@@ -53,6 +53,7 @@ func Route(db *gorm.DB) {
 	}
 
 	app.Static("/static", "./static")
+	app.Static("/public", "./public")
 
 	// Serve the HTML dashboard on the root path
 	app.Get("/log-viewer", func(c *fiber.Ctx) error {
@@ -113,6 +114,9 @@ func Route(db *gorm.DB) {
 	routes.OpportunityRouter(api, db)
 	routes.CommunicationRouter(api, db)
 	routes.FacultyRouter(api, db)
+
+	routes.RegistrationDealingRouter(api, db)
+
 	routes.AbsenceUserRouter(api, db)
 	routes.UserRouter(api, db)
 	routes.KpiYaeRangeRouter(api, db)
