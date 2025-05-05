@@ -70,11 +70,13 @@ func NewAccountHandler(
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	// Default query params
 	filters := map[string]string{
-		"search":     c.Query("search", ""),
-		"order_by":   c.Query("order_by", "id"),
-		"order":      c.Query("order", "DESC"),
-		"start_date": c.Query("start_date", ""),
-		"end_date":   c.Query("end_date", ""),
+		"search":           c.Query("search", ""),
+		"order_by":         c.Query("order_by", "id"),
+		"order":            c.Query("order", "DESC"),
+		"start_date":       c.Query("start_date", ""),
+		"end_date":         c.Query("end_date", ""),
+		"account_category": c.Query("account_category", ""),
+		"account_type":     c.Query("account_type", ""),
 	}
 
 	// Parse integer and boolean values
@@ -101,6 +103,45 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 		"accounts": accounts,
 		"total":    total,
 		"page":     page,
+	}
+
+	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
+	// Default query params
+	filters := map[string]string{
+		"search":           c.Query("search", ""),
+		"order_by":         c.Query("order_by", "id"),
+		"order":            c.Query("order", "DESC"),
+		"start_date":       c.Query("start_date", ""),
+		"end_date":         c.Query("end_date", ""),
+		"account_category": c.Query("account_category", ""),
+		"account_type":     c.Query("account_type", ""),
+	}
+
+	// Parse integer and boolean values
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+	userID := c.Locals("user_id").(int)
+	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
+	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
+
+	// Call service with filters
+	total, categories, territories, err := h.service.CountAccount(filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch accounts",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"total":       total,
+		"categories":  categories,
+		"territories": territories,
 	}
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
