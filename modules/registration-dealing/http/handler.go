@@ -117,6 +117,7 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 		WhatsappNumber: normalizePhoneNumber(c.FormValue("whatsapp_number")),
 		Class:          c.FormValue("class"),
 		Email:          c.FormValue("email"),
+		SchoolType:     c.FormValue("school_type"),
 	}
 
 	if err := c.BodyParser(req); err != nil {
