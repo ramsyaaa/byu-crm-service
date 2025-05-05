@@ -23,7 +23,7 @@ type ValidateRequest struct {
 	WhatsappNumber       string  `json:"whatsapp_number" validate:"required"`
 	Class                string  `json:"class" validate:"required"`
 	Email                string  `json:"email" validate:"required"`
-	SchoolType           *string `json:"school_type" validate:"required"`
+	SchoolType           string  `json:"school_type" validate:"required"`
 	RegistrationEvidence *string `json:"registration_evidence"`
 }
 
