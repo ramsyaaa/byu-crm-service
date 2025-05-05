@@ -7,6 +7,6 @@ import (
 type RegistrationDealingRepository interface {
 	GetAllRegistrationDealings(limit int, paginate bool, page int, filters map[string]string, accountID int, eventName string) ([]response.RegistrationDealingResponse, int64, error)
 	FindByRegistrationDealingID(id uint) (*response.RegistrationDealingResponse, error)
-	CreateRegistrationDealing(requestBody map[string]string, userID int) (*response.RegistrationDealingResponse, error)
+	CreateRegistrationDealing(requestBody map[string]string, userID *int) (*response.RegistrationDealingResponse, error)
 	FindByPhoneNumber(phone_number string) (*response.RegistrationDealingResponse, error)
 }

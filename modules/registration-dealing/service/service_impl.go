@@ -27,7 +27,7 @@ func (s *registrationDealingService) FindByRegistrationDealingID(id uint) (*resp
 	return registrationDealing, nil
 }
 
-func (s *registrationDealingService) CreateRegistrationDealing(requestBody map[string]interface{}, userID int) (*response.RegistrationDealingResponse, error) {
+func (s *registrationDealingService) CreateRegistrationDealing(requestBody map[string]interface{}, userID *int) (*response.RegistrationDealingResponse, error) {
 	// Use getStringValue to safely handle nil values and type conversions
 	registrationDealingData := map[string]string{
 		"phone_number":          getStringValue(requestBody["phone_number"]),
@@ -38,9 +38,10 @@ func (s *registrationDealingService) CreateRegistrationDealing(requestBody map[s
 		"whatsapp_number":       getStringValue(requestBody["whatsapp_number"]),
 		"class":                 getStringValue(requestBody["class"]),
 		"email":                 getStringValue(requestBody["email"]),
-		"user_id":               getStringValue(userID),
 		"school_type":           getStringValue(requestBody["school_type"]),
 	}
+
+	fmt.Println(userID)
 
 	registrationDealing, err := s.repo.CreateRegistrationDealing(registrationDealingData, userID)
 	if err != nil {

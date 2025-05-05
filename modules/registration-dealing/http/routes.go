@@ -7,6 +7,8 @@ import (
 )
 
 func RegistrationDealingRoutes(router fiber.Router, handler *RegistrationDealingHandler) {
+	router.Post("/registration-dealings/no-auth", handler.CreateRegistrationDealing)
+
 	authRouter := router.Group(("/registration-dealings"),
 		middleware.JWTMiddleware,
 		middleware.JWTUserContextMiddleware(),
@@ -14,4 +16,5 @@ func RegistrationDealingRoutes(router fiber.Router, handler *RegistrationDealing
 	authRouter.Get("/", handler.GetAllRegistrationDealings)
 	authRouter.Get("/:id", handler.GetRegistrationDealingById)
 	authRouter.Post("/", handler.CreateRegistrationDealing)
+
 }

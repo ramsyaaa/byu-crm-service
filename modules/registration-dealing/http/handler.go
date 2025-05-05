@@ -102,10 +102,11 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 	}()
 
 	// Get user information from context
-	userID, ok := c.Locals("user_id").(int)
-	if !ok {
-		response := helper.APIResponse("Unauthorized: Invalid user ID", fiber.StatusUnauthorized, "error", nil)
-		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	var userID *int
+	if val, ok := c.Locals("user_id").(int); ok {
+		userID = &val
+	} else {
+		userID = nil
 	}
 
 	// Parse request body with error handling
@@ -145,8 +146,6 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 	}
 
 	_, errors := validation.ValidatePhoneNumber(req.PhoneNumber)
-	fmt.Println("Phone Number:", req.PhoneNumber)
-	fmt.Println("Errors:", errors)
 	if errors != nil {
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)

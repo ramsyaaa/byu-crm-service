@@ -3,7 +3,6 @@ package validation
 import (
 	"byu-crm-service/helper"
 	"byu-crm-service/modules/registration-dealing/repository"
-	"fmt"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -46,25 +45,20 @@ func ValidateCreate(req *ValidateRequest) map[string]string {
 
 func ValidatePhoneNumber(phone_number string) (bool, map[string]string) {
 	trimmedPhoneNumber := strings.TrimSpace(phone_number)
-	fmt.Println("Trimmed Phone Number:", trimmedPhoneNumber)
 
 	if trimmedPhoneNumber == "" {
-		fmt.Println("Phone number is empty")
 		return false, map[string]string{"phone_number": "Nomor telepon harus diisi"}
 	}
 
 	if registrationDealingRepo == nil {
-		fmt.Println("RegistrationDealingRepository is not set")
 		return false, nil
 	}
 
 	registrationDealing, err := registrationDealingRepo.FindByPhoneNumber(trimmedPhoneNumber)
 	if err != nil {
-		fmt.Println("Error checking phone number:", err)
 		return true, nil
 	}
 
-	fmt.Println(registrationDealing)
 	if registrationDealing != nil {
 		return false, map[string]string{"phone_number": "Nomor ponsel sudah digunakan"}
 	}
