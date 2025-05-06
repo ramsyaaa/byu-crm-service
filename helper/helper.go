@@ -1,12 +1,15 @@
 package helper
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -198,4 +201,21 @@ func getStringPointer(m map[string]interface{}, key string) *string {
 		return &val
 	}
 	return nil
+}
+
+func DecodeBase64Image(data string) ([]byte, string, error) {
+	re := regexp.MustCompile(`^data:(image\/[a-zA-Z]+);base64,`)
+	match := re.FindStringSubmatch(data)
+	if len(match) != 2 {
+		return nil, "", errors.New("format base64 tidak sesuai")
+	}
+
+	mimeType := match[1]
+	base64Data := strings.Replace(data, match[0], "", 1)
+
+	decoded, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return nil, "", err
+	}
+	return decoded, mimeType, nil
 }

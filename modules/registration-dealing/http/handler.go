@@ -92,11 +92,9 @@ func (h *RegistrationDealingHandler) GetRegistrationDealingById(c *fiber.Ctx) er
 }
 
 func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) error {
-	// Add a timeout context to prevent long-running operations
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
 	defer cancel()
 
-	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
 			helper.LogError(c, fmt.Sprintf("Panic in Create Registration Dealing: %v", r))
@@ -105,38 +103,26 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 		}
 	}()
 
-	// Get user information from context
 	var userID *int
 	if val, ok := c.Locals("user_id").(int); ok {
 		userID = &val
-	} else {
-		userID = nil
 	}
 
-	// Parse request body with error handling
-	req := &validation.ValidateRequest{
-		PhoneNumber:    normalizePhoneNumber(c.FormValue("phone_number")),
-		AccountID:      c.FormValue("account_id"),
-		CustomerName:   c.FormValue("customer_name"),
-		EventName:      c.FormValue("event_name"),
-		WhatsappNumber: normalizePhoneNumber(c.FormValue("whatsapp_number")),
-		Class:          c.FormValue("class"),
-		Email:          c.FormValue("email"),
-		SchoolType:     c.FormValue("school_type"),
-	}
+	req := new(validation.ValidateRequest)
 
 	if err := c.BodyParser(req); err != nil {
-		// Check for specific EOF error
+		msg := "Invalid request format: " + err.Error()
 		if err.Error() == "unexpected EOF" {
-			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
-			return c.Status(fiber.StatusBadRequest).JSON(response)
+			msg = "Invalid request: Unexpected end of JSON input"
 		}
-
-		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		response := helper.APIResponse(msg, fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Request Validation with context
+	req.PhoneNumber = normalizePhoneNumber(req.PhoneNumber)
+	req.WhatsappNumber = normalizePhoneNumber(req.WhatsappNumber)
+
+	// Validasi data umum
 	select {
 	case <-ctx.Done():
 		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
@@ -149,14 +135,14 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 		}
 	}
 
-	_, errors := validation.ValidatePhoneNumber(req.PhoneNumber)
-	if errors != nil {
+	// Validasi nomor HP
+	if _, errors := validation.ValidatePhoneNumber(req.PhoneNumber); errors != nil {
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	file, err := c.FormFile("registration_evidence")
-	if err != nil {
+	// Validasi dan simpan base64 image
+	if req.RegistrationEvidence == nil || *req.RegistrationEvidence == "" {
 		errors := map[string]string{
 			"registration_evidence": "Bukti pendaftaran tidak boleh kosong",
 		}
@@ -164,61 +150,59 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Validasi ekstensi file
-	allowedExtensions := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-	}
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if !allowedExtensions[ext] {
+	imageData := *req.RegistrationEvidence
+
+	// Decode base64
+	decoded, mimeType, err := helper.DecodeBase64Image(imageData)
+	if err != nil {
 		errors := map[string]string{
-			"registration_evidence": "File harus berupa gambar dengan ekstensi jpg, jpeg, atau png",
+			"registration_evidence": "Gambar tidak valid: " + err.Error(),
 		}
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// (Opsional) Validasi ukuran file, misal maksimum 5MB
-	if file.Size > 5*1024*1024 {
+	// Validasi ukuran maksimum 5MB
+	if len(decoded) > 5*1024*1024 {
 		errors := map[string]string{
 			"registration_evidence": "Ukuran file maksimum adalah 5MB",
 		}
-		helper.LogError(c, fmt.Sprintf("File size exceeds limit: %d bytes", file.Size))
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Simpan file
-	uploadDir := "./public/uploads/registration-dealing"
-
-	// Pastikan folder tersedia
-	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create directory: %v", err))
-			response := helper.APIResponse("Gagal membuat direktori penyimpanan", fiber.StatusInternalServerError, "error", err.Error())
-			return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// Validasi ekstensi
+	allowedMimes := map[string]string{
+		"image/jpeg": ".jpg",
+		"image/png":  ".png",
+	}
+	ext, ok := allowedMimes[mimeType]
+	if !ok {
+		errors := map[string]string{
+			"registration_evidence": "Format gambar tidak didukung",
 		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Generate filename unik berbasis timestamp
-	timestamp := time.Now().UnixNano()
-	ext = filepath.Ext(file.Filename) // ambil ekstensi asli
-	filename := fmt.Sprintf("%d%s", timestamp, ext)
+	// Simpan ke file
+	uploadDir := "./public/uploads/registration-dealing"
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 	filePath := filepath.Join(uploadDir, filename)
 
-	// Simpan file
-	if err := c.SaveFile(file, filePath); err != nil {
-		helper.LogError(c, fmt.Sprintf("Failed to save file: %v", err))
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
 		response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
 	req.RegistrationEvidence = &filePath
 
-	// Create Account with context and error handling
 	reqMap := make(map[string]interface{})
-
 	// Marshal request to JSON with timeout
 	var reqBytes []byte
 	var marshalErr error
@@ -252,10 +236,8 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 		}
 	}
 
-	// Call service with timeout
 	var registrationDealing *response.RegistrationDealingResponse
 	var serviceErr error
-
 	select {
 	case <-ctx.Done():
 		response := helper.APIResponse("Request timeout during registration dealing creation", fiber.StatusRequestTimeout, "error", nil)
@@ -263,15 +245,13 @@ func (h *RegistrationDealingHandler) CreateRegistrationDealing(c *fiber.Ctx) err
 	default:
 		registrationDealing, serviceErr = h.service.CreateRegistrationDealing(reqMap, userID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create registration dealing: %v", serviceErr))
-			response := helper.APIResponse("Failed to create registration dealing: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			helper.LogError(c, fmt.Sprintf("Failed to create account: %v", serviceErr))
+			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
 	}
 
-	// Return success response
-	response := helper.APIResponse("Create Registration Dealing Succsesfully", fiber.StatusOK, "success", registrationDealing)
-	return c.Status(fiber.StatusOK).JSON(response)
+	return c.Status(fiber.StatusOK).JSON(helper.APIResponse("Create Registration Dealing Successfully", fiber.StatusOK, "success", registrationDealing))
 }
 
 func normalizePhoneNumber(input string) string {
