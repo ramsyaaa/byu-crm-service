@@ -1,6 +1,7 @@
 package response
 
 import (
+	"byu-crm-service/models"
 	"time"
 )
 
@@ -19,4 +20,6 @@ type RegistrationDealingResponse struct {
 	SchoolType           *string   `json:"school_type"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+
+	Account *models.Account `gorm:"foreignKey:AccountID" json:"account"`
 }

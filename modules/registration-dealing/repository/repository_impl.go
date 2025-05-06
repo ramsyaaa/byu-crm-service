@@ -31,7 +31,7 @@ func (r *registrationDealingRepository) GetAllRegistrationDealings(
 	var registration_dealings []response.RegistrationDealingResponse
 	var total int64
 
-	query := r.db.Model(&models.RegistrationDealing{})
+	query := r.db.Model(&models.RegistrationDealing{}).Preload("Account")
 
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
@@ -52,6 +52,16 @@ func (r *registrationDealingRepository) GetAllRegistrationDealings(
 	}
 	if endDate, exists := filters["end_date"]; exists && endDate != "" {
 		query = query.Where("registration_dealings.created_at <= ?", endDate)
+	}
+
+	// Tambahkan filter untuk account_id jika != 0
+	if accountID != 0 {
+		query = query.Where("registration_dealings.account_id = ?", accountID)
+	}
+
+	// Tambahkan filter untuk event_name jika tidak kosong
+	if strings.TrimSpace(eventName) != "" {
+		query = query.Where("registration_dealings.event_name = ?", eventName)
 	}
 
 	// Count total sebelum pagination
@@ -177,7 +187,8 @@ func (r *registrationDealingRepository) FindByRegistrationDealingID(id uint) (*r
 
 	query := r.db.
 		Model(&models.RegistrationDealing{}).
-		Where("registration_dealings.id = ?", id)
+		Where("registration_dealings.id = ?", id).
+		Preload("Account")
 
 	err := query.First(&registrationDealing).Error
 	if err != nil {
