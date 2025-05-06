@@ -14,6 +14,7 @@ func RegistrationDealingRoutes(router fiber.Router, handler *RegistrationDealing
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllRegistrationDealings)
+	authRouter.Get("/grouped", handler.GetAllRegistrationDealingsGrouped)
 	authRouter.Get("/:id", handler.GetRegistrationDealingById)
 	authRouter.Post("/", handler.CreateRegistrationDealing)
 
