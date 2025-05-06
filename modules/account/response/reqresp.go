@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+type TerritoryCategory struct {
+	Category string `json:"category"`
+	Count    int64  `json:"count"`
+}
+
+// Struktur untuk hasil wilayah dengan kategori
+type TerritoryResult struct {
+	ID         int64               `json:"id"`
+	Name       string              `json:"name"`
+	Total      int64               `json:"total"`
+	Categories []TerritoryCategory `json:"categories"`
+}
+
 type AccountResponse struct {
 	ID                      uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	AccountName             *string   `json:"account_name"`

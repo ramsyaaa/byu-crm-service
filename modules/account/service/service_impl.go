@@ -441,6 +441,14 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	return &accountResponse, nil
 }
 
+func (s *accountService) CountAccount(filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool, excludeVisited bool) (int64, map[string]int64, []response.TerritoryResult, error) {
+	count, categories, territories, err := s.repo.CountAccount(filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	return count, categories, territories, nil
+}
+
 func SplitFields(jsonString string, keys []string) (map[string][]string, error) {
 	// Cek jika JSON string kosong atau null
 	if jsonString == "" || jsonString == "null" {

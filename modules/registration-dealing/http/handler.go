@@ -83,7 +83,11 @@ func (h *RegistrationDealingHandler) GetRegistrationDealingById(c *fiber.Ctx) er
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Success get registration dealing", fiber.StatusOK, "success", registrationDealing)
+	responseData := map[string]interface{}{
+		"registration_dealing": registrationDealing,
+	}
+
+	response := helper.APIResponse("Success get registration dealing", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
