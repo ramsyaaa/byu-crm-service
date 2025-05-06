@@ -282,206 +282,160 @@ func (r *accountRepository) UpdateAccount(requestBody map[string]string, account
 
 // Fungsi untuk menghitung account dengan filter
 func (r *accountRepository) CountAccount(
-	filters map[string]string,
 	userRole string,
 	territoryID int,
-	userID int,
-	onlyUserPic bool,
-	excludeVisited bool,
-) (int64, map[string]int64, []response.TerritoryResult, error) {
+) (int64, map[string]int64, []map[string]interface{}, error) {
 	var total int64
-	categoryCounts := make(map[string]int64)
-	territories := []response.TerritoryResult{} // Menyimpan hasil per wilayah
+	categories := make(map[string]int64)
 
-	// Base query dengan join
-	baseQuery := r.db.Model(&models.Account{}).
-		Select("accounts.account_category").
-		Joins("LEFT JOIN cities AS city_accounts ON accounts.City = city_accounts.id").
-		Joins("LEFT JOIN clusters ON city_accounts.cluster_id = clusters.id").
+	type Result struct {
+		AccountCategory string
+		Count           int64
+	}
+
+	// Base query
+	query := r.db.Model(&models.Account{}).
+		Joins("LEFT JOIN cities ON accounts.City = cities.id").
+		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
 		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
 
-	// Terapkan semua filter ke query
-	applyAccountFilters := func(query *gorm.DB) *gorm.DB {
-		// Filter berdasarkan pencarian
-		if search, exists := filters["search"]; exists && search != "" {
-			searchTokens := strings.Fields(search)
-			for _, token := range searchTokens {
-				query = query.Where(
-					r.db.Where("accounts.account_name LIKE ?", "%"+token+"%").
-						Or("accounts.account_code LIKE ?", "%"+token+"%").
-						Or("accounts.account_type LIKE ?", "%"+token+"%").
-						Or("accounts.account_category LIKE ?", "%"+token+"%").
-						Or("city_accounts.name LIKE ?", "%"+token+"%").
-						Or("clusters.name LIKE ?", "%"+token+"%").
-						Or("branches.name LIKE ?", "%"+token+"%").
-						Or("regions.name LIKE ?", "%"+token+"%").
-						Or("areas.name LIKE ?", "%"+token+"%"),
-				)
-			}
+	// Role-based filter
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		switch userRole {
+		case "Area":
+			query = query.Where("areas.id = ?", territoryID)
+		case "Regional":
+			query = query.Where("regions.id = ?", territoryID)
+		case "Branch", "Buddies", "DS", "Organic", "YAE":
+			query = query.Where("branches.id = ?", territoryID)
+		case "Admin-Tap", "Cluster":
+			query = query.Where("clusters.id = ?", territoryID)
 		}
-
-		// Filter berdasarkan accountCategory dan accountType
-		if accountCategory, exists := filters["account_category"]; exists && accountCategory != "" {
-			query = query.Where("accounts.account_category = ?", accountCategory)
-		}
-		if accountType, exists := filters["account_type"]; exists && accountType != "" {
-			query = query.Where("accounts.account_type = ?", accountType)
-		}
-
-		// Role wilayah
-		if userRole != "Super-Admin" && userRole != "HQ" {
-			switch userRole {
-			case "Area":
-				query = query.Where("areas.id = ?", territoryID)
-			case "Regional":
-				query = query.Where("regions.id = ?", territoryID)
-			case "Branch", "Buddies", "DS", "Organic", "YAE":
-				query = query.Where("branches.id = ?", territoryID)
-			case "Admin-Tap", "Cluster":
-				query = query.Where("clusters.id = ?", territoryID)
-			}
-
-			var multiTerritories []models.MultipleTerritory
-			r.db.Where("user_id = ?", userID).Find(&multiTerritories)
-
-			orQuery := r.db.Session(&gorm.Session{}).Model(&models.Account{})
-
-			for _, mt := range multiTerritories {
-				var ids []string
-				_ = json.Unmarshal([]byte(mt.SubjectIDs), &ids)
-				if len(ids) == 0 {
-					continue
-				}
-				switch mt.SubjectType {
-				case "App\\Models\\Area":
-					orQuery = orQuery.Or("areas.id IN ?", ids)
-				case "App\\Models\\Region":
-					orQuery = orQuery.Or("regions.id IN ?", ids)
-				case "App\\Models\\Branch":
-					orQuery = orQuery.Or("branches.id IN ?", ids)
-				case "App\\Models\\Cluster":
-					orQuery = orQuery.Or("clusters.id IN ?", ids)
-				}
-			}
-			query = query.Or(orQuery)
-		}
-
-		// Filter berdasarkan PIC
-		if onlyUserPic && userID > 0 {
-			query = query.Where("accounts.pic = ?", userID)
-		} else {
-			if userRole == "Buddies" || userRole == "DS" {
-				query = query.Where("accounts.pic = ? OR accounts.pic IS NULL", userID)
-			}
-		}
-
-		// Filter berdasarkan data yang sudah dikunjungi
-		if excludeVisited && userID > 0 {
-			now := time.Now()
-			var visitedAccountIDs []int
-			r.db.Model(&models.AbsenceUser{}).
-				Select("subject_id").
-				Where("user_id = ? AND type = ? AND MONTH(clock_in) = ? AND YEAR(clock_in) = ?", userID, "Visit Account", now.Month(), now.Year()).
-				Where("subject_id IS NOT NULL").
-				Pluck("subject_id", &visitedAccountIDs)
-
-			if len(visitedAccountIDs) > 0 {
-				query = query.Where("accounts.id NOT IN ?", visitedAccountIDs)
-			}
-		}
-
-		// Filter berdasarkan tanggal mulai dan akhir
-		if startDate, exists := filters["start_date"]; exists && startDate != "" {
-			query = query.Where("accounts.created_at >= ?", startDate)
-		}
-		if endDate, exists := filters["end_date"]; exists && endDate != "" {
-			query = query.Where("accounts.created_at <= ?", endDate)
-		}
-
-		return query
 	}
 
-	// Hitung total
-	err := applyAccountFilters(baseQuery).Count(&total).Error
-	if err != nil {
+	// Total
+	if err := query.Count(&total).Error; err != nil {
 		return 0, nil, nil, err
 	}
 
-	// Hitung per kategori
-	type CategoryResult struct {
-		Category string
-		Count    int64
-	}
-
-	var results []CategoryResult
-
-	err = applyAccountFilters(baseQuery).
-		Select("accounts.account_category AS category, COUNT(*) AS count").
-		Group("accounts.account_category").
+	var results []Result
+	err := query.
+		Select("account_category, COUNT(*) AS count").
+		Group("account_category").
 		Scan(&results).Error
 	if err != nil {
 		return 0, nil, nil, err
 	}
-
 	for _, res := range results {
-		categoryCounts[res.Category] = res.Count
+		categories[res.AccountCategory] = res.Count
 	}
 
-	// Ambil data per wilayah (territory)
-	type TerritoryCategory struct {
-		Category string
-		Count    int64
-	}
-
-	// Ambil data berdasarkan wilayah
-	if userRole == "Super-Admin" || userRole == "HQ" {
-		err = applyAccountFilters(baseQuery).
-			Joins("LEFT JOIN areas AS area_accounts ON regions.area_id = area_accounts.id").
-			Select("area_accounts.id, area_accounts.name, accounts.account_category, COUNT(*) as category_count").
-			Group("area_accounts.id, accounts.account_category").
-			Scan(&territories).Error
-	} else if userRole == "Area" {
-		err = applyAccountFilters(baseQuery).
-			Joins("LEFT JOIN regions AS region_accounts ON areas.id = region_accounts.area_id").
-			Select("region_accounts.id, region_accounts.name, accounts.account_category, COUNT(*) as category_count").
-			Group("region_accounts.id, accounts.account_category").
-			Scan(&territories).Error
-	} else if userRole == "Regional" {
-		err = applyAccountFilters(baseQuery).
-			Joins("LEFT JOIN branches AS branch_accounts ON regions.id = branch_accounts.region_id").
-			Select("branch_accounts.id, branch_accounts.name, accounts.account_category, COUNT(*) as category_count").
-			Group("branch_accounts.id, accounts.account_category").
-			Scan(&territories).Error
-	} else if userRole == "Branch" || userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
-		err = applyAccountFilters(baseQuery).
-			Joins("LEFT JOIN clusters AS cluster_accounts ON branch_accounts.id = cluster_accounts.branch_id").
-			Select("cluster_accounts.id, cluster_accounts.name, accounts.account_category, COUNT(*) as category_count").
-			Group("cluster_accounts.id, accounts.account_category").
-			Scan(&territories).Error
-	} else if userRole == "Cluster" || userRole == "Admin-Tap" {
-		err = applyAccountFilters(baseQuery).
-			Joins("LEFT JOIN cities AS city_clusters ON cluster_accounts.id = city_clusters.cluster_id").
-			Select("city_clusters.id, city_clusters.name, accounts.account_category, COUNT(*) as category_count").
-			Group("city_clusters.id, accounts.account_category").
-			Scan(&territories).Error
-	}
-
+	countByTerritories, err := r.CountByTerritories(userRole, territoryID)
 	if err != nil {
 		return 0, nil, nil, err
 	}
 
-	// Update total wilayah berdasarkan kategori
-	for i := range territories {
-		totalCount := int64(0)
-		for _, category := range territories[i].Categories {
-			totalCount += category.Count
-		}
-		territories[i].Total = totalCount
+	return total, categories, countByTerritories, nil
+}
+
+func (r *accountRepository) CountByTerritories(
+	userRole string,
+	territoryID int,
+) ([]map[string]interface{}, error) {
+	type Result struct {
+		TerritoryID     int
+		TerritoryName   string
+		AccountCategory string
+		Count           int64
 	}
 
-	return total, categoryCounts, territories, nil
+	results := make([]Result, 0)
+
+	query := r.db.Model(&models.Account{}).
+		Joins("LEFT JOIN cities ON accounts.City = cities.id").
+		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
+		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
+		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
+		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
+
+	var groupColumn, displayColumn, idColumn, nextTerritory string
+
+	switch userRole {
+	case "Super-Admin", "HQ":
+		groupColumn = "areas.id"
+		displayColumn = "areas.name"
+		idColumn = "areas.id"
+		nextTerritory = "Area"
+
+	case "Area":
+		query = query.Where("areas.id = ?", territoryID)
+		groupColumn = "regions.id"
+		displayColumn = "regions.name"
+		idColumn = "regions.id"
+		nextTerritory = "Regional"
+
+	case "Regional":
+		query = query.Where("regions.id = ?", territoryID)
+		groupColumn = "branches.id"
+		displayColumn = "branches.name"
+		idColumn = "branches.id"
+		nextTerritory = "Branch"
+
+	case "Branch", "Buddies", "DS", "YAE", "Organic":
+		query = query.Where("branches.id = ?", territoryID)
+		groupColumn = "clusters.id"
+		displayColumn = "clusters.name"
+		idColumn = "clusters.id"
+		nextTerritory = "Cluster"
+
+	case "Cluster", "Admin-Tap":
+		query = query.Where("clusters.id = ?", territoryID)
+		groupColumn = "cities.id"
+		displayColumn = "cities.name"
+		idColumn = "cities.id"
+		nextTerritory = ""
+
+	default:
+		return nil, fmt.Errorf("role %s not supported", userRole)
+	}
+
+	err := query.
+		Select(fmt.Sprintf("%s AS territory_id, %s AS territory_name, account_category, COUNT(*) AS count", idColumn, displayColumn)).
+		Group(fmt.Sprintf("%s, %s, account_category", groupColumn, displayColumn)).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Susun hasil sesuai format
+	grouped := make(map[string]map[string]interface{})
+
+	for _, res := range results {
+		entry, exists := grouped[res.TerritoryName]
+		if !exists {
+			entry = map[string]interface{}{
+				"id":             res.TerritoryID,
+				"name":           res.TerritoryName,
+				"next_territory": nextTerritory,
+				"total":          int64(0),
+				"categories":     make(map[string]int64),
+			}
+			grouped[res.TerritoryName] = entry
+		}
+		entry["total"] = entry["total"].(int64) + res.Count
+		categories := entry["categories"].(map[string]int64)
+		categories[res.AccountCategory] = res.Count
+	}
+
+	// Konversi ke slice
+	final := make([]map[string]interface{}, 0, len(grouped))
+	for _, v := range grouped {
+		final = append(final, v)
+	}
+
+	return final, nil
 }
 
 func (r *accountRepository) FindByAccountName(account_name string) (*models.Account, error) {
