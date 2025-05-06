@@ -3,8 +3,11 @@ package repository
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/registration-dealing/response"
+	"encoding/base64"
+	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -69,6 +72,104 @@ func (r *registrationDealingRepository) GetAllRegistrationDealings(
 
 	err := query.Find(&registration_dealings).Error
 	return registration_dealings, total, err
+}
+
+func (r *registrationDealingRepository) GetAllRegistrationDealingGrouped(
+	limit int,
+	paginate bool,
+	page int,
+	filters map[string]string,
+) ([]map[string]interface{}, int64, error) {
+	var results []map[string]interface{}
+	var total int64
+
+	// Base query
+	baseQuery := r.db.
+		Table("registration_dealings").
+		Select(`registration_dealings.event_name, 
+                registration_dealings.account_id, 
+                accounts.account_name, 
+                accounts.account_code, 
+                COUNT(registration_dealings.id) as total`).
+		Joins("JOIN accounts ON registration_dealings.account_id = accounts.id")
+
+	// Apply filters
+	if search, exists := filters["q"]; exists && search != "" {
+		baseQuery = baseQuery.Where("registration_dealings.event_name LIKE ?", "%"+search+"%")
+	}
+	if start, exists := filters["start"]; exists && start != "" {
+		baseQuery = baseQuery.Where("registration_dealings.created_at >= ?", start)
+	}
+	if end, exists := filters["end"]; exists && end != "" {
+		endDate, _ := time.Parse("2006-01-02", end)
+		endDate = endDate.Add(24 * time.Hour)
+		baseQuery = baseQuery.Where("registration_dealings.created_at <= ?", endDate.Format("2006-01-02"))
+	}
+
+	// Grouping
+	baseQuery = baseQuery.Group("registration_dealings.event_name, registration_dealings.account_id, accounts.account_name, accounts.account_code")
+
+	// Ordering
+	ref := filters["ref"]
+	if ref == "" {
+		ref = "accounts.account_name"
+	}
+	order := filters["order"]
+	if order == "" {
+		order = "ASC"
+	}
+	baseQuery = baseQuery.Order(ref + " " + order)
+
+	// Hitung total grup
+	countSubQuery := baseQuery.Session(&gorm.Session{}).Select("1")
+	err := r.db.Table("(?) as count_table", countSubQuery).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Pagination
+	if paginate {
+		offset := (page - 1) * limit
+		baseQuery = baseQuery.Limit(limit).Offset(offset)
+	} else if limit > 0 {
+		baseQuery = baseQuery.Limit(limit)
+	}
+
+	// Eksekusi query dan ambil baris
+	rows, err := baseQuery.Rows()
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	columns, _ := rows.Columns()
+	for rows.Next() {
+		result := make(map[string]interface{})
+		columnPointers := make([]interface{}, len(columns))
+		for i := range columns {
+			var v interface{}
+			columnPointers[i] = &v
+		}
+		rows.Scan(columnPointers...)
+		for i, colName := range columns {
+			val := *(columnPointers[i].(*interface{}))
+			strVal, ok := val.([]byte)
+			if ok {
+				// Decode base64 jika applicable
+				decoded, err := base64DecodeSafe(string(strVal))
+				if err == nil {
+					result[colName] = decoded
+				} else {
+					result[colName] = string(strVal) // fallback ke string asli jika gagal decode
+				}
+			} else {
+				result[colName] = val
+			}
+		}
+		results = append(results, result)
+	}
+
+	return results, total, nil
 }
 
 func (r *registrationDealingRepository) FindByRegistrationDealingID(id uint) (*response.RegistrationDealingResponse, error) {
@@ -140,4 +241,23 @@ func (r *registrationDealingRepository) FindByPhoneNumber(phone_number string) (
 	}
 
 	return &registrationDealing, nil
+}
+
+func base64DecodeSafe(input string) (string, error) {
+	// Cek apakah input merupakan base64 yang valid
+	if isBase64(input) {
+		decoded, err := base64.StdEncoding.DecodeString(input)
+		if err != nil {
+			return "", err
+		}
+		return string(decoded), nil
+	}
+	return input, errors.New("invalid base64 data")
+}
+
+// Fungsi untuk mengecek apakah string merupakan Base64 yang valid
+func isBase64(input string) bool {
+	// Mengabaikan karakter yang tidak valid untuk base64
+	decoded := base64.StdEncoding.EncodeToString([]byte(input))
+	return decoded == input
 }

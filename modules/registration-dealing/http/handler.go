@@ -66,6 +66,41 @@ func (h *RegistrationDealingHandler) GetAllRegistrationDealings(c *fiber.Ctx) er
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *RegistrationDealingHandler) GetAllRegistrationDealingsGrouped(c *fiber.Ctx) error {
+	// Default query params
+	filters := map[string]string{
+		"search":     c.Query("search", ""),
+		"order_by":   c.Query("order_by", "id"),
+		"order":      c.Query("order", "ASC"),
+		"start_date": c.Query("start_date", ""),
+		"end_date":   c.Query("end_date", ""),
+	}
+
+	// Parse integer and boolean values
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+
+	// Call service with filters
+	registrationDealings, total, err := h.service.GetAllRegistrationDealingGrouped(limit, paginate, page, filters)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch registration dealing",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"registration_dealings": registrationDealings,
+		"total":                 total,
+		"page":                  page,
+	}
+
+	response := helper.APIResponse("Get Registration Dealing Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *RegistrationDealingHandler) GetRegistrationDealingById(c *fiber.Ctx) error {
 	// Get id from param
 	idParam := c.Params("id")
