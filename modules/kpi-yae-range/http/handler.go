@@ -25,14 +25,36 @@ func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpi
 }
 
 func (h *KpiYaeRangeHandler) GetCurrentKpiYaeRanges(c *fiber.Ctx) error {
-	// Get the current KpiYaeRanges from the service
+	// Ambil query param dari URL jika ada
+	monthParam := c.Query("month")
+	yearParam := c.Query("year")
+
+	// Default: bulan & tahun saat ini
 	now := time.Now()
 	month := uint(now.Month())
 	year := uint(now.Year())
 
+	// Jika parameter ada dan valid, override nilai default
+	if monthParam != "" {
+		if m, err := strconv.Atoi(monthParam); err == nil && m >= 1 && m <= 12 {
+			month = uint(m)
+		}
+	}
+
+	if yearParam != "" {
+		if y, err := strconv.Atoi(yearParam); err == nil && y > 2000 {
+			year = uint(y)
+		}
+	}
+
+	// Ambil data dari service
 	kpiYaeRanges, err := h.service.GetKpiYaeRangeByDate(month, year)
 	if err != nil {
-		response := helper.APIResponse("Failed to fetch KPI", fiber.StatusInternalServerError, "error", nil)
+		if err.Error() == "record not found" {
+			response := helper.APIResponse("KPI not found", fiber.StatusNotFound, "error", nil)
+			return c.Status(fiber.StatusNotFound).JSON(response)
+		}
+		response := helper.APIResponse("Failed to fetch KPI", fiber.StatusInternalServerError, "error", err.Error())
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
@@ -40,8 +62,7 @@ func (h *KpiYaeRangeHandler) GetCurrentKpiYaeRanges(c *fiber.Ctx) error {
 	responseData := map[string]interface{}{
 		"kpi_yae_ranges": kpiYaeRanges,
 	}
-
-	response := helper.APIResponse("Get Current KpiYaeRanges Successfully", fiber.StatusOK, "success", responseData)
+	response := helper.APIResponse("Get Current Kpi YAE Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
