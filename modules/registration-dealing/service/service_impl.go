@@ -18,6 +18,10 @@ func (s *registrationDealingService) GetAllRegistrationDealings(limit int, pagin
 	return s.repo.GetAllRegistrationDealings(limit, paginate, page, filters, accountID, eventName)
 }
 
+func (s *registrationDealingService) GetAllRegistrationDealingGrouped(limit int, paginate bool, page int, filters map[string]string) ([]map[string]interface{}, int64, error) {
+	return s.repo.GetAllRegistrationDealingGrouped(limit, paginate, page, filters)
+}
+
 func (s *registrationDealingService) FindByRegistrationDealingID(id uint) (*response.RegistrationDealingResponse, error) {
 	registrationDealing, err := s.repo.FindByRegistrationDealingID(id)
 	if err != nil {
