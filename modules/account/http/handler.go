@@ -110,26 +110,42 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 }
 
 func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
-	// Default query params
-	filters := map[string]string{
-		"search":           c.Query("search", ""),
-		"order_by":         c.Query("order_by", "id"),
-		"order":            c.Query("order", "DESC"),
-		"start_date":       c.Query("start_date", ""),
-		"end_date":         c.Query("end_date", ""),
-		"account_category": c.Query("account_category", ""),
-		"account_type":     c.Query("account_type", ""),
+	var territoryID int
+	var userRole string
+	var err error
+
+	// Ambil user_role dari query jika ada, jika tidak ambil dari locals
+	userRoleParam := c.Query("user_role")
+	if userRoleParam != "" {
+		userRole = userRoleParam
+	} else {
+		var ok bool
+		userRole, ok = c.Locals("user_role").(string)
+		if !ok {
+			response := helper.APIResponse("Unauthorized: Invalid user role", fiber.StatusUnauthorized, "error", nil)
+			return c.Status(fiber.StatusUnauthorized).JSON(response)
+		}
 	}
 
-	// Parse integer and boolean values
-	userRole := c.Locals("user_role").(string)
-	territoryID := c.Locals("territory_id").(int)
-	userID := c.Locals("user_id").(int)
-	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
-	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
+	// Ambil territory_id dari query jika ada, jika tidak ambil dari locals
+	territoryIDParam := c.Query("territory_id")
+	if territoryIDParam != "" {
+		territoryID, err = strconv.Atoi(territoryIDParam)
+		if err != nil {
+			response := helper.APIResponse("Bad Request: Invalid territory_id", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else {
+		var ok bool
+		territoryID, ok = c.Locals("territory_id").(int)
+		if !ok {
+			response := helper.APIResponse("Unauthorized: Invalid territory ID", fiber.StatusUnauthorized, "error", nil)
+			return c.Status(fiber.StatusUnauthorized).JSON(response)
+		}
+	}
 
 	// Call service with filters
-	total, categories, territories, err := h.service.CountAccount(filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
+	total, categories, territories, err := h.service.CountAccount(userRole, territoryID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
