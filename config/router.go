@@ -116,6 +116,8 @@ func Route(db *gorm.DB) {
 	routes.CommunicationRouter(api, db)
 	routes.FacultyRouter(api, db)
 
+	routes.ProductRouter(api, db)
+
 	routes.RegistrationDealingRouter(api, db)
 
 	routes.AbsenceUserRouter(api, db)
