@@ -232,15 +232,21 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	accountResponse.PicInternal = account.PicInternal
 	accountResponse.SocialMedias = account.SocialMedias
 	accountResponse.Contacts = account.Contacts
+	accountResponse.Products = account.Products
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 
 	accountResponse.Category = []string{}
 	accountResponse.Url = []string{}
+	accountResponse.ProductAccount = []string{}
 
 	for _, sm := range accountResponse.SocialMedias {
 		accountResponse.Category = append(accountResponse.Category, *sm.Category)
 		accountResponse.Url = append(accountResponse.Url, *sm.Url)
+	}
+
+	for _, sm := range accountResponse.Products {
+		accountResponse.ProductAccount = append(accountResponse.ProductAccount, fmt.Sprintf("%d", sm.ID))
 	}
 
 	if len(account.Contacts) > 0 {
