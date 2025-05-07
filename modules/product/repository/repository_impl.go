@@ -63,3 +63,11 @@ func (r *productRepository) GetAllProducts(limit int, paginate bool, page int, f
 	err := query.Find(&products).Error
 	return products, total, err
 }
+
+func (r *productRepository) DeleteByAccountID(accountID uint) error {
+	return r.db.Where("account_id = ?", accountID).Delete(&models.AccountProduct{}).Error
+}
+
+func (r *productRepository) Insert(productAccounts []models.AccountProduct) error {
+	return r.db.Create(&productAccounts).Error
+}

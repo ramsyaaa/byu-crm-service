@@ -27,6 +27,7 @@ import (
 	accountTypeCommunityDetailService "byu-crm-service/modules/account-type-community-detail/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
+	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,6 +43,7 @@ type AccountHandler struct {
 	accountScheduleService            accountScheduleService.AccountScheduleService
 	accountTypeCampusDetailService    accountTypeCampusDetailService.AccountTypeCampusDetailService
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService
+	productService                    productService.ProductService
 }
 
 func NewAccountHandler(
@@ -53,7 +55,8 @@ func NewAccountHandler(
 	accountMemberService accountMemberService.AccountMemberService,
 	accountScheduleService accountScheduleService.AccountScheduleService,
 	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService,
-	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService) *AccountHandler {
+	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService,
+	productService productService.ProductService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                           service,
@@ -64,7 +67,8 @@ func NewAccountHandler(
 		accountMemberService:              accountMemberService,
 		accountScheduleService:            accountScheduleService,
 		accountTypeCampusDetailService:    accountTypeCampusDetailService,
-		accountTypeCommunityDetailService: accountTypeCommunityDetailService}
+		accountTypeCommunityDetailService: accountTypeCommunityDetailService,
+		productService:                    productService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -360,6 +364,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
+	_, _ = h.productService.InsertProductAccount(reqMap, account[0].ID)
 
 	// Safely handle account_category - check if it exists and is not nil
 	if category, exists := reqMap["account_category"]; exists && category != nil {
@@ -549,6 +554,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
 	_, _ = h.socialMediaService.InsertSocialMedia(reqMap, "App\\Models\\Account", account[0].ID)
+	_, _ = h.productService.InsertProductAccount(reqMap, account[0].ID)
 
 	// Safely handle account_category - check if it exists and is not nil
 	if category, exists := reqMap["account_category"]; exists && category != nil {

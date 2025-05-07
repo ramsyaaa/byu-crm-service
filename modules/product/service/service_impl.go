@@ -1,6 +1,7 @@
 package service
 
 import (
+	"byu-crm-service/models"
 	accountRepo "byu-crm-service/modules/account/repository"
 	areaRepo "byu-crm-service/modules/area/repository"
 	branchRepo "byu-crm-service/modules/branch/repository"
@@ -11,7 +12,10 @@ import (
 	"byu-crm-service/modules/product/repository"
 	"byu-crm-service/modules/product/response"
 	regionRepo "byu-crm-service/modules/region/repository"
+	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 )
 
 type productService struct {
@@ -124,4 +128,57 @@ func (s *productService) GetAllProducts(limit int, paginate bool, page int, filt
 	}
 
 	return s.repo.GetAllProducts(limit, paginate, page, filters, subjectIDs)
+}
+
+func (s *productService) InsertProductAccount(requestBody map[string]interface{}, account_id uint) ([]models.AccountProduct, error) {
+	// Delete existing product accounts for the given account_id
+	if err := s.repo.DeleteByAccountID(account_id); err != nil {
+		return nil, err
+	}
+
+	productID, exists := requestBody["product_account"]
+	if !exists {
+		return nil, errors.New("product_account is missing")
+	}
+
+	var DataProductID []string
+
+	switch v := productID.(type) {
+	case string: // Jika hanya satu nilai, ubah ke array
+		DataProductID = append(DataProductID, v)
+	case []string: // Jika sudah array string, langsung tambahkan ke DataProductID
+		DataProductID = append(DataProductID, v...)
+	case []interface{}: // Jika array tapi bertipe []interface{}
+		for _, val := range v {
+			strVal, ok := val.(string)
+			if !ok {
+				return nil, errors.New("product_id contains non-string value")
+			}
+			DataProductID = append(DataProductID, strVal)
+		}
+	default:
+		return nil, fmt.Errorf("invalid product_id type: %v", reflect.TypeOf(productID))
+	}
+
+	var productAccounts []models.AccountProduct
+
+	// Loop through the contact IDs and create ProductAccount instances
+	for _, contact := range DataProductID {
+		idUint, err := strconv.ParseUint(contact, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error converting contact ID to uint: %v", err)
+		}
+
+		productAccounts = append(productAccounts, models.AccountProduct{
+			ProductID: func(u uint) *uint { return &u }(uint(idUint)),
+			AccountID: &account_id,
+		})
+	}
+
+	// Insert the new contact accounts into the database
+	if err := s.repo.Insert(productAccounts); err != nil {
+		return nil, err
+	}
+
+	return productAccounts, nil
 }

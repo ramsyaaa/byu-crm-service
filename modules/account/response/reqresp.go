@@ -38,6 +38,7 @@ type AccountResponse struct {
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
+	Products                   []models.Product                   `gorm:"many2many:account_products;foreignKey:ID;joinForeignKey:account_id;References:ID;joinReferences:product_id" json:"products"`
 	SocialMedias               []models.SocialMedia               `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
 	AccountTypeCampusDetail    *models.AccountTypeCampusDetail    `json:"campus_detail,omitempty" gorm:"foreignKey:AccountID"`
 	AccountTypeSchoolDetail    *models.AccountTypeSchoolDetail    `json:"school_detail,omitempty" gorm:"foreignKey:AccountID"`
@@ -75,11 +76,13 @@ type SingleAccountResponse struct {
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
+	Products  []models.Product `json:"products"`
 	Contacts  []models.Contact `json:"contacts"`
 	ContactID []string         `json:"contact_id"`
 
-	Url      []string `json:"url"`
-	Category []string `json:"category"`
+	ProductAccount []string `json:"product_account"`
+	Url            []string `json:"url"`
+	Category       []string `json:"category"`
 
 	// only for account category school
 	DiesNatalis             *time.Time `json:"dies_natalis"`
