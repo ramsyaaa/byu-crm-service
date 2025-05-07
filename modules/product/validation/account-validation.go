@@ -40,8 +40,6 @@ type ValidateRequest struct {
 	Pic                     *string `json:"pic"`
 	PicInternal             *string `json:"pic_internal"`
 
-	ProductAccount []string `json:"product_account"`
-
 	// Social Media
 	Category  []string `json:"category" validate:"validate_category_url"`
 	Url       []string `json:"url"`

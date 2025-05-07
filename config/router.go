@@ -102,6 +102,7 @@ func Route(db *gorm.DB) {
 
 	routes.AuthRouter(api, db)
 
+	routes.TerritoryRouter(api, db)
 	routes.AreaRouter(api, db)
 	routes.RegionRouter(api, db)
 	routes.BranchRouter(api, db)
@@ -114,6 +115,8 @@ func Route(db *gorm.DB) {
 	routes.OpportunityRouter(api, db)
 	routes.CommunicationRouter(api, db)
 	routes.FacultyRouter(api, db)
+
+	routes.ProductRouter(api, db)
 
 	routes.RegistrationDealingRouter(api, db)
 

@@ -11,8 +11,14 @@ import (
 	"byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
+	areaRepo "byu-crm-service/modules/area/repository"
+	branchRepo "byu-crm-service/modules/branch/repository"
 	cityRepo "byu-crm-service/modules/city/repository"
+	clusterRepo "byu-crm-service/modules/cluster/repository"
 	contactAccountRepo "byu-crm-service/modules/contact-account/repository"
+	eligibilityRepo "byu-crm-service/modules/eligibility/repository"
+	productRepo "byu-crm-service/modules/product/repository"
+	regionRepo "byu-crm-service/modules/region/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
 
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
@@ -22,6 +28,7 @@ import (
 	accountTypeCommunityDetailService "byu-crm-service/modules/account-type-community-detail/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
+	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -39,6 +46,12 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountScheduleRepo := accountScheduleRepo.NewAccountScheduleRepository(db)
 	accountTypeCampusDetailRepo := accountTypeCampusDetailRepo.NewAccountTypeCampusDetailRepository(db)
 	accountTypeCommunityDetailRepo := accountTypeCommunityDetailRepo.NewAccountTypeCommunityDetailRepository(db)
+	productRepo := productRepo.NewProductRepository(db)
+	eligibilityRepo := eligibilityRepo.NewEligibilityRepository(db)
+	areaRepo := areaRepo.NewAreaRepository(db)
+	regionRepo := regionRepo.NewRegionRepository(db)
+	branchRepo := branchRepo.NewBranchRepository(db)
+	clusterRepo := clusterRepo.NewClusterRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -52,8 +65,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountScheduleService := accountScheduleService.NewAccountScheduleService(accountScheduleRepo)
 	accountTypeCampusDetailService := accountTypeCampusDetailService.NewAccountTypeCampusDetailService(accountTypeCampusDetailRepo)
 	accountTypeCommunityDetailService := accountTypeCommunityDetailService.NewAccountTypeCommunityDetailService(accountTypeCommunityDetailRepo)
+	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService)
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService)
 
 	http.AccountRoutes(router, accountHandler)
 
