@@ -11,4 +11,5 @@ type UserResponse struct {
 	TerritoryID   uint     `json:"territory_id"`
 	TerritoryType string   `json:"territory_type"`
 	RoleNames     []string `json:"role_names"`
+	Permissions   []string `json:"permissions"`
 }

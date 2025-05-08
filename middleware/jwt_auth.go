@@ -59,11 +59,43 @@ func JWTUserContextMiddleware() fiber.Handler {
 			return unauthorized(c, "Unauthorized: territory id not found in token")
 		}
 
+		// Ambil permission
+		permissions, ok := claims["permissions"].([]interface{})
+		if !ok {
+			return unauthorized(c, "Unauthorized: permissions not found or invalid")
+		}
+
+		var permStrings []string
+		for _, p := range permissions {
+			if str, ok := p.(string); ok {
+				permStrings = append(permStrings, str)
+			}
+		}
+
+		// Set ke context
 		c.Locals("user_id", int(userID))
 		c.Locals("user_role", userRole)
 		c.Locals("territory_type", territoryType)
 		c.Locals("territory_id", int(territoryID))
+		c.Locals("permissions", permStrings)
+
 		return c.Next()
+	}
+}
+
+func PermissionMiddleware(requiredPermission string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		perms, ok := c.Locals("permissions").([]string)
+		if !ok {
+			return jwtErrorHandler(c, fiber.NewError(fiber.StatusUnauthorized, "Permission context invalid"))
+		}
+
+		for _, p := range perms {
+			if p == requiredPermission {
+				return c.Next()
+			}
+		}
+		return jwtErrorHandler(c, fiber.NewError(fiber.StatusUnauthorized, "You cannot access "+requiredPermission))
 	}
 }
 
