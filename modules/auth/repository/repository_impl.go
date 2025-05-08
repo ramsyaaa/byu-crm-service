@@ -28,7 +28,7 @@ func (r *authRepository) GetUserByKey(key, value string) (*models.User, error) {
 		return nil, err
 	}
 
-	// Ambil role_id dari tabel model_has_roles
+	// Ambil role_id dari model_has_roles
 	var roleIDs []uint
 	if err := r.db.Table("model_has_roles").
 		Where("model_id = ? AND model_type = ?", user.ID, "App\\Models\\User").
@@ -36,7 +36,7 @@ func (r *authRepository) GetUserByKey(key, value string) (*models.User, error) {
 		return nil, err
 	}
 
-	// Ambil nama role dari tabel roles
+	// Ambil nama role
 	if len(roleIDs) > 0 {
 		var roleNames []string
 		if err := r.db.Table("roles").
@@ -45,6 +45,25 @@ func (r *authRepository) GetUserByKey(key, value string) (*models.User, error) {
 			return nil, err
 		}
 		user.RoleNames = roleNames
+
+		// Ambil permission_id dari role_has_permissions
+		var permissionIDs []uint
+		if err := r.db.Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+
+		// Ambil nama permission dari permissions
+		if len(permissionIDs) > 0 {
+			var permissions []string
+			if err := r.db.Table("permissions").
+				Where("id IN ?", permissionIDs).
+				Pluck("name", &permissions).Error; err != nil {
+				return nil, err
+			}
+			user.Permissions = permissions
+		}
 	}
 
 	return &user, nil

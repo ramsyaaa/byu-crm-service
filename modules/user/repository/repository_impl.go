@@ -182,7 +182,7 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		return nil, err
 	}
 
-	// Get role IDs from model_has_roles table
+	// Ambil role IDs dari model_has_roles
 	var roleIDs []uint
 	if err := r.db.Table("model_has_roles").
 		Where("model_id = ? AND model_type = ?", id, "App\\Models\\User").
@@ -190,7 +190,7 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		return nil, err
 	}
 
-	// Ambil nama role dari tabel roles
+	// Ambil nama role
 	var roleNames []string
 	if len(roleIDs) > 0 {
 		if err := r.db.Table("roles").
@@ -200,7 +200,27 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		}
 	}
 
-	// Build response
+	// Ambil permission_id dari role_has_permissions
+	var permissionIDs []uint
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Ambil nama permission
+	var permissions []string
+	if len(permissionIDs) > 0 {
+		if err := r.db.Table("permissions").
+			Where("id IN ?", permissionIDs).
+			Pluck("name", &permissions).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Bangun response
 	response := &response.UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
@@ -212,6 +232,7 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		TerritoryID:   user.TerritoryID,
 		TerritoryType: user.TerritoryType,
 		RoleNames:     roleNames,
+		Permissions:   permissions,
 	}
 
 	return response, nil
