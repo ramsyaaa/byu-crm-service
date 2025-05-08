@@ -38,12 +38,12 @@ func (h *ContactAccountHandler) GetAllContacts(c *fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
 	page, _ := strconv.Atoi(c.Query("page", "1"))
+	account_id, _ := strconv.Atoi(c.Query("account_id", "0"))
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
-	userID := c.Locals("user_id").(int)
 
 	// Call service with filters
-	contacts, total, err := h.service.GetAllContacts(limit, paginate, page, filters, userRole, territoryID, userID)
+	contacts, total, err := h.service.GetAllContacts(limit, paginate, page, filters, userRole, territoryID, account_id)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch contacts",
