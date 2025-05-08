@@ -17,4 +17,6 @@ type Product struct {
 	ValidityUnit    *string   `json:"validity_unit"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+
+	Eligibility *Eligibility `json:"eligibility" gorm:"foreignKey:SubjectID;references:ID;where:subject_type='App\\Models\\Product'"`
 }

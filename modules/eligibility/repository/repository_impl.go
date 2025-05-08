@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"byu-crm-service/models"
 	"byu-crm-service/modules/eligibility/response"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -52,15 +54,51 @@ func (s *eligibilityRepository) GetEligibilities(subjectType string, categories 
 			locationArgs = append(locationArgs, "\""+escapedVal+"\"", jsonPath)
 		}
 	}
-	fmt.Println("locationConds")
-	fmt.Println(locationConds)
 	if len(locationConds) > 0 {
 		// Satukan semua OR clause
-		fmt.Println("location arg")
-		fmt.Println(locationArgs...)
 		query = query.Where("("+strings.Join(locationConds, " OR ")+")", locationArgs...)
 	}
 
 	err := query.Find(&results).Error
 	return results, err
+}
+
+func (s *eligibilityRepository) InsertEligibility(
+	subjectType string,
+	subjectID uint,
+	categories []string,
+	types []string,
+	locations map[string][]string,
+) error {
+	// Hapus data lama
+	if err := s.db.Where("subject_type = ? AND subject_id = ?", subjectType, subjectID).Delete(&models.Eligibility{}).Error; err != nil {
+		return err
+	}
+
+	// Encode ke JSON string
+	categoryJSON, err := json.Marshal(categories)
+	if err != nil {
+		return fmt.Errorf("failed to encode categories: %w", err)
+	}
+
+	typeJSON, err := json.Marshal(types)
+	if err != nil {
+		return fmt.Errorf("failed to encode types: %w", err)
+	}
+
+	locationJSON, err := json.Marshal(locations)
+	if err != nil {
+		return fmt.Errorf("failed to encode locations: %w", err)
+	}
+
+	// Simpan data baru
+	newEligibility := models.Eligibility{
+		SubjectType: subjectType,
+		SubjectID:   subjectID,
+		Categories:  string(categoryJSON),
+		Types:       string(typeJSON),
+		Locations:   string(locationJSON),
+	}
+
+	return s.db.Create(&newEligibility).Error
 }
