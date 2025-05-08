@@ -7,6 +7,7 @@ import (
 	cityRepo "byu-crm-service/modules/city/repository"
 	clusterRepo "byu-crm-service/modules/cluster/repository"
 	eligibilityRepo "byu-crm-service/modules/eligibility/repository"
+	eligibilityService "byu-crm-service/modules/eligibility/service"
 	"byu-crm-service/modules/product/http"
 	"byu-crm-service/modules/product/repository"
 	"byu-crm-service/modules/product/service"
@@ -27,8 +28,9 @@ func ProductRouter(router fiber.Router, db *gorm.DB) {
 	cityRepo := cityRepo.NewCityRepository(db)
 
 	productService := service.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
+	eligibilityService := eligibilityService.NewEligibilityService(eligibilityRepo)
 
-	productHandler := http.NewProductHandler(productService)
+	productHandler := http.NewProductHandler(productService, eligibilityService)
 
 	http.ProductRoutes(router, productHandler)
 

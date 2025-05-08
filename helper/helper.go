@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -218,4 +219,36 @@ func DecodeBase64Image(data string) ([]byte, string, error) {
 		return nil, "", err
 	}
 	return decoded, mimeType, nil
+}
+
+func DecodeBase64File(data string) ([]byte, string, error) {
+	if !strings.Contains(data, ";base64,") {
+		return nil, "", errors.New("format base64 tidak valid")
+	}
+
+	parts := strings.SplitN(data, ";base64,", 2)
+	if len(parts) != 2 {
+		return nil, "", errors.New("data base64 tidak lengkap")
+	}
+
+	mimeType := strings.TrimPrefix(parts[0], "data:")
+	decoded, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, "", err
+	}
+
+	return decoded, mimeType, nil
+}
+
+func DeleteFile(filePath string) error {
+	if filePath == "" {
+		return nil
+	}
+
+	err := os.Remove(filePath)
+	if err != nil {
+		log.Printf("Gagal menghapus file: %s, error: %v", filePath, err)
+		return err
+	}
+	return nil
 }
