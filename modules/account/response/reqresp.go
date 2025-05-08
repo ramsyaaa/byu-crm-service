@@ -138,3 +138,8 @@ type SingleAccountResponse struct {
 
 	SocialMedias []models.SocialMedia `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
 }
+
+type TerritoryInfo struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
