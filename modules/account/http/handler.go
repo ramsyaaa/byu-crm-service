@@ -149,7 +149,7 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 	}
 
 	// Call service with filters
-	total, categories, territories, err := h.service.CountAccount(userRole, territoryID)
+	total, categories, territories, territory_info, err := h.service.CountAccount(userRole, territoryID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
@@ -159,9 +159,10 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 
 	// Return response
 	responseData := map[string]interface{}{
-		"total":       total,
-		"categories":  categories,
-		"territories": territories,
+		"total":          total,
+		"territory_info": territory_info,
+		"categories":     categories,
+		"territories":    territories,
 	}
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)

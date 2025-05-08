@@ -285,9 +285,10 @@ func (r *accountRepository) UpdateAccount(requestBody map[string]string, account
 func (r *accountRepository) CountAccount(
 	userRole string,
 	territoryID int,
-) (int64, map[string]int64, []map[string]interface{}, error) {
+) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error) {
 	var total int64
 	categories := make(map[string]int64)
+	var currentTerritory response.TerritoryInfo
 
 	type Result struct {
 		AccountCategory string
@@ -316,29 +317,57 @@ func (r *accountRepository) CountAccount(
 		}
 	}
 
-	// Total
+	// Total count
 	if err := query.Count(&total).Error; err != nil {
-		return 0, nil, nil, err
+		return 0, nil, nil, currentTerritory, err
 	}
 
+	// Group by account_category
 	var results []Result
 	err := query.
 		Select("account_category, COUNT(*) AS count").
 		Group("account_category").
 		Scan(&results).Error
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, nil, currentTerritory, err
 	}
 	for _, res := range results {
 		categories[res.AccountCategory] = res.Count
 	}
 
+	// Get count by territories
 	countByTerritories, err := r.CountByTerritories(userRole, territoryID)
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, nil, currentTerritory, err
 	}
 
-	return total, categories, countByTerritories, nil
+	// Set currentTerritory
+	switch userRole {
+	case "Super-Admin", "HQ":
+		currentTerritory = response.TerritoryInfo{ID: 0, Name: "Indonesia"}
+	case "Area":
+		var area models.Area
+		if err := r.db.Select("id", "name").First(&area, territoryID).Error; err == nil {
+			currentTerritory = response.TerritoryInfo{ID: int(area.ID), Name: area.Name}
+		}
+	case "Regional":
+		var region models.Region
+		if err := r.db.Select("id", "name").First(&region, territoryID).Error; err == nil {
+			currentTerritory = response.TerritoryInfo{ID: int(region.ID), Name: region.Name}
+		}
+	case "Branch", "Buddies", "DS", "Organic", "YAE":
+		var branch models.Branch
+		if err := r.db.Select("id", "name").First(&branch, territoryID).Error; err == nil {
+			currentTerritory = response.TerritoryInfo{ID: int(branch.ID), Name: branch.Name}
+		}
+	case "Admin-Tap", "Cluster":
+		var cluster models.Cluster
+		if err := r.db.Select("id", "name").First(&cluster, territoryID).Error; err == nil {
+			currentTerritory = response.TerritoryInfo{ID: int(cluster.ID), Name: cluster.Name}
+		}
+	}
+
+	return total, categories, countByTerritories, currentTerritory, nil
 }
 
 func (r *accountRepository) CountByTerritories(
