@@ -4,7 +4,6 @@ import (
 	"byu-crm-service/modules/constant-data/service"
 	"byu-crm-service/modules/constant-data/validation"
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"byu-crm-service/helper"
@@ -21,24 +20,12 @@ func NewConstantDataHandler(ConstantDataService service.ConstantDataService) *Co
 }
 
 func (h *ConstantDataHandler) GetAllConstants(c *fiber.Ctx) error {
-	// Default query params
-	filters := map[string]string{
-		"search":     c.Query("search", ""),
-		"order_by":   c.Query("order_by", "id"),
-		"order":      c.Query("order", "DESC"),
-		"start_date": c.Query("start_date", ""),
-		"end_date":   c.Query("end_date", ""),
-	}
 
-	// Parse integer and boolean values
-	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
-	page, _ := strconv.Atoi(c.Query("page", "1"))
 	type_constant := c.Query("type", "")
 	other_group := c.Query("other_group", "")
 
 	// Call service with filters
-	constants, total, err := h.constantDataService.GetAllConstants(limit, paginate, page, filters, type_constant, other_group)
+	constants, total, err := h.constantDataService.GetAllConstants(type_constant, other_group)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch constants",
@@ -50,7 +37,6 @@ func (h *ConstantDataHandler) GetAllConstants(c *fiber.Ctx) error {
 	responseData := map[string]interface{}{
 		"constants": constants,
 		"total":     total,
-		"page":      page,
 	}
 
 	response := helper.APIResponse("Get Constants Successfully", fiber.StatusOK, "success", responseData)

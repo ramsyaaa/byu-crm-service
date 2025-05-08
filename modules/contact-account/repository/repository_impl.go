@@ -89,6 +89,20 @@ func (r *contactAccountRepository) GetAllContacts(
 		)
 	}
 
+	if accountID != 0 {
+		var contactIDs []uint
+		if err := r.db.Model(&models.ContactAccount{}).
+			Where("account_id = ?", accountID).
+			Pluck("contact_id", &contactIDs).Error; err != nil {
+			return nil, 0, err
+		}
+		if len(contactIDs) == 0 {
+			// Jika tidak ada contact_id, langsung return kosong
+			return []response.ContactResponse{}, 0, nil
+		}
+		query = query.Where("contacts.id IN ?", contactIDs)
+	}
+
 	// Count total sebelum pagination
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
