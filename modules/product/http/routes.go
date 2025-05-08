@@ -12,8 +12,7 @@ func ProductRoutes(router fiber.Router, handler *ProductHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllProducts)
-	// authRouter.Get("/:id", handler.GetProductById)
-	// authRouter.Post("/update-pic/:id", handler.UpdatePic)
-	// authRouter.Post("/", handler.CreateProduct)
-	// authRouter.Put("/:id", handler.UpdateProduct)
+	authRouter.Get("/:id", handler.GetProductById)
+	authRouter.Post("/", handler.CreateProduct)
+	authRouter.Put("/:id", handler.UpdateProduct)
 }
