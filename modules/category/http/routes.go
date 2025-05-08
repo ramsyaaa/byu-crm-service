@@ -13,6 +13,6 @@ func CategoryRoutes(router fiber.Router, handler *CategoryHandler) {
 	)
 	authRouter.Get("/", handler.GetAllCategories)
 	authRouter.Get("/:id", handler.GetCategory)
-	authRouter.Post("/", handler.CreateCategory)
-	authRouter.Put("/:id", handler.UpdateCategory)
+	authRouter.Post("/", middleware.PermissionMiddleware("import category"), handler.CreateCategory)
+	authRouter.Put("/:id", middleware.PermissionMiddleware("edit category"), handler.UpdateCategory)
 }

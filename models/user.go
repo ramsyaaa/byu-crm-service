@@ -17,6 +17,7 @@ type User struct {
 	OutletIDDigipos   string `json:"outlet_id_digipos"`
 	NamiAgentID       string `json:"nami_agent_id"`
 
-	Roles     []Role   `gorm:"many2many:model_has_roles;joinForeignKey:ID;joinReferences:RoleID;foreignKey:ID;references:ID"`
-	RoleNames []string `gorm:"-" json:"role_names"`
+	Roles       []Role   `gorm:"many2many:model_has_roles;joinForeignKey:ID;joinReferences:RoleID;foreignKey:ID;references:ID"`
+	RoleNames   []string `gorm:"-" json:"role_names"`
+	Permissions []string `gorm:"-" json:"permissions"`
 }

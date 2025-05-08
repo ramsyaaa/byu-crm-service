@@ -124,9 +124,10 @@ func (r *accountRepository) GetAllAccounts(
 	if onlyUserPic && userID > 0 {
 		query = query.Where("accounts.pic = ?", userID)
 	} else {
-		if userRole == "Buddies" || userRole == "DS" {
-			query = query.Where("accounts.pic = ? OR accounts.pic IS NULL", userID).
-				Order(fmt.Sprintf("CASE WHEN accounts.pic = %d THEN 0 ELSE 1 END, accounts.account_name ASC", userID))
+		if userRole == "Buddies" || userRole == "DS" || userRole == "YAE" {
+			query = query.
+				Where("accounts.pic = ? OR accounts.pic IS NULL OR accounts.pic = ''", userID).
+				Order(fmt.Sprintf("CASE WHEN accounts.pic = '%d' THEN 0 ELSE 1 END, accounts.account_name ASC", userID))
 		}
 	}
 
@@ -555,7 +556,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		}
 
 		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
-			if account.Pic == nil || *account.Pic == fmt.Sprintf("%d", userID) {
+			if account.Pic == nil || *account.Pic == "" || *account.Pic == fmt.Sprintf("%d", userID) {
 				hasAccess = true
 			} else {
 				hasAccess = false

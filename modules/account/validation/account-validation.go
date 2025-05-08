@@ -149,6 +149,7 @@ func ValidateSchool(req *ValidateRequest, isCreate bool, accountID int, userRole
 		shouldCheckUnique := true
 
 		if !isCreate {
+
 			// Kalau update, ambil data account lama
 			existingAccount, err := accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 			if err == nil && existingAccount != nil && existingAccount.AccountCode != nil {
