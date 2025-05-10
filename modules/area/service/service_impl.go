@@ -14,8 +14,8 @@ func NewAreaService(repo repository.AreaRepository) AreaService {
 	return &areaService{repo: repo}
 }
 
-func (s *areaService) GetAllAreas(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.AreaResponse, int64, error) {
-	return s.repo.GetAllAreas(limit, paginate, page, filters, userRole, territoryID)
+func (s *areaService) GetAllAreas(filters map[string]string, userRole string, territoryID int) ([]response.AreaResponse, int64, error) {
+	return s.repo.GetAllAreas(filters, userRole, territoryID)
 }
 
 func (s *areaService) GetAreaByID(id int) (*response.AreaResponse, error) {

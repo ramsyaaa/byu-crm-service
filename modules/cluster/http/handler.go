@@ -22,22 +22,15 @@ func NewClusterHandler(clusterService service.ClusterService) *ClusterHandler {
 func (h *ClusterHandler) GetAllClusters(c *fiber.Ctx) error {
 	// Default query params
 	filters := map[string]string{
-		"search":     c.Query("search", ""),
-		"order_by":   c.Query("order_by", "id"),
-		"order":      c.Query("order", "DESC"),
-		"start_date": c.Query("start_date", ""),
-		"end_date":   c.Query("end_date", ""),
+		"search": c.Query("search", ""),
 	}
 
 	// Parse integer and boolean values
-	limit, _ := strconv.Atoi(c.Query("limit", "10"))
-	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
-	page, _ := strconv.Atoi(c.Query("page", "1"))
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 
 	// Call service with filters
-	clusters, total, err := h.clusterService.GetAllClusters(limit, paginate, page, filters, userRole, territoryID)
+	clusters, total, err := h.clusterService.GetAllClusters(filters, userRole, territoryID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch clusters",
@@ -49,7 +42,6 @@ func (h *ClusterHandler) GetAllClusters(c *fiber.Ctx) error {
 	responseData := map[string]interface{}{
 		"clusters": clusters,
 		"total":    total,
-		"page":     page,
 	}
 
 	response := helper.APIResponse("Get Clusters Successfully", fiber.StatusOK, "success", responseData)

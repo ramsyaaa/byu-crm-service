@@ -15,8 +15,8 @@ func NewSubdistrictService(repo repository.SubdistrictRepository) SubdistrictSer
 	return &subdistrictService{repo: repo}
 }
 
-func (s *subdistrictService) GetAllSubdistricts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.SubdistrictResponse, int64, error) {
-	return s.repo.GetAllSubdistricts(limit, paginate, page, filters, userRole, territoryID)
+func (s *subdistrictService) GetAllSubdistricts(filters map[string]string, userRole string, territoryID int) ([]response.SubdistrictResponse, int64, error) {
+	return s.repo.GetAllSubdistricts(filters, userRole, territoryID)
 }
 
 func (s *subdistrictService) GetSubdistrictByID(id int) (*response.SubdistrictResponse, error) {

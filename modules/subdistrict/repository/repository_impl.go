@@ -17,7 +17,7 @@ func NewSubdistrictRepository(db *gorm.DB) SubdistrictRepository {
 	return &subdistrictRepository{db: db}
 }
 
-func (r *subdistrictRepository) GetAllSubdistricts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.SubdistrictResponse, int64, error) {
+func (r *subdistrictRepository) GetAllSubdistricts(filters map[string]string, userRole string, territoryID int) ([]response.SubdistrictResponse, int64, error) {
 	var subdistricts []response.SubdistrictResponse
 	var total int64
 
@@ -52,31 +52,8 @@ func (r *subdistrictRepository) GetAllSubdistricts(limit int, paginate bool, pag
 		}
 	}
 
-	// Apply date range filter
-	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("subdistricts.created_at >= ?", startDate)
-	}
-	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("subdistricts.created_at <= ?", endDate)
-	}
-
 	// Get total count before pagination
 	query.Count(&total)
-
-	// Ordering
-	orderBy := filters["order_by"]
-	order := filters["order"]
-	if orderBy != "" && order != "" {
-		query = query.Order(orderBy + " " + order)
-	}
-
-	// Pagination
-	if paginate {
-		offset := (page - 1) * limit
-		query = query.Limit(limit).Offset(offset)
-	} else if limit > 0 {
-		query = query.Limit(limit)
-	}
 
 	err := query.Find(&subdistricts).Error
 	return subdistricts, total, err

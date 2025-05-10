@@ -17,7 +17,7 @@ func NewBranchRepository(db *gorm.DB) BranchRepository {
 	return &branchRepository{db: db}
 }
 
-func (r *branchRepository) GetAllBranches(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error) {
+func (r *branchRepository) GetAllBranches(filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error) {
 	var branches []response.BranchResponse
 	var total int64
 
@@ -53,31 +53,8 @@ func (r *branchRepository) GetAllBranches(limit int, paginate bool, page int, fi
 		}
 	}
 
-	// Apply date range filter
-	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("branches.created_at >= ?", startDate)
-	}
-	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("branches.created_at <= ?", endDate)
-	}
-
 	// Get total count before pagination
 	query.Count(&total)
-
-	// Ordering
-	orderBy := filters["order_by"]
-	order := filters["order"]
-	if orderBy != "" && order != "" {
-		query = query.Order(orderBy + " " + order)
-	}
-
-	// Pagination
-	if paginate {
-		offset := (page - 1) * limit
-		query = query.Limit(limit).Offset(offset)
-	} else if limit > 0 {
-		query = query.Limit(limit)
-	}
 
 	err := query.Find(&branches).Error
 	return branches, total, err
