@@ -270,6 +270,10 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 
 	// }
 
+	testValue := "testing"
+	req.AdditionalFile = &testValue
+	req.KeyVisual = &testValue
+
 	// Create Account with context and error handling
 	reqMap := make(map[string]interface{})
 
@@ -529,6 +533,10 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	// 	req.AdditionalFile = &filePath
 
 	// }
+
+	testValue := "testing"
+	req.AdditionalFile = &testValue
+	req.KeyVisual = &testValue
 
 	// Update Account with context and error handling
 	reqMap := make(map[string]interface{})
