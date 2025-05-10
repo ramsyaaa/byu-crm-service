@@ -5,7 +5,7 @@ import (
 )
 
 type BranchService interface {
-	GetAllBranches(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error)
+	GetAllBranches(filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error)
 	GetBranchByID(id int) (*response.BranchResponse, error)
 	GetBranchByName(name string) (*response.BranchResponse, error)
 	CreateBranch(name *string, region_id int) (*response.BranchResponse, error)
