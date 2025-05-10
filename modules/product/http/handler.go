@@ -42,7 +42,7 @@ func (h *ProductHandler) GetAllProducts(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 	userID := c.Locals("user_id").(int)
-	accountID, _ := strconv.Atoi(c.Query("account_id", "1"))
+	accountID, _ := strconv.Atoi(c.Query("account_id", "0"))
 
 	// Call service with filters
 	products, total, err := h.service.GetAllProducts(limit, paginate, page, filters, userRole, territoryID, userID, accountID)
