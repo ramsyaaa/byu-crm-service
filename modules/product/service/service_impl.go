@@ -57,7 +57,6 @@ func (s *productService) GetAllProducts(limit int, paginate bool, page int, filt
 	var locationFilter eligibilityResponse.LocationFilter
 
 	if accountID != 0 {
-		fmt.Println(accountID)
 		account, err := s.accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 		if err != nil {
 			return nil, 0, err
@@ -117,15 +116,18 @@ func (s *productService) GetAllProducts(limit int, paginate bool, page int, filt
 		}
 	}
 
-	eligibilities, err := s.eligibilityRepo.GetEligibilities("App\\Models\\Product", categories, types, locationFilter)
-
-	if err != nil {
-		return nil, 0, err
-	}
-
 	var subjectIDs []int
-	for _, e := range eligibilities {
-		subjectIDs = append(subjectIDs, e.SubjectID)
+
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		eligibilities, err := s.eligibilityRepo.GetEligibilities("App\\Models\\Product", categories, types, locationFilter)
+
+		if err != nil {
+			return nil, 0, err
+		}
+
+		for _, e := range eligibilities {
+			subjectIDs = append(subjectIDs, e.SubjectID)
+		}
 	}
 
 	return s.repo.GetAllProducts(limit, paginate, page, filters, subjectIDs)
