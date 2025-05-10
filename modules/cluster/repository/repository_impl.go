@@ -17,7 +17,7 @@ func NewClusterRepository(db *gorm.DB) ClusterRepository {
 	return &clusterRepository{db: db}
 }
 
-func (r *clusterRepository) GetAllClusters(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.ClusterResponse, int64, error) {
+func (r *clusterRepository) GetAllClusters(filters map[string]string, userRole string, territoryID int) ([]response.ClusterResponse, int64, error) {
 	var clusters []response.ClusterResponse
 	var total int64
 
@@ -54,31 +54,8 @@ func (r *clusterRepository) GetAllClusters(limit int, paginate bool, page int, f
 		}
 	}
 
-	// Apply date range filter
-	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("clusters.created_at >= ?", startDate)
-	}
-	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("clusters.created_at <= ?", endDate)
-	}
-
 	// Get total count before pagination
 	query.Count(&total)
-
-	// Ordering
-	orderBy := filters["order_by"]
-	order := filters["order"]
-	if orderBy != "" && order != "" {
-		query = query.Order(orderBy + " " + order)
-	}
-
-	// Pagination
-	if paginate {
-		offset := (page - 1) * limit
-		query = query.Limit(limit).Offset(offset)
-	} else if limit > 0 {
-		query = query.Limit(limit)
-	}
 
 	err := query.Find(&clusters).Error
 	return clusters, total, err

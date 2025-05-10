@@ -17,7 +17,7 @@ func NewRegionRepository(db *gorm.DB) RegionRepository {
 	return &regionRepository{db: db}
 }
 
-func (r *regionRepository) GetAllRegions(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.RegionResponse, int64, error) {
+func (r *regionRepository) GetAllRegions(filters map[string]string, userRole string, territoryID int) ([]response.RegionResponse, int64, error) {
 	var regions []response.RegionResponse
 	var total int64
 
@@ -31,14 +31,6 @@ func (r *regionRepository) GetAllRegions(limit int, paginate bool, page int, fil
 				r.db.Where("regions.name LIKE ?", "%"+token+"%"),
 			)
 		}
-	}
-
-	// Apply date range filter
-	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("regions.created_at >= ?", startDate)
-	}
-	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("regions.created_at <= ?", endDate)
 	}
 
 	if userRole != "" && territoryID != 0 {
@@ -74,19 +66,6 @@ func (r *regionRepository) GetAllRegions(limit int, paginate bool, page int, fil
 
 	// Get total count before applying pagination
 	query.Count(&total)
-
-	// Apply ordering
-	orderBy := filters["order_by"]
-	order := filters["order"]
-	query = query.Order(orderBy + " " + order)
-
-	// Apply pagination
-	if paginate {
-		offset := (page - 1) * limit
-		query = query.Limit(limit).Offset(offset)
-	} else if limit > 0 {
-		query = query.Limit(limit)
-	}
 
 	err := query.Find(&regions).Error
 	return regions, total, err

@@ -15,8 +15,8 @@ func NewCityService(repo repository.CityRepository) CityService {
 	return &cityService{repo: repo}
 }
 
-func (s *cityService) GetAllCities(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int) ([]response.CityResponse, int64, error) {
-	return s.repo.GetAllCities(limit, paginate, page, filters, userRole, territoryID)
+func (s *cityService) GetAllCities(filters map[string]string, userRole string, territoryID int) ([]response.CityResponse, int64, error) {
+	return s.repo.GetAllCities(filters, userRole, territoryID)
 }
 
 func (s *cityService) GetCityByID(id int) (*response.CityResponse, error) {
