@@ -242,6 +242,15 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	} else {
 		accountResponse.PicDetail = nil
 	}
+	if account.PicInternalDetail != nil {
+		accountResponse.PicInternalDetail = &models.UserResponse{
+			ID:    account.PicInternalDetail.ID,
+			Name:  account.PicInternalDetail.Name,
+			Email: account.PicInternalDetail.Email,
+		}
+	} else {
+		accountResponse.PicInternalDetail = nil
+	}
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 
