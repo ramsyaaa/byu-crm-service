@@ -38,6 +38,7 @@ type AccountResponse struct {
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
+	PicDetail                  *models.User                       `json:"pic_detail" gorm:"foreignKey:Pic;references:ID"`
 	Products                   []models.Product                   `gorm:"many2many:account_products;foreignKey:ID;joinForeignKey:account_id;References:ID;joinReferences:product_id" json:"products"`
 	SocialMedias               []models.SocialMedia               `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
 	AccountTypeCampusDetail    *models.AccountTypeCampusDetail    `json:"campus_detail,omitempty" gorm:"foreignKey:AccountID"`
@@ -137,6 +138,7 @@ type SingleAccountResponse struct {
 	PercentageIncome                []string `json:"percentage_income"`
 
 	SocialMedias []models.SocialMedia `json:"social_medias" gorm:"foreignKey:SubjectID;references:ID"`
+	PicDetail    *models.UserResponse `json:"pic_detail" gorm:"foreignKey:Pic;references:ID"`
 }
 
 type TerritoryInfo struct {
