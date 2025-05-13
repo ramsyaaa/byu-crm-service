@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -153,126 +155,122 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// if req.ProductCategory == "VOUCHER" || req.ProductCategory == "PERDANA" || req.ProductCategory == "RENEWAL" || req.ProductCategory == "HOUSEHOLD" {
-	// 	*req.AdditionalFile = ""
-	// 	keyVisualData := *req.KeyVisual
+	if req.ProductCategory == "VOUCHER" || req.ProductCategory == "PERDANA" || req.ProductCategory == "RENEWAL" || req.ProductCategory == "HOUSEHOLD" {
+		*req.AdditionalFile = ""
+		keyVisualData := *req.KeyVisual
 
-	// 	// Decode base64
-	// 	decoded, mimeType, err := helper.DecodeBase64Image(keyVisualData)
-	// 	if err != nil {
-	// 		errors := map[string]string{
-	// 			"key_visual": "Gambar tidak valid: " + err.Error(),
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Decode base64
+		decoded, mimeType, err := helper.DecodeBase64Image(keyVisualData)
+		if err != nil {
+			errors := map[string]string{
+				"key_visual": "Gambar tidak valid: " + err.Error(),
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Validasi ukuran maksimum 5MB
-	// 	if len(decoded) > 5*1024*1024 {
-	// 		errors := map[string]string{
-	// 			"key_visual": "Ukuran file maksimum adalah 5MB",
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Validasi ukuran maksimum 5MB
+		if len(decoded) > 5*1024*1024 {
+			errors := map[string]string{
+				"key_visual": "Ukuran file maksimum adalah 5MB",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Validasi ekstensi
-	// 	allowedMimes := map[string]string{
-	// 		"image/jpeg": ".jpg",
-	// 		"image/png":  ".png",
-	// 	}
-	// 	ext, ok := allowedMimes[mimeType]
-	// 	if !ok {
-	// 		errors := map[string]string{
-	// 			"key_visual": "Format gambar tidak didukung",
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Validasi ekstensi
+		allowedMimes := map[string]string{
+			"image/jpeg": ".jpg",
+			"image/png":  ".png",
+		}
+		ext, ok := allowedMimes[mimeType]
+		if !ok {
+			errors := map[string]string{
+				"key_visual": "Format gambar tidak didukung",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Simpan ke file
-	// 	uploadDir := "./public/uploads/product"
-	// 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-	// 		response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		// Simpan ke file
+		uploadDir := "./public/uploads/product"
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	// 	filePath := filepath.Join(uploadDir, filename)
+		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		filePath := filepath.Join(uploadDir, filename)
 
-	// 	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-	// 		response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+			response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	req.KeyVisual = &filePath
-	// } else if req.ProductCategory == "SOLUSI" || req.ProductCategory == "LBO" {
-	// 	*req.KeyVisual = ""
-	// 	AdditionalFileData := *req.AdditionalFile
+		req.KeyVisual = &filePath
+	} else if req.ProductCategory == "SOLUSI" || req.ProductCategory == "LBO" {
+		*req.KeyVisual = ""
+		AdditionalFileData := *req.AdditionalFile
 
-	// 	// Decode base64 umum (tidak terbatas gambar)
-	// 	decoded, mimeType, err := helper.DecodeBase64File(AdditionalFileData)
-	// 	if err != nil {
-	// 		errors := map[string]string{
-	// 			"additional_file": "File tidak valid: " + err.Error(),
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Decode base64 umum (tidak terbatas gambar)
+		decoded, mimeType, err := helper.DecodeBase64File(AdditionalFileData)
+		if err != nil {
+			errors := map[string]string{
+				"additional_file": "File tidak valid: " + err.Error(),
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Validasi ukuran maksimum 5MB
-	// 	if len(decoded) > 5*1024*1024 {
-	// 		errors := map[string]string{
-	// 			"additional_file": "Ukuran file maksimum adalah 5MB",
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Validasi ukuran maksimum 5MB
+		if len(decoded) > 5*1024*1024 {
+			errors := map[string]string{
+				"additional_file": "Ukuran file maksimum adalah 5MB",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Ekstensi berdasarkan MIME (bisa ditambah sesuai kebutuhan)
-	// 	mimeExtensions := map[string]string{
-	// 		"image/jpeg":                    ".jpg",
-	// 		"image/png":                     ".png",
-	// 		"application/pdf":               ".pdf",
-	// 		"application/zip":               ".zip",
-	// 		"application/msword":            ".doc",
-	// 		"application/vnd.ms-excel":      ".xls",
-	// 		"application/vnd.ms-powerpoint": ".ppt",
-	// 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   ".docx",
-	// 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
-	// 		"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-	// 		"text/plain":       ".txt",
-	// 		"application/json": ".json",
-	// 	}
+		// Ekstensi berdasarkan MIME (bisa ditambah sesuai kebutuhan)
+		mimeExtensions := map[string]string{
+			"image/jpeg":                    ".jpg",
+			"image/png":                     ".png",
+			"application/pdf":               ".pdf",
+			"application/zip":               ".zip",
+			"application/msword":            ".doc",
+			"application/vnd.ms-excel":      ".xls",
+			"application/vnd.ms-powerpoint": ".ppt",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   ".docx",
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+			"text/plain":       ".txt",
+			"application/json": ".json",
+		}
 
-	// 	// Dapatkan ekstensi
-	// 	ext, ok := mimeExtensions[mimeType]
-	// 	if !ok {
-	// 		ext = ".bin" // default fallback
-	// 	}
+		// Dapatkan ekstensi
+		ext, ok := mimeExtensions[mimeType]
+		if !ok {
+			ext = ".bin" // default fallback
+		}
 
-	// 	// Simpan ke file
-	// 	uploadDir := "./public/uploads/product"
-	// 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-	// 		response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		// Simpan ke file
+		uploadDir := "./public/uploads/product"
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	// 	filePath := filepath.Join(uploadDir, filename)
+		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		filePath := filepath.Join(uploadDir, filename)
 
-	// 	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-	// 		response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+			response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	req.AdditionalFile = &filePath
+		req.AdditionalFile = &filePath
 
-	// }
-
-	testValue := "testing"
-	req.AdditionalFile = &testValue
-	req.KeyVisual = &testValue
+	}
 
 	// Create Account with context and error handling
 	reqMap := make(map[string]interface{})
@@ -412,131 +410,127 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// if req.ProductCategory == "VOUCHER" || req.ProductCategory == "PERDANA" || req.ProductCategory == "RENEWAL" || req.ProductCategory == "HOUSEHOLD" {
-	// 	*req.AdditionalFile = ""
-	// 	if *req.KeyVisual != "" {
-	// 		// helper.DeleteFile()
-	// 		keyVisualData := *req.KeyVisual
+	if req.ProductCategory == "VOUCHER" || req.ProductCategory == "PERDANA" || req.ProductCategory == "RENEWAL" || req.ProductCategory == "HOUSEHOLD" {
+		*req.AdditionalFile = ""
+		if *req.KeyVisual != "" {
+			// helper.DeleteFile()
+			keyVisualData := *req.KeyVisual
 
-	// 		// Decode base64
-	// 		decoded, mimeType, err := helper.DecodeBase64Image(keyVisualData)
-	// 		if err != nil {
-	// 			errors := map[string]string{
-	// 				"key_visual": "Gambar tidak valid: " + err.Error(),
-	// 			}
-	// 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 			return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 		}
+			// Decode base64
+			decoded, mimeType, err := helper.DecodeBase64Image(keyVisualData)
+			if err != nil {
+				errors := map[string]string{
+					"key_visual": "Gambar tidak valid: " + err.Error(),
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 
-	// 		// Validasi ukuran maksimum 5MB
-	// 		if len(decoded) > 5*1024*1024 {
-	// 			errors := map[string]string{
-	// 				"key_visual": "Ukuran file maksimum adalah 5MB",
-	// 			}
-	// 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 			return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 		}
+			// Validasi ukuran maksimum 5MB
+			if len(decoded) > 5*1024*1024 {
+				errors := map[string]string{
+					"key_visual": "Ukuran file maksimum adalah 5MB",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 
-	// 		// Validasi ekstensi
-	// 		allowedMimes := map[string]string{
-	// 			"image/jpeg": ".jpg",
-	// 			"image/png":  ".png",
-	// 		}
-	// 		ext, ok := allowedMimes[mimeType]
-	// 		if !ok {
-	// 			errors := map[string]string{
-	// 				"key_visual": "Format gambar tidak didukung",
-	// 			}
-	// 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 			return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 		}
+			// Validasi ekstensi
+			allowedMimes := map[string]string{
+				"image/jpeg": ".jpg",
+				"image/png":  ".png",
+			}
+			ext, ok := allowedMimes[mimeType]
+			if !ok {
+				errors := map[string]string{
+					"key_visual": "Format gambar tidak didukung",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
 
-	// 		// Simpan ke file
-	// 		uploadDir := "./public/uploads/product"
-	// 		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-	// 			response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
-	// 			return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 		}
+			// Simpan ke file
+			uploadDir := "./public/uploads/product"
+			if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+				response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
 
-	// 		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	// 		filePath := filepath.Join(uploadDir, filename)
+			filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+			filePath := filepath.Join(uploadDir, filename)
 
-	// 		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-	// 			response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
-	// 			return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 		}
+			if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+				response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
 
-	// 		req.KeyVisual = &filePath
-	// 	} else {
-	// 		*req.KeyVisual = ""
-	// 	}
-	// } else if req.ProductCategory == "SOLUSI" || req.ProductCategory == "LBO" {
-	// 	*req.KeyVisual = ""
-	// 	AdditionalFileData := *req.AdditionalFile
+			req.KeyVisual = &filePath
+		} else {
+			*req.KeyVisual = ""
+		}
+	} else if req.ProductCategory == "SOLUSI" || req.ProductCategory == "LBO" {
+		*req.KeyVisual = ""
+		AdditionalFileData := *req.AdditionalFile
 
-	// 	// Decode base64 umum (tidak terbatas gambar)
-	// 	decoded, mimeType, err := helper.DecodeBase64File(AdditionalFileData)
-	// 	if err != nil {
-	// 		errors := map[string]string{
-	// 			"additional_file": "File tidak valid: " + err.Error(),
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Decode base64 umum (tidak terbatas gambar)
+		decoded, mimeType, err := helper.DecodeBase64File(AdditionalFileData)
+		if err != nil {
+			errors := map[string]string{
+				"additional_file": "File tidak valid: " + err.Error(),
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Validasi ukuran maksimum 5MB
-	// 	if len(decoded) > 5*1024*1024 {
-	// 		errors := map[string]string{
-	// 			"additional_file": "Ukuran file maksimum adalah 5MB",
-	// 		}
-	// 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-	// 		return c.Status(fiber.StatusBadRequest).JSON(response)
-	// 	}
+		// Validasi ukuran maksimum 5MB
+		if len(decoded) > 5*1024*1024 {
+			errors := map[string]string{
+				"additional_file": "Ukuran file maksimum adalah 5MB",
+			}
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 
-	// 	// Ekstensi berdasarkan MIME (bisa ditambah sesuai kebutuhan)
-	// 	mimeExtensions := map[string]string{
-	// 		"image/jpeg":                    ".jpg",
-	// 		"image/png":                     ".png",
-	// 		"application/pdf":               ".pdf",
-	// 		"application/zip":               ".zip",
-	// 		"application/msword":            ".doc",
-	// 		"application/vnd.ms-excel":      ".xls",
-	// 		"application/vnd.ms-powerpoint": ".ppt",
-	// 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   ".docx",
-	// 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
-	// 		"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-	// 		"text/plain":       ".txt",
-	// 		"application/json": ".json",
-	// 	}
+		// Ekstensi berdasarkan MIME (bisa ditambah sesuai kebutuhan)
+		mimeExtensions := map[string]string{
+			"image/jpeg":                    ".jpg",
+			"image/png":                     ".png",
+			"application/pdf":               ".pdf",
+			"application/zip":               ".zip",
+			"application/msword":            ".doc",
+			"application/vnd.ms-excel":      ".xls",
+			"application/vnd.ms-powerpoint": ".ppt",
+			"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   ".docx",
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
+			"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+			"text/plain":       ".txt",
+			"application/json": ".json",
+		}
 
-	// 	// Dapatkan ekstensi
-	// 	ext, ok := mimeExtensions[mimeType]
-	// 	if !ok {
-	// 		ext = ".bin" // default fallback
-	// 	}
+		// Dapatkan ekstensi
+		ext, ok := mimeExtensions[mimeType]
+		if !ok {
+			ext = ".bin" // default fallback
+		}
 
-	// 	// Simpan ke file
-	// 	uploadDir := "./public/uploads/product"
-	// 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-	// 		response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		// Simpan ke file
+		uploadDir := "./public/uploads/product"
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			response := helper.APIResponse("Failed to create directory", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	// 	filePath := filepath.Join(uploadDir, filename)
+		filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		filePath := filepath.Join(uploadDir, filename)
 
-	// 	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-	// 		response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(response)
-	// 	}
+		if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+			response := helper.APIResponse("Failed to save file", fiber.StatusInternalServerError, "error", err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 
-	// 	req.AdditionalFile = &filePath
+		req.AdditionalFile = &filePath
 
-	// }
-
-	testValue := "testing"
-	req.AdditionalFile = &testValue
-	req.KeyVisual = &testValue
+	}
 
 	// Update Account with context and error handling
 	reqMap := make(map[string]interface{})

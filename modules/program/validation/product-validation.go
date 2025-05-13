@@ -2,7 +2,6 @@ package validation
 
 import (
 	"byu-crm-service/helper"
-	"encoding/base64"
 	"strconv"
 	"strings"
 
@@ -62,19 +61,19 @@ func ValidateVoucherPerdana(req *ValidateRequest) map[string]string {
 	}
 
 	// Validasi Key Visual (wajib dan harus berupa gambar base64)
-	if req.KeyVisual == nil || strings.TrimSpace(*req.KeyVisual) == "" {
-		errors["key_visual"] = "Key Visual wajib diisi"
-	} else {
-		data := *req.KeyVisual
-		if !strings.HasPrefix(data, "data:image/") || !strings.Contains(data, ";base64,") {
-			errors["key_visual"] = "Key Visual harus berupa gambar base64 yang valid"
-		} else {
-			base64Data := strings.Split(data, ",")[1]
-			if _, err := base64.StdEncoding.DecodeString(base64Data); err != nil {
-				errors["key_visual"] = "Format base64 Key Visual tidak valid"
-			}
-		}
-	}
+	// if req.KeyVisual == nil || strings.TrimSpace(*req.KeyVisual) == "" {
+	// 	errors["key_visual"] = "Key Visual wajib diisi"
+	// } else {
+	// 	data := *req.KeyVisual
+	// 	if !strings.HasPrefix(data, "data:image/") || !strings.Contains(data, ";base64,") {
+	// 		errors["key_visual"] = "Key Visual harus berupa gambar base64 yang valid"
+	// 	} else {
+	// 		base64Data := strings.Split(data, ",")[1]
+	// 		if _, err := base64.StdEncoding.DecodeString(base64Data); err != nil {
+	// 			errors["key_visual"] = "Format base64 Key Visual tidak valid"
+	// 		}
+	// 	}
+	// }
 
 	// Validasi Quota Value (opsional tapi jika diisi harus bisa dikonversi ke float)
 	if req.QuotaValue != nil && strings.TrimSpace(*req.QuotaValue) != "" {
@@ -107,25 +106,25 @@ func ValidateVoucherPerdana(req *ValidateRequest) map[string]string {
 func ValidateSolutionLbo(req *ValidateRequest) map[string]string {
 	errors := make(map[string]string)
 
-	if req.AdditionalFile == nil || strings.TrimSpace(*req.AdditionalFile) == "" {
-		errors["additional_file"] = "File wajib diisi"
-	} else {
-		data := *req.AdditionalFile
+	// if req.AdditionalFile == nil || strings.TrimSpace(*req.AdditionalFile) == "" {
+	// 	errors["additional_file"] = "File wajib diisi"
+	// } else {
+	// 	data := *req.AdditionalFile
 
-		// Jika mengandung prefix data URI (opsional), ambil bagian base64-nya
-		if strings.Contains(data, ";base64,") {
-			parts := strings.SplitN(data, ",", 2)
-			if len(parts) != 2 {
-				errors["additional_file"] = "Format base64 tidak valid"
-			} else {
-				data = parts[1]
-			}
-		}
+	// 	// Jika mengandung prefix data URI (opsional), ambil bagian base64-nya
+	// 	if strings.Contains(data, ";base64,") {
+	// 		parts := strings.SplitN(data, ",", 2)
+	// 		if len(parts) != 2 {
+	// 			errors["additional_file"] = "Format base64 tidak valid"
+	// 		} else {
+	// 			data = parts[1]
+	// 		}
+	// 	}
 
-		if _, err := base64.StdEncoding.DecodeString(data); err != nil {
-			errors["additional_file"] = "File harus berupa base64 yang valid"
-		}
-	}
+	// 	if _, err := base64.StdEncoding.DecodeString(data); err != nil {
+	// 		errors["additional_file"] = "File harus berupa base64 yang valid"
+	// 	}
+	// }
 
 	if len(errors) == 0 {
 		return nil
@@ -150,19 +149,19 @@ func ValidateHousehold(req *ValidateRequest) map[string]string {
 	}
 
 	// Validasi Key Visual (wajib dan harus berupa gambar base64)
-	if req.KeyVisual == nil || strings.TrimSpace(*req.KeyVisual) == "" {
-		errors["key_visual"] = "Key Visual wajib diisi"
-	} else {
-		data := *req.KeyVisual
-		if !strings.HasPrefix(data, "data:image/") || !strings.Contains(data, ";base64,") {
-			errors["key_visual"] = "Key Visual harus berupa gambar base64 yang valid"
-		} else {
-			base64Data := strings.Split(data, ",")[1]
-			if _, err := base64.StdEncoding.DecodeString(base64Data); err != nil {
-				errors["key_visual"] = "Format base64 Key Visual tidak valid"
-			}
-		}
-	}
+	// if req.KeyVisual == nil || strings.TrimSpace(*req.KeyVisual) == "" {
+	// 	errors["key_visual"] = "Key Visual wajib diisi"
+	// } else {
+	// 	data := *req.KeyVisual
+	// 	if !strings.HasPrefix(data, "data:image/") || !strings.Contains(data, ";base64,") {
+	// 		errors["key_visual"] = "Key Visual harus berupa gambar base64 yang valid"
+	// 	} else {
+	// 		base64Data := strings.Split(data, ",")[1]
+	// 		if _, err := base64.StdEncoding.DecodeString(base64Data); err != nil {
+	// 			errors["key_visual"] = "Format base64 Key Visual tidak valid"
+	// 		}
+	// 	}
+	// }
 
 	if len(errors) == 0 {
 		return nil

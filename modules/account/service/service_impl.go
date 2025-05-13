@@ -233,6 +233,15 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	accountResponse.SocialMedias = account.SocialMedias
 	accountResponse.Contacts = account.Contacts
 	accountResponse.Products = account.Products
+	if account.PicDetail != nil {
+		accountResponse.PicDetail = &models.UserResponse{
+			ID:    account.PicDetail.ID,
+			Name:  account.PicDetail.Name,
+			Email: account.PicDetail.Email,
+		}
+	} else {
+		accountResponse.PicDetail = nil
+	}
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 

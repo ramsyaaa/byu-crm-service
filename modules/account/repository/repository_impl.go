@@ -162,7 +162,7 @@ func (r *accountRepository) GetAllAccounts(
 	orderBy := filters["order_by"]
 	order := filters["order"]
 	if userRole != "Buddies" && userRole != "DS" {
-		if orderBy != "" && orderBy != "id" {
+		if orderBy != "" {
 			query = query.Order(orderBy + " " + order)
 		} else if filters["search"] != "" {
 			search := filters["search"]
@@ -505,6 +505,7 @@ func (r *accountRepository) FindByAccountID(id uint, userRole string, territoryI
 		Preload("AccountFaculties.Faculty").
 		Preload("Contacts").
 		Preload("Products").
+		Preload("PicDetail").
 		Preload("AccountMembers", "subject_type = ? AND subject_id = ?", "App\\Models\\Account", id).
 		Preload("AccountLectures", "subject_type = ? AND subject_id = ?", "App\\Models\\AccountLecture", id).
 		Where("accounts.id = ?", id)

@@ -21,3 +21,9 @@ type User struct {
 	RoleNames   []string `gorm:"-" json:"role_names"`
 	Permissions []string `gorm:"-" json:"permissions"`
 }
+
+type UserResponse struct {
+	ID    uint   `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
