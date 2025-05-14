@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -251,4 +252,67 @@ func DeleteFile(filePath string) error {
 		return err
 	}
 	return nil
+}
+
+func SaveValidatedBase64File(base64Str string, uploadDir string) (string, error) {
+	// Decode base64
+	parts := strings.SplitN(base64Str, ",", 2)
+	if len(parts) != 2 {
+		return "", errors.New("format base64 tidak valid")
+	}
+
+	data, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", errors.New("gagal mendecode base64: " + err.Error())
+	}
+
+	// Validasi ukuran maksimum 5MB
+	if len(data) > 5*1024*1024 {
+		return "", errors.New("ukuran file maksimum adalah 5MB")
+	}
+
+	// Deteksi MIME
+	mimeType := httpDetectContentType(data)
+
+	// Map ekstensi berdasarkan MIME
+	mimeExtensions := map[string]string{
+		"image/jpeg":                    ".jpg",
+		"image/png":                     ".png",
+		"application/pdf":               ".pdf",
+		"application/zip":               ".zip",
+		"application/msword":            ".doc",
+		"application/vnd.ms-excel":      ".xls",
+		"application/vnd.ms-powerpoint": ".ppt",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   ".docx",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+		"text/plain":       ".txt",
+		"application/json": ".json",
+	}
+
+	// Tentukan ekstensi
+	ext, ok := mimeExtensions[mimeType]
+	if !ok {
+		ext = ".bin"
+	}
+
+	// Buat direktori jika belum ada
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return "", errors.New("gagal membuat direktori: " + err.Error())
+	}
+
+	// Simpan file
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	filePath := filepath.Join(uploadDir, filename)
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return "", errors.New("gagal menyimpan file: " + err.Error())
+	}
+
+	return filePath, nil
+}
+
+// Fungsi bantu deteksi MIME dari data file
+func httpDetectContentType(data []byte) string {
+	return http.DetectContentType(data[:512])
 }
