@@ -9,6 +9,7 @@ import (
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
 
@@ -133,6 +134,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 	actionType := c.FormValue("action_type")
 	kpiYae := make(map[string]*int)
+	detailVisit := make(map[string]string)
 
 	if actionType != "Clock In" && actionType != "Clock Out" {
 		errors := map[string]string{
@@ -256,7 +258,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 			for _, item := range getVisitList {
 				formKey := item.Key
-				nameKey := item.Name
+				// nameKey := item.Name
 				valueBytes := c.Context().FormValue(formKey)
 				valueStr := string(valueBytes)
 
@@ -275,7 +277,84 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 					errors[formKey] = fmt.Sprintf("%s harus berupa angka", item.Name)
 					continue
 				}
-				kpiYae[nameKey] = &parsedValue
+
+				if formKey == "presentasi_demo" {
+					if valueStr == "1" {
+						demoDocumentation := c.FormValue("demo_documentation")
+						if demoDocumentation == "" {
+							errors := map[string]string{
+								"demo_documentation": "Dokumentasi demo harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Simpan gambar base64
+						filePath, err := helper.SaveValidatedBase64File(demoDocumentation, "public/uploads/demo")
+						if err != nil {
+							errors := map[string]string{
+								"demo_documentation": err.Error(),
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Simpan relative path
+						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+					} else if valueStr == "0" {
+						demoReason := c.FormValue("demo_reason")
+						if demoReason == "" {
+							errors := map[string]string{
+								"demo_reason": "Alasan tidak presentasi / demo harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						detailVisit[formKey+"_reason"] = demoReason
+					}
+				}
+
+				if formKey == "dealing_sekolah" {
+					if valueStr == "1" {
+						bakFile := c.FormValue("bak_file")
+						if bakFile == "" {
+							errors := map[string]string{
+								"bak_file": "File BAK harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Simpan file BAK base64
+						filePath, err := helper.SaveValidatedBase64File(bakFile, "public/uploads/bak")
+						if err != nil {
+							errors := map[string]string{
+								"bak_file": err.Error(),
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Simpan relative path
+						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+					} else if valueStr == "0" {
+						dealingReason := c.FormValue("dealing_reason")
+						if dealingReason == "" {
+							errors := map[string]string{
+								"dealing_reason": "Alasan tidak dealing harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						detailVisit[formKey+"_reason"] = dealingReason
+					}
+				}
+
+				fmt.Println(detailVisit)
+
+				kpiYae[formKey] = &parsedValue
 			}
 
 			if len(errors) > 0 {
@@ -365,7 +444,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 
 		if req.Type == "Visit Account" {
-			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description)
+			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description, detailVisit)
 			if err != nil {
 				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
 				return c.Status(fiber.StatusUnauthorized).JSON(response)

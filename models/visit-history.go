@@ -9,6 +9,7 @@ type VisitHistory struct {
 	SubjectID     *uint     `json:"subject_id"`
 	AbsenceUserID *uint     `json:"absence_user_id"`
 	Target        *string   `json:"target"`
+	DetailVisit   *string   `json:"detail_visit"`
 	Description   string    `json:"description"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
