@@ -74,3 +74,57 @@ func (r *authRepository) CheckPassword(password, hashedPassword string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
+
+// UpdateUser updates a user in the database
+func (r *authRepository) UpdateUser(userID int, userData map[string]interface{}) (*models.User, error) {
+	// Update user
+	if err := r.db.Model(&models.User{}).Where("id = ?", userID).Updates(userData).Error; err != nil {
+		return nil, err
+	}
+
+	// Get updated user
+	var user models.User
+	if err := r.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		return nil, err
+	}
+
+	// Get roles
+	var roleIDs []uint
+	if err := r.db.Table("model_has_roles").
+		Where("model_id = ? AND model_type = ?", user.ID, "App\\Models\\User").
+		Pluck("role_id", &roleIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// Get role names
+	if len(roleIDs) > 0 {
+		var roleNames []string
+		if err := r.db.Table("roles").
+			Where("id IN ?", roleIDs).
+			Pluck("name", &roleNames).Error; err != nil {
+			return nil, err
+		}
+		user.RoleNames = roleNames
+
+		// Get permission IDs
+		var permissionIDs []uint
+		if err := r.db.Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+
+		// Get permission names
+		if len(permissionIDs) > 0 {
+			var permissions []string
+			if err := r.db.Table("permissions").
+				Where("id IN ?", permissionIDs).
+				Pluck("name", &permissions).Error; err != nil {
+				return nil, err
+			}
+			user.Permissions = permissions
+		}
+	}
+
+	return &user, nil
+}
