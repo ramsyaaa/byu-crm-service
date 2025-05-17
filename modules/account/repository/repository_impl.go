@@ -217,6 +217,7 @@ func (r *accountRepository) CreateAccount(requestBody map[string]string, userID 
 		Ownership:               func(s string) *string { return &s }(requestBody["ownership"]),
 		Pic:                     func(s string) *string { return &s }(requestBody["pic"]),
 		PicInternal:             func(s string) *string { return &s }(requestBody["pic_internal"]),
+		IsSkulid:                func(u uint) *uint { return &u }(0),
 	}
 
 	if err := r.db.Create(&account).Error; err != nil {
