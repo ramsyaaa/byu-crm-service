@@ -251,6 +251,7 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	} else {
 		accountResponse.PicInternalDetail = nil
 	}
+	accountResponse.IsSkulid = account.IsSkulid
 	accountResponse.CreatedAt = account.CreatedAt
 	accountResponse.UpdatedAt = account.UpdatedAt
 

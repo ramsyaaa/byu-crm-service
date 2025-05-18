@@ -35,6 +35,7 @@ type AccountResponse struct {
 	Ownership               *string   `json:"ownership"`
 	Pic                     *string   `json:"pic"`
 	PicInternal             *string   `json:"pic_internal"`
+	IsSkulid                *uint     `json:"is_skulid"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
@@ -75,6 +76,7 @@ type SingleAccountResponse struct {
 	Ownership               *string   `json:"ownership"`
 	Pic                     *string   `json:"pic"`
 	PicInternal             *string   `json:"pic_internal"`
+	IsSkulid                *uint     `json:"is_skulid"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 

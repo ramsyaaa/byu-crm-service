@@ -8,6 +8,8 @@ import (
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
+	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -103,13 +105,74 @@ func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 }
 
 func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			// Get stack trace
+			stackTrace := debug.Stack()
+
+			// Log the panic with stack trace
+			errorMsg := fmt.Sprintf("PANIC RECOVERED in CreateAbsenceUser: %v\nStack Trace:\n%s", r, stackTrace)
+
+			// Log to file using our enhanced logger's format
+			helper.LogError(c, errorMsg)
+
+			// Return a 500 response to the client if headers haven't been sent
+			if c.Response().StatusCode() == 0 {
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"status":  "error",
+					"message": "Internal Server Error",
+				})
+			}
+		}
+	}()
+
+	// Log the content type for debugging
+	contentType := string(c.Request().Header.ContentType())
+	helper.LogError(c, fmt.Sprintf("Request received - Content-Type: %s", contentType))
+
+	// Extract user information from JWT context
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
-	req := new(validation.CreateAbsenceUserRequest)
-	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+
+	// Extract form values directly - this works for both multipart/form-data and x-www-form-urlencoded
+	typeValue := c.FormValue("type", "")
+	latitudeValue := c.FormValue("latitude", "")
+	longitudeValue := c.FormValue("longitude", "")
+	actionTypeValue := c.FormValue("action_type", "")
+
+	// Log form values for debugging
+	helper.LogError(c, fmt.Sprintf("Form values - type: %s, latitude: %s, longitude: %s, action_type: %s",
+		typeValue, latitudeValue, longitudeValue, actionTypeValue))
+
+	// Validate required form fields
+	if typeValue == "" || latitudeValue == "" || longitudeValue == "" || actionTypeValue == "" {
+		errors := map[string]string{
+			"message": "Missing required form fields",
+		}
+		if typeValue == "" {
+			errors["type"] = "Type harus diisi"
+		}
+		if latitudeValue == "" {
+			errors["latitude"] = "Latitude harus diisi"
+		}
+		if longitudeValue == "" {
+			errors["longitude"] = "Longitude harus diisi"
+		}
+		if actionTypeValue == "" {
+			errors["action_type"] = "Action type harus diisi"
+		}
+
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Create request object from form values
+	req := &validation.CreateAbsenceUserRequest{
+		Type:      typeValue,
+		Latitude:  latitudeValue,
+		Longitude: longitudeValue,
 	}
 
 	// Request Validation
@@ -204,46 +267,48 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
 
-			if getAccount.Latitude != nil && getAccount.Longitude != nil &&
-				*getAccount.Latitude != "" && *getAccount.Longitude != "" {
-				latitude, err := strconv.ParseFloat(req.Latitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				longitude, err := strconv.ParseFloat(req.Longitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
-				if !inRadius {
-					errors := map[string]string{
-						"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+			if userRole != "Super-Admin" {
+				if getAccount.Latitude != nil && getAccount.Longitude != nil &&
+					*getAccount.Latitude != "" && *getAccount.Longitude != "" {
+					latitude, err := strconv.ParseFloat(req.Latitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
 					}
-					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-			} else {
-				requestBody := map[string]interface{}{
-					"longitude": req.Longitude,
-					"latitude":  req.Latitude,
-				}
-				_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
+					longitude, err := strconv.ParseFloat(req.Longitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+					if !inRadius {
+						errors := map[string]string{
+							"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+						}
+						response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+				} else {
+					requestBody := map[string]interface{}{
+						"longitude": req.Longitude,
+						"latitude":  req.Latitude,
+					}
+					_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
-				if err != nil {
-					response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
-					return c.Status(fiber.StatusInternalServerError).JSON(response)
+					if err != nil {
+						response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+						return c.Status(fiber.StatusInternalServerError).JSON(response)
+					}
 				}
 			}
 		} else if actionType == "Clock Out" {
@@ -280,18 +345,65 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "presentasi_demo" {
 					if valueStr == "1" {
-						demoDocumentation := c.FormValue("demo_documentation")
-						if demoDocumentation == "" {
+						// Try to get the file, but don't fail if it's not there
+						demoFile, err := c.FormFile("demo_documentation")
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error getting demo_documentation file: %v", err))
 							errors := map[string]string{
-								"demo_documentation": "Dokumentasi demo harus diisi",
+								"demo_documentation": "Dokumentasi demo harus diunggah",
 							}
 							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan gambar base64
-						filePath, err := helper.SaveValidatedBase64File(demoDocumentation, "public/uploads/demo")
+						if demoFile.Size > 5*1024*1024 {
+							errors := map[string]string{
+								"demo_documentation": "Ukuran file maksimal 5MB",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Validasi file gambar - with better error handling
+						fileHeader, err := demoFile.Open()
 						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error opening demo file: %v", err))
+							errors := map[string]string{
+								"demo_documentation": "Gagal membuka file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+						defer fileHeader.Close()
+
+						buffer := make([]byte, 512)
+						_, err = fileHeader.Read(buffer)
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error reading demo file: %v", err))
+							errors := map[string]string{
+								"demo_documentation": "Gagal membaca file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						mimeType := http.DetectContentType(buffer)
+						helper.LogError(c, fmt.Sprintf("Demo file mime type: %s", mimeType))
+
+						if !strings.HasPrefix(mimeType, "image/") {
+							errors := map[string]string{
+								"demo_documentation": "File harus berupa gambar (jpg/png)",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Reset file pointer to beginning before saving
+						fileHeader.Seek(0, 0)
+
+						filePath, err := helper.SaveUploadedFile(c, demoFile, "demo")
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error saving demo file: %v", err))
 							errors := map[string]string{
 								"demo_documentation": err.Error(),
 							}
@@ -299,8 +411,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan relative path
-						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+						helper.LogError(c, fmt.Sprintf("Demo file saved successfully at: %s", filePath))
+						detailVisit[formKey] = filePath
+
 					} else if valueStr == "0" {
 						demoReason := c.FormValue("demo_reason")
 						if demoReason == "" {
@@ -317,18 +430,66 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "dealing_sekolah" {
 					if valueStr == "1" {
-						bakFile := c.FormValue("bak_file")
-						if bakFile == "" {
+						// Try to get the BAK file with better error handling
+						bakFile, err := c.FormFile("bak_file")
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error getting bak_file: %v", err))
 							errors := map[string]string{
-								"bak_file": "File BAK harus diisi",
+								"bak_file": "File BAK harus diunggah",
 							}
 							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan file BAK base64
-						filePath, err := helper.SaveValidatedBase64File(bakFile, "public/uploads/bak")
+						if bakFile.Size > 5*1024*1024 {
+							errors := map[string]string{
+								"bak_file": "Ukuran file maksimal 5MB",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Validasi file PDF with better error handling
+						fileHeader, err := bakFile.Open()
 						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error opening BAK file: %v", err))
+							errors := map[string]string{
+								"bak_file": "Gagal membuka file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+						defer fileHeader.Close()
+
+						buffer := make([]byte, 512)
+						_, err = fileHeader.Read(buffer)
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error reading BAK file: %v", err))
+							errors := map[string]string{
+								"bak_file": "Gagal membaca file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						mimeType := http.DetectContentType(buffer)
+						helper.LogError(c, fmt.Sprintf("BAK file mime type: %s", mimeType))
+
+						// Accept both PDF and common image formats
+						if mimeType != "application/pdf" && !strings.HasPrefix(mimeType, "image/") {
+							errors := map[string]string{
+								"bak_file": "File harus berupa PDF atau gambar (jpg/png)",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Reset file pointer to beginning before saving
+						fileHeader.Seek(0, 0)
+
+						filePath, err := helper.SaveUploadedFile(c, bakFile, "bak")
+						if err != nil {
+							helper.LogError(c, fmt.Sprintf("Error saving BAK file: %v", err))
 							errors := map[string]string{
 								"bak_file": err.Error(),
 							}
@@ -336,8 +497,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan relative path
-						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+						helper.LogError(c, fmt.Sprintf("BAK file saved successfully at: %s", filePath))
+						detailVisit[formKey] = filePath
+
 					} else if valueStr == "0" {
 						dealingReason := c.FormValue("dealing_reason")
 						if dealingReason == "" {
@@ -351,8 +513,6 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 						detailVisit[formKey+"_reason"] = dealingReason
 					}
 				}
-
-				fmt.Println(detailVisit)
 
 				kpiYae[formKey] = &parsedValue
 			}

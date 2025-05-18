@@ -58,7 +58,7 @@ jobs:
           COMMITTER_NAME="${{ github.event.head_commit.committer.name || github.event.pull_request.user.login }}"
           curl -s -X POST https://telebot.apicollection.my.id/api/v1/notification/send-message \
           -H "Content-Type: application/json" \
-           -d '{"message": "✅ Task Succeeded\n'"${COMMIT_MESSAGE}"'\nby.U CRM Services Deployed to Production\nBy: '"${COMMITTER_NAME}"'", "channel": "@byu_crm"}'
+          -d '{"message": "✅ Deployment Berhasil\n'"${COMMIT_MESSAGE}"'\nby.U CRM Services Deployed to Production\nBy: '"${COMMITTER_NAME}"'", "channel": "@byu_crm"}'
       # 5. Cleanup
       - name: Remove SSH Key
         if: always()
