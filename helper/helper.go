@@ -18,6 +18,7 @@ import (
 	"mime/multipart"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2"
 )
 
 type Response struct {
@@ -310,6 +311,28 @@ func SaveValidatedBase64File(base64Str string, uploadDir string) (string, error)
 	}
 
 	return filePath, nil
+}
+
+func SaveUploadedFile(c *fiber.Ctx, file *multipart.FileHeader, folder string) (string, error) {
+	// Buat folder tujuan jika belum ada
+	dirPath := filepath.Join("public", "uploads", folder)
+	err := os.MkdirAll(dirPath, os.ModePerm)
+	if err != nil {
+		return "", fmt.Errorf("gagal membuat folder: %v", err)
+	}
+
+	// Format nama file unik
+	timestamp := time.Now().UnixNano()
+	ext := filepath.Ext(file.Filename)
+	fileName := fmt.Sprintf("%d%s", timestamp, ext)
+	fullPath := filepath.Join(dirPath, fileName)
+
+	// Simpan file ke path tersebut
+	if err := c.SaveFile(file, fullPath); err != nil {
+		return "", fmt.Errorf("gagal menyimpan file: %v", err)
+	}
+
+	return fullPath, nil
 }
 
 // Fungsi bantu deteksi MIME dari data file

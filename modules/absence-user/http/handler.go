@@ -8,6 +8,7 @@ import (
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -106,7 +107,11 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
-	req := new(validation.CreateAbsenceUserRequest)
+	req := &validation.CreateAbsenceUserRequest{
+		Type:      c.FormValue("type"),
+		Latitude:  c.FormValue("latitude"),
+		Longitude: c.FormValue("longitude"),
+	}
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -282,17 +287,47 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "presentasi_demo" {
 					if valueStr == "1" {
-						demoDocumentation := c.FormValue("demo_documentation")
-						if demoDocumentation == "" {
+						demoFile, err := c.FormFile("demo_documentation")
+						if err != nil {
 							errors := map[string]string{
-								"demo_documentation": "Dokumentasi demo harus diisi",
+								"demo_documentation": "Dokumentasi demo harus diunggah",
 							}
 							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan gambar base64
-						filePath, err := helper.SaveValidatedBase64File(demoDocumentation, "public/uploads/demo")
+						if demoFile.Size > 5*1024*1024 {
+							errors := map[string]string{
+								"demo_documentation": "Ukuran file maksimal 5MB",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Validasi file gambar
+						fileHeader, _ := demoFile.Open()
+						defer fileHeader.Close()
+
+						buffer := make([]byte, 512)
+						_, err = fileHeader.Read(buffer)
+						if err != nil {
+							errors := map[string]string{
+								"demo_documentation": "Gagal membaca file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						mimeType := http.DetectContentType(buffer)
+						if !strings.HasPrefix(mimeType, "image/") {
+							errors := map[string]string{
+								"demo_documentation": "File harus berupa gambar (jpg/png)",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						filePath, err := helper.SaveUploadedFile(c, demoFile, "demo")
 						if err != nil {
 							errors := map[string]string{
 								"demo_documentation": err.Error(),
@@ -301,8 +336,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan relative path
-						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+						detailVisit[formKey] = filePath
+
 					} else if valueStr == "0" {
 						demoReason := c.FormValue("demo_reason")
 						if demoReason == "" {
@@ -319,17 +354,47 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "dealing_sekolah" {
 					if valueStr == "1" {
-						bakFile := c.FormValue("bak_file")
-						if bakFile == "" {
+						bakFile, err := c.FormFile("bak_file")
+						if err != nil {
 							errors := map[string]string{
-								"bak_file": "File BAK harus diisi",
+								"bak_file": "File BAK harus diunggah",
 							}
 							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan file BAK base64
-						filePath, err := helper.SaveValidatedBase64File(bakFile, "public/uploads/bak")
+						if bakFile.Size > 5*1024*1024 {
+							errors := map[string]string{
+								"bak_file": "Ukuran file maksimal 5MB",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Validasi file PDF
+						fileHeader, _ := bakFile.Open()
+						defer fileHeader.Close()
+
+						buffer := make([]byte, 512)
+						_, err = fileHeader.Read(buffer)
+						if err != nil {
+							errors := map[string]string{
+								"bak_file": "Gagal membaca file",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						mimeType := http.DetectContentType(buffer)
+						if mimeType != "application/pdf" {
+							errors := map[string]string{
+								"bak_file": "File harus berupa PDF",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						filePath, err := helper.SaveUploadedFile(c, bakFile, "bak")
 						if err != nil {
 							errors := map[string]string{
 								"bak_file": err.Error(),
@@ -338,8 +403,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
 
-						// Simpan relative path
-						detailVisit[formKey] = strings.TrimPrefix(filePath, "public/")
+						detailVisit[formKey] = filePath
+
 					} else if valueStr == "0" {
 						dealingReason := c.FormValue("dealing_reason")
 						if dealingReason == "" {
@@ -353,8 +418,6 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 						detailVisit[formKey+"_reason"] = dealingReason
 					}
 				}
-
-				fmt.Println(detailVisit)
 
 				kpiYae[formKey] = &parsedValue
 			}
