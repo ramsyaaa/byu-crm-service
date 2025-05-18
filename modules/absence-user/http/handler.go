@@ -204,46 +204,48 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
 
-			if getAccount.Latitude != nil && getAccount.Longitude != nil &&
-				*getAccount.Latitude != "" && *getAccount.Longitude != "" {
-				latitude, err := strconv.ParseFloat(req.Latitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				longitude, err := strconv.ParseFloat(req.Longitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
-				if err != nil {
-					response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-				inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
-				if !inRadius {
-					errors := map[string]string{
-						"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+			if userRole != "Super-Admin" {
+				if getAccount.Latitude != nil && getAccount.Longitude != nil &&
+					*getAccount.Latitude != "" && *getAccount.Longitude != "" {
+					latitude, err := strconv.ParseFloat(req.Latitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
 					}
-					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-					return c.Status(fiber.StatusBadRequest).JSON(response)
-				}
-			} else {
-				requestBody := map[string]interface{}{
-					"longitude": req.Longitude,
-					"latitude":  req.Latitude,
-				}
-				_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
+					longitude, err := strconv.ParseFloat(req.Longitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
+					if err != nil {
+						response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+					if !inRadius {
+						errors := map[string]string{
+							"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+						}
+						response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+				} else {
+					requestBody := map[string]interface{}{
+						"longitude": req.Longitude,
+						"latitude":  req.Latitude,
+					}
+					_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
-				if err != nil {
-					response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
-					return c.Status(fiber.StatusInternalServerError).JSON(response)
+					if err != nil {
+						response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+						return c.Status(fiber.StatusInternalServerError).JSON(response)
+					}
 				}
 			}
 		} else if actionType == "Clock Out" {
