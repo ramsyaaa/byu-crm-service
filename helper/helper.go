@@ -318,18 +318,76 @@ func SaveUploadedFile(c *fiber.Ctx, file *multipart.FileHeader, folder string) (
 	dirPath := filepath.Join("public", "uploads", folder)
 	err := os.MkdirAll(dirPath, os.ModePerm)
 	if err != nil {
+		log.Printf("Error creating directory: %v", err)
 		return "", fmt.Errorf("gagal membuat folder: %v", err)
 	}
 
 	// Format nama file unik
 	timestamp := time.Now().UnixNano()
 	ext := filepath.Ext(file.Filename)
+	if ext == "" {
+		// If no extension, try to determine from content type
+		src, err := file.Open()
+		if err != nil {
+			log.Printf("Error opening file to detect type: %v", err)
+			// Default to .bin if we can't determine
+			ext = ".bin"
+		} else {
+			defer src.Close()
+
+			// Read a bit of the file to detect content type
+			buffer := make([]byte, 512)
+			_, err = src.Read(buffer)
+			if err != nil && err != io.EOF {
+				log.Printf("Error reading file to detect type: %v", err)
+				ext = ".bin"
+			} else {
+				mimeType := http.DetectContentType(buffer)
+
+				// Map common mime types to extensions
+				mimeExtensions := map[string]string{
+					"image/jpeg":      ".jpg",
+					"image/png":       ".png",
+					"image/gif":       ".gif",
+					"application/pdf": ".pdf",
+					"text/plain":      ".txt",
+				}
+
+				if extFromMime, ok := mimeExtensions[mimeType]; ok {
+					ext = extFromMime
+				} else {
+					ext = ".bin"
+				}
+
+				// Reset file pointer for saving
+				src.Seek(0, 0)
+			}
+		}
+	}
+
 	fileName := fmt.Sprintf("%d%s", timestamp, ext)
 	fullPath := filepath.Join(dirPath, fileName)
 
-	// Simpan file ke path tersebut
+	// Try to save the file with better error handling
 	if err := c.SaveFile(file, fullPath); err != nil {
-		return "", fmt.Errorf("gagal menyimpan file: %v", err)
+		log.Printf("Error saving file: %v", err)
+
+		// Try alternative method if SaveFile fails
+		src, err := file.Open()
+		if err != nil {
+			return "", fmt.Errorf("gagal membuka file: %v", err)
+		}
+		defer src.Close()
+
+		dst, err := os.Create(fullPath)
+		if err != nil {
+			return "", fmt.Errorf("gagal membuat file: %v", err)
+		}
+		defer dst.Close()
+
+		if _, err = io.Copy(dst, src); err != nil {
+			return "", fmt.Errorf("gagal menyalin file: %v", err)
+		}
 	}
 
 	return fullPath, nil

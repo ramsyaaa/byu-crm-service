@@ -44,8 +44,8 @@ func Route(db *gorm.DB) {
 	// Use the cors middleware to allow all origins and methods
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:  "*",
-		AllowMethods:  "GET,POST,PUT,DELETE",
-		AllowHeaders:  "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:  "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		ExposeHeaders: "Content-Length, Content-Type",
 	}))
 
@@ -98,8 +98,8 @@ func Route(db *gorm.DB) {
 	// Add CORS middleware to the API router as well
 	api.Use(cors.New(cors.Config{
 		AllowOrigins:  "*",
-		AllowMethods:  "GET,POST,PUT,DELETE",
-		AllowHeaders:  "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:  "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		ExposeHeaders: "Content-Length, Content-Type",
 	}))
 
