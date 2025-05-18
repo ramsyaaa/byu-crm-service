@@ -106,6 +106,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
+	helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "before validate"))
 	req := new(validation.CreateAbsenceUserRequest)
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
@@ -118,6 +119,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
+
+	helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "after validate"))
 
 	data := map[string]any{
 		"Visit Account": "App\\Models\\Account",
@@ -162,8 +165,10 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 	var subjectID int
 	type_checking := "daily"
+	helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes1"))
 
 	if req.Type == "Visit Account" {
+		helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes2"))
 		subjectIDStr := c.FormValue("subject_id")
 		parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
 		subjectID = parsedSubjectID
@@ -177,6 +182,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			subjectID,
 		)
 		if actionType == "Clock In" {
+			helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes3"))
 			if existingAbsenceUser != nil {
 				errors := map[string]string{
 					"message": "User Already absence today",
@@ -198,6 +204,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 
 		if actionType == "Clock In" {
+			helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes4"))
 			getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
 			if err != nil {
 				response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
@@ -249,6 +256,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				}
 			}
 		} else if actionType == "Clock Out" {
+			helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes5"))
 			getVisitList, err := h.visitChecklistService.GetAllVisitChecklist()
 
 			if err != nil {
@@ -388,6 +396,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	}
 
 	if actionType == "Clock In" {
+		helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes6"))
 		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
 			false,
 			userID,
@@ -452,6 +461,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusUnauthorized).JSON(response)
 			}
 		}
+		helper.LogError(c, fmt.Sprintf("Failed to create absence: %v", "tes7"))
 
 		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
 		return c.Status(fiber.StatusOK).JSON(response)
