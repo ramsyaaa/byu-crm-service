@@ -119,6 +119,11 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 			// Return a 500 response to the client if headers haven't been sent
 			if c.Response().StatusCode() == 0 {
+				// Set CORS headers explicitly for error responses
+				c.Set("Access-Control-Allow-Origin", "*")
+				c.Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+				c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
+
 				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"status":  "error",
 					"message": "Internal Server Error",
@@ -127,9 +132,18 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 	}()
 
-	// Log the content type for debugging
+	// Handle preflight OPTIONS request
+	if c.Method() == "OPTIONS" {
+		c.Set("Access-Control-Allow-Origin", "*")
+		c.Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
+		return c.SendStatus(fiber.StatusOK)
+	}
+
+	// Log the content type and request details for debugging
 	contentType := string(c.Request().Header.ContentType())
-	helper.LogError(c, fmt.Sprintf("Request received - Content-Type: %s", contentType))
+	helper.LogError(c, fmt.Sprintf("Request received - Content-Type: %s, Method: %s", contentType, c.Method()))
+	helper.LogError(c, fmt.Sprintf("Request headers: %v", c.GetReqHeaders()))
 
 	// Extract user information from JWT context
 	userID := c.Locals("user_id").(int)
@@ -137,6 +151,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
 
 	// Extract form values directly - this works for both multipart/form-data and x-www-form-urlencoded
+	// Use empty string as default value if not found
 	typeValue := c.FormValue("type", "")
 	latitudeValue := c.FormValue("latitude", "")
 	longitudeValue := c.FormValue("longitude", "")

@@ -18,8 +18,8 @@ func Route(db *gorm.DB) {
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
-		// Enable strict parsing for multipart forms and URL-encoded forms
-		StrictRouting: true,
+		// Disable strict routing to allow more flexible URL handling
+		StrictRouting: false,
 		// Add error handler for errors
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			// Default 500 statuscode
@@ -47,6 +47,7 @@ func Route(db *gorm.DB) {
 		AllowMethods:  "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		ExposeHeaders: "Content-Length, Content-Type",
+		MaxAge:        86400, // 24 hours
 	}))
 
 	// Add recover middleware to catch panics
@@ -72,8 +73,8 @@ func Route(db *gorm.DB) {
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
-		// Enable strict parsing for multipart forms and URL-encoded forms
-		StrictRouting: true,
+		// Disable strict routing to allow more flexible URL handling
+		StrictRouting: false,
 		// Add error handler for errors
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			// Default 500 statuscode
@@ -101,6 +102,7 @@ func Route(db *gorm.DB) {
 		AllowMethods:  "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		ExposeHeaders: "Content-Length, Content-Type",
+		MaxAge:        86400, // 24 hours
 	}))
 
 	// Add recover middleware to catch panics
