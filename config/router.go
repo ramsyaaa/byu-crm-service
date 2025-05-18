@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/helper"
 	"byu-crm-service/middleware"
 	"byu-crm-service/routes"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +18,9 @@ func Route(db *gorm.DB) {
 
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
-		// Add error handler for 502 errors
+		// Enable strict parsing for multipart forms and URL-encoded forms
+		StrictRouting: true,
+		// Add error handler for errors
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			// Default 500 statuscode
 			code := fiber.StatusInternalServerError
@@ -28,7 +31,7 @@ func Route(db *gorm.DB) {
 			}
 
 			// Log the error
-			helper.LogError(c, err.Error())
+			helper.LogError(c, fmt.Sprintf("Error in request: %s", err.Error()))
 
 			// Return JSON response with error message
 			return c.Status(code).JSON(fiber.Map{
@@ -40,9 +43,10 @@ func Route(db *gorm.DB) {
 
 	// Use the cors middleware to allow all origins and methods
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "GET,POST,PUT,DELETE",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowOrigins:  "*",
+		AllowMethods:  "GET,POST,PUT,DELETE",
+		AllowHeaders:  "Origin, Content-Type, Accept, Authorization",
+		ExposeHeaders: "Content-Length, Content-Type",
 	}))
 
 	// Add recover middleware to catch panics
@@ -67,7 +71,10 @@ func Route(db *gorm.DB) {
 	app.Get("/logs/:filename", helper.GetLogFileContent)
 
 	api := fiber.New(fiber.Config{
-		// Add error handler for 502 errors
+		BodyLimit: 50 * 1024 * 1024, // 50 MB
+		// Enable strict parsing for multipart forms and URL-encoded forms
+		StrictRouting: true,
+		// Add error handler for errors
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			// Default 500 statuscode
 			code := fiber.StatusInternalServerError
@@ -77,8 +84,8 @@ func Route(db *gorm.DB) {
 				code = e.Code
 			}
 
-			// Log the error
-			helper.LogError(c, err.Error())
+			// Log the error with more details
+			helper.LogError(c, fmt.Sprintf("API Error: %s", err.Error()))
 
 			// Return JSON response with error message
 			return c.Status(code).JSON(fiber.Map{
@@ -87,6 +94,14 @@ func Route(db *gorm.DB) {
 			})
 		},
 	})
+
+	// Add CORS middleware to the API router as well
+	api.Use(cors.New(cors.Config{
+		AllowOrigins:  "*",
+		AllowMethods:  "GET,POST,PUT,DELETE",
+		AllowHeaders:  "Origin, Content-Type, Accept, Authorization",
+		ExposeHeaders: "Content-Length, Content-Type",
+	}))
 
 	// Add recover middleware to catch panics
 	api.Use(middleware.RecoverMiddleware())

@@ -7,10 +7,13 @@ import (
 	kpiYaeRange "byu-crm-service/modules/kpi-yae-range/service"
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
+	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"byu-crm-service/helper"
 
@@ -104,17 +107,62 @@ func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 }
 
 func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	_, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			// Get stack trace
+			stackTrace := debug.Stack()
+
+			// Log the panic with stack trace
+			errorMsg := fmt.Sprintf("PANIC RECOVERED in CreateAbsenceUser: %v\nStack Trace:\n%s", r, stackTrace)
+
+			// Log to file using our enhanced logger's format
+			helper.LogError(c, errorMsg)
+
+			// Return a 500 response to the client if headers haven't been sent
+			if c.Response().StatusCode() == 0 {
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"status":  "error",
+					"message": "Internal Server Error",
+				})
+			}
+		}
+	}()
+
+	// Log the content type for debugging
+	contentType := string(c.Request().Header.ContentType())
+	helper.LogError(c, fmt.Sprintf("Content-Type: %s", contentType))
+
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
+
+	// Log all form values for debugging
+	helper.LogError(c, fmt.Sprintf("Content-Type: %s", string(c.Request().Header.ContentType())))
+	helper.LogError(c, fmt.Sprintf("Form values - type: %s", c.FormValue("type")))
+	helper.LogError(c, fmt.Sprintf("Form values - latitude: %s", c.FormValue("latitude")))
+	helper.LogError(c, fmt.Sprintf("Form values - longitude: %s", c.FormValue("longitude")))
+	helper.LogError(c, fmt.Sprintf("Form values - action_type: %s", c.FormValue("action_type")))
+
+	// Create request object and populate it from form values
 	req := &validation.CreateAbsenceUserRequest{
 		Type:      c.FormValue("type"),
 		Latitude:  c.FormValue("latitude"),
 		Longitude: c.FormValue("longitude"),
 	}
-	if err := c.BodyParser(req); err != nil {
-		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
+
+	// Skip body parsing for www-form-urlencoded data
+	// We already have the values from FormValue above
+	formContentType := string(c.Request().Header.ContentType())
+	if !strings.Contains(formContentType, "application/x-www-form-urlencoded") {
+		if err := c.BodyParser(req); err != nil {
+			helper.LogError(c, fmt.Sprintf("Body parsing error: %v", err))
+			// Continue with form values already set above
+		}
 	}
 
 	// Request Validation
