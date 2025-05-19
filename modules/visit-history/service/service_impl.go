@@ -4,7 +4,6 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/visit-history/repository"
 	"encoding/json"
-	"fmt"
 )
 
 type visitHistoryService struct {
@@ -27,7 +26,6 @@ func (s *visitHistoryService) CreateVisitHistory(user_id int, subject_type strin
 		return nil, err
 	}
 	visitDetailString := string(visitDetail)
-	fmt.Println(visitDetailString)
 	VisitHistory := &models.VisitHistory{
 		UserID:        &convertedUserID,
 		SubjectType:   &subject_type,
