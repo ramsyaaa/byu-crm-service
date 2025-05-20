@@ -3,6 +3,7 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account/response"
+	"time"
 )
 
 type AccountService interface {
@@ -12,6 +13,8 @@ type AccountService interface {
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
 	UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error)
 	ProcessAccount(data []string) error
+	CheckAlreadyUpdateData(accountID int, clockIn time.Time, userID int) (bool, error)
+	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error
 	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.SingleAccountResponse, error)
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
 }

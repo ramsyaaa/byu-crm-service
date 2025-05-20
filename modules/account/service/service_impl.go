@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type accountService struct {
@@ -190,6 +191,14 @@ func (s *accountService) ProcessAccount(data []string) error {
 		Ownership:               &data[14],
 	}
 	return s.repo.Create(&account)
+}
+
+func (s *accountService) CheckAlreadyUpdateData(accountID int, clockIn time.Time, userID int) (bool, error) {
+	return s.repo.CheckAlreadyUpdateData(accountID, userID, clockIn)
+}
+
+func (s *accountService) CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error {
+	return s.repo.CreateHistoryActivityAccount(userID, accountID, updateType, subjectType, subjectID)
 }
 
 func isZeroValue(value string) bool {
