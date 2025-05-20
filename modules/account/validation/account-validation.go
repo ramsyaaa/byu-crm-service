@@ -122,40 +122,45 @@ func ValidateCreate(req *ValidateRequest) map[string]string {
 func ValidateSchool(req *ValidateRequest, isCreate bool, accountID int, userRole string, territoryID int, userID int) map[string]string {
 	errors := make(map[string]string)
 
-	// Validate DiesNatalis
-	if req.DiesNatalis != nil && strings.TrimSpace(*req.DiesNatalis) != "" {
+	// Validate DiesNatalis (required dan harus format tanggal)
+	if req.DiesNatalis == nil || strings.TrimSpace(*req.DiesNatalis) == "" {
+		errors["dies_natalis"] = "Dies Natalis harus diisi"
+	} else {
 		_, err := time.Parse("2006-01-02", *req.DiesNatalis)
 		if err != nil {
 			errors["dies_natalis"] = "Format Dies Natalis harus berupa tanggal dengan format YYYY-MM-DD"
 		}
 	}
 
-	// Validate branding fields (kecuali Extracurricular)
-	validateBranding := func(fieldValue *string, fieldName string) {
-		if fieldValue != nil && strings.TrimSpace(*fieldValue) != "" {
-			if *fieldValue != "BELUM BRANDING" && *fieldValue != "SUDAH BRANDING" {
-				errors[fieldName] = fmt.Sprintf("%s harus 'BELUM BRANDING' atau 'SUDAH BRANDING'", fieldName)
-			}
+	// Validate Extracurricular (required)
+	if req.Extracurricular == nil || strings.TrimSpace(*req.Extracurricular) == "" {
+		errors["extracurricular"] = "Ekstrakurikuler harus diisi"
+	}
+
+	// Branding validation helper (required dan hanya 2 nilai diperbolehkan)
+	validateBranding := func(fieldValue *string, fieldName string, label string) {
+		if fieldValue == nil || strings.TrimSpace(*fieldValue) == "" {
+			errors[fieldName] = fmt.Sprintf("%s harus diisi", label)
+		} else if *fieldValue != "BELUM BRANDING" && *fieldValue != "SUDAH BRANDING" {
+			errors[fieldName] = fmt.Sprintf("%s harus 'BELUM BRANDING' atau 'SUDAH BRANDING'", label)
 		}
 	}
 
-	validateBranding(req.FootballFieldBranding, "football_field_branding")
-	validateBranding(req.BasketballFieldBranding, "basketball_field_branding")
-	validateBranding(req.WallPaintingBranding, "wall_painting_branding")
-	validateBranding(req.WallMagazineBranding, "wall_magazine_branding")
+	validateBranding(req.FootballFieldBranding, "football_field_branding", "Branding Lapangan Sepak Bola")
+	validateBranding(req.BasketballFieldBranding, "basketball_field_branding", "Branding Lapangan Basket")
+	validateBranding(req.WallPaintingBranding, "wall_painting_branding", "Branding Mural Dinding")
+	validateBranding(req.WallMagazineBranding, "wall_magazine_branding", "Branding Majalah Dinding")
 
 	// Validate account_code unique
 	if req.AccountCode != nil {
 		shouldCheckUnique := true
 
 		if !isCreate {
-
 			// Kalau update, ambil data account lama
 			existingAccount, err := accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 			if err == nil && existingAccount != nil && existingAccount.AccountCode != nil {
-				// Bandingkan account_code lama dengan yang baru
 				if *existingAccount.AccountCode == *req.AccountCode {
-					shouldCheckUnique = false // tidak perlu cek unik kalau sama
+					shouldCheckUnique = false
 				}
 			}
 		}
@@ -167,11 +172,9 @@ func ValidateSchool(req *ValidateRequest, isCreate bool, accountID int, userRole
 		}
 	}
 
-	// Return nil jika tidak ada error
 	if len(errors) == 0 {
 		return nil
 	}
-
 	return errors
 }
 
