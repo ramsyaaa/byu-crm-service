@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
 
+	absenceUserService "byu-crm-service/modules/absence-user/service"
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
 	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountScheduleService "byu-crm-service/modules/account-schedule/service"
@@ -44,6 +46,7 @@ type AccountHandler struct {
 	accountTypeCampusDetailService    accountTypeCampusDetailService.AccountTypeCampusDetailService
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService
 	productService                    productService.ProductService
+	absenceUserService                absenceUserService.AbsenceUserService
 }
 
 func NewAccountHandler(
@@ -56,7 +59,8 @@ func NewAccountHandler(
 	accountScheduleService accountScheduleService.AccountScheduleService,
 	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService,
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService,
-	productService productService.ProductService) *AccountHandler {
+	productService productService.ProductService,
+	absenceUserService absenceUserService.AbsenceUserService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                           service,
@@ -68,7 +72,8 @@ func NewAccountHandler(
 		accountScheduleService:            accountScheduleService,
 		accountTypeCampusDetailService:    accountTypeCampusDetailService,
 		accountTypeCommunityDetailService: accountTypeCommunityDetailService,
-		productService:                    productService}
+		productService:                    productService,
+		absenceUserService:                absenceUserService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -166,6 +171,47 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) CheckAlreadyUpdateData(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	userID := c.Locals("user_id").(int)
+	// Convert to int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Ambil territory_id dari query jika ada, jika tidak ambil dari locals
+	clockInStr := c.Query("clock_in")
+	if clockInStr == "" {
+		response := helper.APIResponse("Parameter 'clock_in' harus diisi", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	clockInTime, err := time.Parse("2006-01-02", clockInStr)
+	if err != nil {
+		response := helper.APIResponse("Format tanggal 'clock_in' tidak valid. Gunakan format YYYY-MM-DD", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Call service with filters
+	status, err := h.service.CheckAlreadyUpdateData(id, clockInTime, userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch data update",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"status": status,
+	}
+
+	response := helper.APIResponse("Check Data Update Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
@@ -550,6 +596,27 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 			helper.LogError(c, fmt.Sprintf("Failed to update account: %v", serviceErr))
 			response := helper.APIResponse("Failed to update account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	visitAccount := "Visit Account"
+	existingAbsenceUser, _, _ := h.absenceUserService.GetAbsenceUserToday(
+		false,
+		userID,
+		&visitAccount,
+		"monthly",
+		"Clock In",
+		"App\\Models\\Account",
+		accountID,
+	)
+
+	if existingAbsenceUser != nil {
+		var subjectType *string = nil
+		var subjectID *uint = nil
+
+		err := h.service.CreateHistoryActivityAccount(uint(userID), uint(accountID), "Update Account", subjectType, subjectID)
+		if err != nil {
+			log.Println("Failed to create update history:", err)
 		}
 	}
 

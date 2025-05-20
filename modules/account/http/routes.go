@@ -12,6 +12,7 @@ func AccountRoutes(router fiber.Router, handler *AccountHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/overview", middleware.PermissionMiddleware("view account"), handler.GetCountAccount)
+	authRouter.Get("/check-already-update-data/:id", handler.CheckAlreadyUpdateData)
 	authRouter.Post("/import", middleware.PermissionMiddleware("import account"), handler.Import)
 	authRouter.Get("/count-visited", middleware.PermissionMiddleware("view account"), handler.GetAccountVisitCounts)
 	authRouter.Get("/", middleware.PermissionMiddleware("view account"), handler.GetAllAccounts)

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	absenceUserRepo "byu-crm-service/modules/absence-user/repository"
 	accountFacultyRepo "byu-crm-service/modules/account-faculty/repository"
 	accountMemberRepo "byu-crm-service/modules/account-member/repository"
 	accountScheduleRepo "byu-crm-service/modules/account-schedule/repository"
@@ -21,6 +22,7 @@ import (
 	regionRepo "byu-crm-service/modules/region/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
 
+	absenceUserService "byu-crm-service/modules/absence-user/service"
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
 	accountMemberService "byu-crm-service/modules/account-member/service"
 	accountScheduleService "byu-crm-service/modules/account-schedule/service"
@@ -52,6 +54,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	regionRepo := regionRepo.NewRegionRepository(db)
 	branchRepo := branchRepo.NewBranchRepository(db)
 	clusterRepo := clusterRepo.NewClusterRepository(db)
+	absenceUserRepo := absenceUserRepo.NewAbsenceUserRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -66,8 +69,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountTypeCampusDetailService := accountTypeCampusDetailService.NewAccountTypeCampusDetailService(accountTypeCampusDetailRepo)
 	accountTypeCommunityDetailService := accountTypeCommunityDetailService.NewAccountTypeCommunityDetailService(accountTypeCommunityDetailRepo)
 	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
+	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService)
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService)
 
 	http.AccountRoutes(router, accountHandler)
 
