@@ -175,6 +175,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			subjectTypeStr,
 			subjectID,
 		)
+
 		if actionType == "Clock In" {
 			if existingAbsenceUser != nil {
 				errors := map[string]string{
@@ -268,6 +269,12 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				// nameKey := item.Name
 				valueBytes := c.Context().FormValue(formKey)
 				valueStr := string(valueBytes)
+
+				if formKey == "skul_id" {
+					if getAccount.IsSkulid == nil || *getAccount.IsSkulid == 0 {
+						continue
+					}
+				}
 
 				if valueStr == "" {
 					errors[formKey] = fmt.Sprintf("%s harus diisi", item.Name)
