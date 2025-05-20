@@ -9,6 +9,7 @@ import (
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
 	"strconv"
+	"time"
 
 	"byu-crm-service/helper"
 
@@ -477,6 +478,18 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			response := helper.APIResponse("No existing absence user found for Clock In", fiber.StatusBadRequest, "error", nil)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
+
+		if req.Type == "Daily" {
+			// Count different time
+			duration := time.Since(existingAbsenceUser.ClockIn)
+
+			// If less than 6 hour
+			if duration < 6*time.Hour {
+				response := helper.APIResponse("Absensi Harian belum mencapai 6 jam", fiber.StatusBadRequest, "error", nil)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+		}
+
 		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
