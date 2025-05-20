@@ -3,6 +3,7 @@ package repository
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/account/response"
+	"time"
 )
 
 type AccountRepository interface {
@@ -17,4 +18,6 @@ type AccountRepository interface {
 	UpdateFields(id uint, fields map[string]interface{}) error
 	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.AccountResponse, error)
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
+	CheckAlreadyUpdateData(accountID int, userID int, clockInTime time.Time) (bool, error)
+	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error
 }

@@ -763,3 +763,31 @@ func (r *accountRepository) GetAccountVisitCounts(
 
 	return visitedCount, notVisitedCount, totalCount, nil
 }
+
+func (r *accountRepository) CheckAlreadyUpdateData(accountID int, userID int, clockInTime time.Time) (bool, error) {
+	var count int64
+	now := time.Now()
+
+	err := r.db.
+		Table("history_activity_accounts").
+		Where("account_id = ? AND user_id = ? AND type = ? AND DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') >= ? AND DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') <= ?",
+			accountID, userID, "Update Account", clockInTime.Format("2006-01-02 15:04:05"), now.Format("2006-01-02 15:04:05")).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func (r *accountRepository) CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error {
+	history := models.HistoryActivityAccount{
+		UserID:      userID,
+		AccountID:   accountID,
+		Type:        updateType,
+		SubjectType: subjectType,
+		SubjectID:   subjectID,
+	}
+	return r.db.Table("history_activity_accounts").Create(&history).Error
+}
