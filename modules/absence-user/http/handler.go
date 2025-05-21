@@ -364,6 +364,17 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 						// Simpan relative path
 						detailVisit[formKey] = filePath
+
+						event_name := c.FormValue("event_name")
+						if event_name == "" {
+							errors := map[string]string{
+								"event_name": "Nama event harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						detailVisit["event_name"] = helper.UppercaseTrim(event_name)
 					} else if valueStr == "0" {
 						dealingReason := c.FormValue("dealing_reason")
 						if dealingReason == "" {

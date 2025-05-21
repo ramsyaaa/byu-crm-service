@@ -29,15 +29,15 @@ func (s *absenceUserService) GetAbsenceUserByID(id int) (*response.ResponseSingl
 		return nil, err
 	}
 
-	var targetMap *map[string]int
 	var detailVisitMap *map[string]string
+	var targetMap *response.OrderedTargetMap = nil
 
 	if absenceUser.VisitHistory != nil {
 		// Parse target
 		if absenceUser.VisitHistory.Target != nil {
 			var tempTarget map[string]int
 			if err := json.Unmarshal([]byte(*absenceUser.VisitHistory.Target), &tempTarget); err == nil {
-				targetMap = &tempTarget
+				targetMap = &response.OrderedTargetMap{Data: tempTarget}
 			}
 		}
 
