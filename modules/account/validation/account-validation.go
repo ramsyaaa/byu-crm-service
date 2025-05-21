@@ -31,7 +31,7 @@ type ValidateRequest struct {
 	AccountCode             *string `json:"account_code"`
 	City                    string  `json:"city" validate:"required"`
 	ContactName             *string `json:"contact_name"`
-	EmailAccount            *string `json:"email_account" validate:"email"`
+	EmailAccount            *string `json:"email_account"`
 	WebsiteAccount          *string `json:"website_account"`
 	SystemInformasiAkademik *string `json:"system_informasi_akademik"`
 	Latitude                *string `json:"latitude"`
@@ -107,6 +107,143 @@ var validationMessages = map[string]string{
 	"city.required":                  "Kota wajib diisi",
 	"email_account.email":            "Format email tidak valid",
 	"category.validate_category_url": "Kategori dan URL wajib diisi",
+}
+
+func NormalizeValidateRequest(req *ValidateRequest) {
+	defaultString := func(s **string) {
+		if *s == nil {
+			empty := ""
+			*s = &empty
+		}
+	}
+
+	// Normalize all *string fields
+	defaultString(&req.AccountCode)
+	defaultString(&req.ContactName)
+	defaultString(&req.EmailAccount)
+	defaultString(&req.WebsiteAccount)
+	defaultString(&req.SystemInformasiAkademik)
+	defaultString(&req.Latitude)
+	defaultString(&req.Longitude)
+	defaultString(&req.Ownership)
+	defaultString(&req.Pic)
+	defaultString(&req.PicInternal)
+	defaultString(&req.DiesNatalis)
+	defaultString(&req.Extracurricular)
+	defaultString(&req.FootballFieldBranding)
+	defaultString(&req.BasketballFieldBranding)
+	defaultString(&req.WallPaintingBranding)
+	defaultString(&req.WallMagazineBranding)
+	defaultString(&req.AccessTechnology)
+	defaultString(&req.Byod)
+	defaultString(&req.CampusAdministrationApp)
+	defaultString(&req.PotentionalCollaboration)
+	defaultString(&req.AccountSubtype)
+	defaultString(&req.Group)
+	defaultString(&req.GroupName)
+	defaultString(&req.ProductService)
+	defaultString(&req.PotentialCollaborationItems)
+
+	// Normalize all []string fields (if nil, make them empty slice)
+	if req.ProductAccount == nil {
+		req.ProductAccount = []string{}
+	}
+	if req.Category == nil {
+		req.Category = []string{}
+	}
+	if req.Url == nil {
+		req.Url = []string{}
+	}
+	if req.ContactID == nil {
+		req.ContactID = []string{}
+	}
+	if req.Faculties == nil {
+		req.Faculties = []string{}
+	}
+	if req.YearLecture == nil {
+		req.YearLecture = []string{}
+	}
+	if req.AmountLecture == nil {
+		req.AmountLecture = []string{}
+	}
+	if req.Origin == nil {
+		req.Origin = []string{}
+	}
+	if req.PercentageOrigin == nil {
+		req.PercentageOrigin = []string{}
+	}
+	if req.OrganizationName == nil {
+		req.OrganizationName = []string{}
+	}
+	if req.PreferenceTechnologies == nil {
+		req.PreferenceTechnologies = []string{}
+	}
+	if req.MemberNeeds == nil {
+		req.MemberNeeds = []string{}
+	}
+	if req.ItInfrastructures == nil {
+		req.ItInfrastructures = []string{}
+	}
+	if req.DigitalCollaborations == nil {
+		req.DigitalCollaborations = []string{}
+	}
+	if req.ProgramIdentification == nil {
+		req.ProgramIdentification = []string{}
+	}
+	if req.YearRank == nil {
+		req.YearRank = []string{}
+	}
+	if req.Rank == nil {
+		req.Rank = []string{}
+	}
+	if req.ProgramStudy == nil {
+		req.ProgramStudy = []string{}
+	}
+	if req.Year == nil {
+		req.Year = []string{}
+	}
+	if req.Amount == nil {
+		req.Amount = []string{}
+	}
+	if req.Age == nil {
+		req.Age = []string{}
+	}
+	if req.PercentageAge == nil {
+		req.PercentageAge = []string{}
+	}
+	if req.ScheduleCategory == nil {
+		req.ScheduleCategory = []string{}
+	}
+	if req.Title == nil {
+		req.Title = []string{}
+	}
+	if req.Date == nil {
+		req.Date = []string{}
+	}
+	if req.Gender == nil {
+		req.Gender = []string{}
+	}
+	if req.PercentageGender == nil {
+		req.PercentageGender = []string{}
+	}
+	if req.EducationalBackground == nil {
+		req.EducationalBackground = []string{}
+	}
+	if req.PercentageEducationalBackground == nil {
+		req.PercentageEducationalBackground = []string{}
+	}
+	if req.Profession == nil {
+		req.Profession = []string{}
+	}
+	if req.PercentageProfession == nil {
+		req.PercentageProfession = []string{}
+	}
+	if req.Income == nil {
+		req.Income = []string{}
+	}
+	if req.PercentageIncome == nil {
+		req.PercentageIncome = []string{}
+	}
 }
 
 var validate = validator.New()
