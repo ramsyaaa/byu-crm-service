@@ -86,6 +86,7 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 		"end_date":         c.Query("end_date", ""),
 		"account_category": c.Query("account_category", ""),
 		"account_type":     c.Query("account_type", ""),
+		"only_skulid":      c.Query("only_skulid", "0"),
 	}
 
 	// Parse integer and boolean values
