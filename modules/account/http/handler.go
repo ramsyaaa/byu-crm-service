@@ -501,7 +501,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 
 	// Parse request body with error handling
 	req := new(validation.ValidateRequest)
-
+	validation.NormalizeValidateRequest(req)
 	if err := c.BodyParser(req); err != nil {
 		// Check for specific EOF error
 		if err.Error() == "unexpected EOF" {
