@@ -5,6 +5,9 @@ import (
 	"byu-crm-service/modules/absence-user/repository"
 	"byu-crm-service/modules/absence-user/response"
 	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -42,9 +45,28 @@ func (s *absenceUserService) GetAbsenceUserByID(id int) (*response.ResponseSingl
 		if absenceUser.VisitHistory.DetailVisit != nil {
 			var tempDetailVisit map[string]string
 			if err := json.Unmarshal([]byte(*absenceUser.VisitHistory.DetailVisit), &tempDetailVisit); err == nil {
+				baseURL := os.Getenv("BASE_URL")
+
+				// Tambahkan prefix base URL jika ada file presentasi_demo atau dealing_sekolah
+				for key, val := range tempDetailVisit {
+					if key == "presentasi_demo" || key == "dealing_sekolah" {
+						if val != "" {
+							// Ganti semua backslash jadi slash agar menjadi path yang valid
+							val = strings.ReplaceAll(val, "\\", "/")
+
+							// Tambahkan BASE_URL jika belum ada prefix http
+							if !strings.HasPrefix(val, "http") {
+								val = fmt.Sprintf("%s/%s", strings.TrimRight(baseURL, "/"), strings.TrimLeft(val, "/"))
+							}
+							tempDetailVisit[key] = val
+						}
+					}
+				}
+
 				detailVisitMap = &tempDetailVisit
 			}
 		}
+
 	}
 
 	res := &response.ResponseSingleAbsenceUser{
