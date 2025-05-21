@@ -28,17 +28,17 @@ type ValidateRequest struct {
 	AccountName             string  `json:"account_name" validate:"required"`
 	AccountType             string  `json:"account_type" validate:"required"`
 	AccountCategory         string  `json:"account_category" validate:"required"`
-	AccountCode             *string `json:"account_code"`
+	AccountCode             *string `json:"account_code" validate:"omitempty"`
 	City                    string  `json:"city" validate:"required"`
-	ContactName             *string `json:"contact_name"`
-	EmailAccount            *string `json:"email_account"`
-	WebsiteAccount          *string `json:"website_account"`
-	SystemInformasiAkademik *string `json:"system_informasi_akademik"`
-	Latitude                *string `json:"latitude"`
-	Longitude               *string `json:"longitude"`
-	Ownership               *string `json:"ownership"`
-	Pic                     *string `json:"pic"`
-	PicInternal             *string `json:"pic_internal"`
+	ContactName             *string `json:"contact_name" validate:"omitempty"`
+	EmailAccount            *string `json:"email_account" validate:"omitempty"`
+	WebsiteAccount          *string `json:"website_account" validate:"omitempty"`
+	SystemInformasiAkademik *string `json:"system_informasi_akademik" validate:"omitempty"`
+	Latitude                *string `json:"latitude" validate:"omitempty"`
+	Longitude               *string `json:"longitude" validate:"omitempty"`
+	Ownership               *string `json:"ownership" validate:"omitempty"`
+	Pic                     *string `json:"pic" validate:"omitempty"`
+	PicInternal             *string `json:"pic_internal" validate:"omitempty"`
 
 	ProductAccount []string `json:"product_account"`
 
