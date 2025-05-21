@@ -3,6 +3,8 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/absence-user/repository"
+	"byu-crm-service/modules/absence-user/response"
+	"encoding/json"
 	"time"
 )
 
@@ -18,8 +20,53 @@ func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, 
 	return s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type)
 }
 
-func (s *absenceUserService) GetAbsenceUserByID(id int) (*models.AbsenceUser, error) {
-	return s.repo.GetAbsenceUserByID(id)
+func (s *absenceUserService) GetAbsenceUserByID(id int) (*response.ResponseSingleAbsenceUser, error) {
+	absenceUser, err := s.repo.GetAbsenceUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var targetMap *map[string]int
+	var detailVisitMap *map[string]string
+
+	if absenceUser.VisitHistory != nil {
+		// Parse target
+		if absenceUser.VisitHistory.Target != nil {
+			var tempTarget map[string]int
+			if err := json.Unmarshal([]byte(*absenceUser.VisitHistory.Target), &tempTarget); err == nil {
+				targetMap = &tempTarget
+			}
+		}
+
+		// Parse detail_visit
+		if absenceUser.VisitHistory.DetailVisit != nil {
+			var tempDetailVisit map[string]string
+			if err := json.Unmarshal([]byte(*absenceUser.VisitHistory.DetailVisit), &tempDetailVisit); err == nil {
+				detailVisitMap = &tempDetailVisit
+			}
+		}
+	}
+
+	res := &response.ResponseSingleAbsenceUser{
+		ID:           absenceUser.ID,
+		UserID:       absenceUser.UserID,
+		SubjectType:  absenceUser.SubjectType,
+		SubjectID:    absenceUser.SubjectID,
+		Type:         absenceUser.Type,
+		ClockIn:      absenceUser.ClockIn,
+		ClockOut:     absenceUser.ClockOut,
+		Description:  absenceUser.Description,
+		Longitude:    absenceUser.Longitude,
+		Latitude:     absenceUser.Latitude,
+		CreatedAt:    absenceUser.CreatedAt,
+		UpdatedAt:    absenceUser.UpdatedAt,
+		Account:      absenceUser.Account,
+		VisitHistory: absenceUser.VisitHistory,
+		Target:       targetMap,
+		DetailVisit:  detailVisitMap,
+	}
+
+	return res, nil
 }
 
 func (s *absenceUserService) GetAbsenceUserToday(only_today bool, user_id int, type_absence *string, type_checking string, action_type string, subject_type string, subject_id int) (*models.AbsenceUser, string, error) {
