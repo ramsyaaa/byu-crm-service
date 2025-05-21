@@ -99,6 +99,18 @@ func (r *absenceUserRepository) GetAbsenceUserByID(id int) (*models.AbsenceUser,
 	if err != nil {
 		return nil, err
 	}
+	if absence_user.SubjectType != nil && absence_user.SubjectID != nil && *absence_user.SubjectType == "App\\Models\\Account" {
+		var account models.Account
+		if err := r.db.First(&account, *absence_user.SubjectID).Error; err == nil {
+			absence_user.Account = &account
+		}
+	}
+
+	var visit models.VisitHistory
+	if err := r.db.Where("absence_user_id = ?", absence_user.ID).First(&visit).Error; err == nil {
+		absence_user.VisitHistory = &visit
+	}
+
 	return &absence_user, nil
 }
 
