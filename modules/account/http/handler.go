@@ -511,8 +511,6 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	validation.SetDefaultsIfInvalid(req)
-
 	// Request Validation with context
 	select {
 	case <-ctx.Done():
