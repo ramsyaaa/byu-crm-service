@@ -155,6 +155,10 @@ func (r *accountRepository) GetAllAccounts(
 		query = query.Where("accounts.created_at <= ?", endDate)
 	}
 
+	if onlySkulID, exists := filters["only_skulid"]; exists && onlySkulID == "1" {
+		query = query.Where("accounts.is_skulid = ?", 1)
+	}
+
 	// Count total before pagination
 	query.Count(&total)
 
