@@ -109,141 +109,101 @@ var validationMessages = map[string]string{
 	"category.validate_category_url": "Kategori dan URL wajib diisi",
 }
 
-func NormalizeValidateRequest(req *ValidateRequest) {
-	defaultString := func(s **string) {
-		if *s == nil {
-			empty := ""
-			*s = &empty
+func SetDefaultsIfInvalid(req *ValidateRequest) {
+	setStringPtrDefault := func(field **string, def string) {
+		if *field == nil || **field == "" {
+			*field = &def
 		}
 	}
 
-	// Normalize all *string fields
-	defaultString(&req.AccountCode)
-	defaultString(&req.ContactName)
-	defaultString(&req.EmailAccount)
-	defaultString(&req.WebsiteAccount)
-	defaultString(&req.SystemInformasiAkademik)
-	defaultString(&req.Latitude)
-	defaultString(&req.Longitude)
-	defaultString(&req.Ownership)
-	defaultString(&req.Pic)
-	defaultString(&req.PicInternal)
-	defaultString(&req.DiesNatalis)
-	defaultString(&req.Extracurricular)
-	defaultString(&req.FootballFieldBranding)
-	defaultString(&req.BasketballFieldBranding)
-	defaultString(&req.WallPaintingBranding)
-	defaultString(&req.WallMagazineBranding)
-	defaultString(&req.AccessTechnology)
-	defaultString(&req.Byod)
-	defaultString(&req.CampusAdministrationApp)
-	defaultString(&req.PotentionalCollaboration)
-	defaultString(&req.AccountSubtype)
-	defaultString(&req.Group)
-	defaultString(&req.GroupName)
-	defaultString(&req.ProductService)
-	defaultString(&req.PotentialCollaborationItems)
+	setSliceStringDefault := func(field *[]string) {
+		if *field == nil {
+			*field = []string{}
+		}
+	}
 
-	// Normalize all []string fields (if nil, make them empty slice)
-	if req.ProductAccount == nil {
-		req.ProductAccount = []string{}
+	validateLatLong := func(field **string) {
+		if *field == nil || **field == "" {
+			def := "0.0"
+			*field = &def
+			return
+		}
+		if _, err := strconv.ParseFloat(**field, 64); err != nil {
+			def := "0.0"
+			*field = &def
+		}
 	}
-	if req.Category == nil {
-		req.Category = []string{}
-	}
-	if req.Url == nil {
-		req.Url = []string{}
-	}
-	if req.ContactID == nil {
-		req.ContactID = []string{}
-	}
-	if req.Faculties == nil {
-		req.Faculties = []string{}
-	}
-	if req.YearLecture == nil {
-		req.YearLecture = []string{}
-	}
-	if req.AmountLecture == nil {
-		req.AmountLecture = []string{}
-	}
-	if req.Origin == nil {
-		req.Origin = []string{}
-	}
-	if req.PercentageOrigin == nil {
-		req.PercentageOrigin = []string{}
-	}
-	if req.OrganizationName == nil {
-		req.OrganizationName = []string{}
-	}
-	if req.PreferenceTechnologies == nil {
-		req.PreferenceTechnologies = []string{}
-	}
-	if req.MemberNeeds == nil {
-		req.MemberNeeds = []string{}
-	}
-	if req.ItInfrastructures == nil {
-		req.ItInfrastructures = []string{}
-	}
-	if req.DigitalCollaborations == nil {
-		req.DigitalCollaborations = []string{}
-	}
-	if req.ProgramIdentification == nil {
-		req.ProgramIdentification = []string{}
-	}
-	if req.YearRank == nil {
-		req.YearRank = []string{}
-	}
-	if req.Rank == nil {
-		req.Rank = []string{}
-	}
-	if req.ProgramStudy == nil {
-		req.ProgramStudy = []string{}
-	}
-	if req.Year == nil {
-		req.Year = []string{}
-	}
-	if req.Amount == nil {
-		req.Amount = []string{}
-	}
-	if req.Age == nil {
-		req.Age = []string{}
-	}
-	if req.PercentageAge == nil {
-		req.PercentageAge = []string{}
-	}
-	if req.ScheduleCategory == nil {
-		req.ScheduleCategory = []string{}
-	}
-	if req.Title == nil {
-		req.Title = []string{}
-	}
-	if req.Date == nil {
-		req.Date = []string{}
-	}
-	if req.Gender == nil {
-		req.Gender = []string{}
-	}
-	if req.PercentageGender == nil {
-		req.PercentageGender = []string{}
-	}
-	if req.EducationalBackground == nil {
-		req.EducationalBackground = []string{}
-	}
-	if req.PercentageEducationalBackground == nil {
-		req.PercentageEducationalBackground = []string{}
-	}
-	if req.Profession == nil {
-		req.Profession = []string{}
-	}
-	if req.PercentageProfession == nil {
-		req.PercentageProfession = []string{}
-	}
-	if req.Income == nil {
-		req.Income = []string{}
-	}
-	if req.PercentageIncome == nil {
-		req.PercentageIncome = []string{}
-	}
+
+	// Set default untuk pointer string, kecuali yang required (yang di struct non-pointer string)
+	setStringPtrDefault(&req.AccountCode, "")
+	setStringPtrDefault(&req.ContactName, "")
+	setStringPtrDefault(&req.EmailAccount, "")
+	setStringPtrDefault(&req.WebsiteAccount, "")
+	setStringPtrDefault(&req.SystemInformasiAkademik, "")
+	setStringPtrDefault(&req.Ownership, "")
+	setStringPtrDefault(&req.Pic, "")
+	setStringPtrDefault(&req.PicInternal, "")
+
+	// Latitude & Longitude khusus validasi float string
+	validateLatLong(&req.Latitude)
+	validateLatLong(&req.Longitude)
+
+	setStringPtrDefault(&req.DiesNatalis, "")
+	setStringPtrDefault(&req.Extracurricular, "")
+	setStringPtrDefault(&req.FootballFieldBranding, "")
+	setStringPtrDefault(&req.BasketballFieldBranding, "")
+	setStringPtrDefault(&req.WallPaintingBranding, "")
+	setStringPtrDefault(&req.WallMagazineBranding, "")
+
+	setStringPtrDefault(&req.AccessTechnology, "")
+	setStringPtrDefault(&req.Byod, "")
+	setStringPtrDefault(&req.CampusAdministrationApp, "")
+
+	setStringPtrDefault(&req.PotentionalCollaboration, "")
+
+	setStringPtrDefault(&req.AccountSubtype, "")
+	setStringPtrDefault(&req.Group, "")
+	setStringPtrDefault(&req.GroupName, "")
+	setStringPtrDefault(&req.ProductService, "")
+	setStringPtrDefault(&req.PotentialCollaborationItems, "")
+
+	// Set default untuk slice string (jangan biarkan nil)
+	setSliceStringDefault(&req.ProductAccount)
+	setSliceStringDefault(&req.Category)
+	setSliceStringDefault(&req.Url)
+	setSliceStringDefault(&req.ContactID)
+
+	setSliceStringDefault(&req.Faculties)
+	setSliceStringDefault(&req.YearLecture)
+	setSliceStringDefault(&req.AmountLecture)
+	setSliceStringDefault(&req.Origin)
+	setSliceStringDefault(&req.PercentageOrigin)
+	setSliceStringDefault(&req.OrganizationName)
+	setSliceStringDefault(&req.PreferenceTechnologies)
+	setSliceStringDefault(&req.MemberNeeds)
+	setSliceStringDefault(&req.ItInfrastructures)
+	setSliceStringDefault(&req.DigitalCollaborations)
+	setSliceStringDefault(&req.ProgramIdentification)
+	setSliceStringDefault(&req.YearRank)
+	setSliceStringDefault(&req.Rank)
+	setSliceStringDefault(&req.ProgramStudy)
+
+	setSliceStringDefault(&req.Year)
+	setSliceStringDefault(&req.Amount)
+	setSliceStringDefault(&req.Age)
+	setSliceStringDefault(&req.PercentageAge)
+	setSliceStringDefault(&req.ScheduleCategory)
+	setSliceStringDefault(&req.Title)
+	setSliceStringDefault(&req.Date)
+
+	setSliceStringDefault(&req.Gender)
+	setSliceStringDefault(&req.PercentageGender)
+	setSliceStringDefault(&req.EducationalBackground)
+	setSliceStringDefault(&req.PercentageEducationalBackground)
+	setSliceStringDefault(&req.Profession)
+	setSliceStringDefault(&req.PercentageProfession)
+	setSliceStringDefault(&req.Income)
+	setSliceStringDefault(&req.PercentageIncome)
 }
 
 var validate = validator.New()
