@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"mime/multipart"
 
@@ -396,4 +397,26 @@ func SaveUploadedFile(c *fiber.Ctx, file *multipart.FileHeader, folder string) (
 // Fungsi bantu deteksi MIME dari data file
 func httpDetectContentType(data []byte) string {
 	return http.DetectContentType(data[:512])
+}
+
+func CapitalizeWords(input string) string {
+	input = strings.TrimSpace(input)
+	words := strings.Fields(input)
+
+	for i, word := range words {
+		if len(word) > 0 {
+			runes := []rune(word)
+			runes[0] = unicode.ToUpper(runes[0])
+			for j := 1; j < len(runes); j++ {
+				runes[j] = unicode.ToUpper(runes[j])
+			}
+			words[i] = string(runes)
+		}
+	}
+
+	return strings.Join(words, " ")
+}
+
+func UppercaseTrim(input string) string {
+	return strings.ToUpper(strings.TrimSpace(input))
 }
