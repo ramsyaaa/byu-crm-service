@@ -159,6 +159,12 @@ func (r *accountRepository) GetAllAccounts(
 		query = query.Where("accounts.is_skulid = ?", 1)
 	}
 
+	if isPriority, exists := filters["is_priority"]; exists && isPriority == "1" {
+		if priority, exists := filters["priority"]; exists {
+			query = query.Where("accounts.priority = ?", priority)
+		}
+	}
+
 	// Count total before pagination
 	query.Count(&total)
 
