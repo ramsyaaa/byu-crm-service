@@ -307,7 +307,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 						detailVisit[formKey+"_description"] = demoDescription
 
-						demoDocumentation := c.FormValue("demo_documentation")
+						demoDocumentation := c.FormValue("demo_documentation", "")
 						if demoDocumentation == "" {
 							errors := map[string]string{
 								"demo_documentation": "Dokumentasi demo harus diisi",
@@ -344,7 +344,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "dealing_sekolah" {
 					if valueStr == "1" {
-						bakFile := c.FormValue("bak_file")
+						bakFile := c.FormValue("bak_file", "")
 						if bakFile == "" {
 							errors := map[string]string{
 								"bak_file": "File BAK harus diisi",
