@@ -12,6 +12,7 @@ type AccountService interface {
 	CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error)
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
 	UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error)
+	UpdateFields(id uint, fields map[string]interface{}) error
 	ProcessAccount(data []string) error
 	CheckAlreadyUpdateData(accountID int, clockIn time.Time, userID int) (bool, error)
 	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error

@@ -78,6 +78,10 @@ func (s *accountService) UpdateAccount(requestBody map[string]interface{}, accou
 	return accounts, nil
 }
 
+func (s *accountService) UpdateFields(id uint, fields map[string]interface{}) error {
+	return s.repo.UpdateFields(id, fields)
+}
+
 func (s *accountService) UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error) {
 	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 

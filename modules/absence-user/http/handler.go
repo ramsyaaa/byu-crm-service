@@ -241,7 +241,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 						"longitude": req.Longitude,
 						"latitude":  req.Latitude,
 					}
-					_, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
+					err := h.accountService.UpdateFields(uint(parsedSubjectID), requestBody)
+					// _, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
 					if err != nil {
 						response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
