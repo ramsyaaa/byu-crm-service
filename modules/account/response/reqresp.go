@@ -36,6 +36,7 @@ type AccountResponse struct {
 	Pic                     *string   `json:"pic"`
 	PicInternal             *string   `json:"pic_internal"`
 	IsSkulid                *uint     `json:"is_skulid"`
+	Distance                *string   `json:"distance,omitempty"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
