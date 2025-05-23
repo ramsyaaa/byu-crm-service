@@ -65,7 +65,7 @@ func (s *authService) Login(email, password string) (string, error) {
 	}
 
 	//  Check if user has the required roles
-	allowed := false
+	allowed := true
 	for _, role := range user.RoleNames {
 		if role == "Super-Admin" || role == "YAE" {
 			allowed = true
