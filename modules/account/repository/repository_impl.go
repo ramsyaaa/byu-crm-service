@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -198,7 +199,58 @@ func (r *accountRepository) GetAllAccounts(
 	}
 
 	err := query.Find(&accounts).Error
-	return accounts, total, err
+	if err != nil {
+		return accounts, total, err
+	}
+
+	// Cek jika latitude dan longitude diberikan
+	latStr, latOk := filters["latitude"]
+	lonStr, lonOk := filters["longitude"]
+
+	if latOk && lonOk && latStr != "" && lonStr != "" {
+		userLat, err1 := strconv.ParseFloat(latStr, 64)
+		userLon, err2 := strconv.ParseFloat(lonStr, 64)
+
+		if err1 == nil && err2 == nil {
+			for i, acc := range accounts {
+				newDistance := "not defined"
+				accounts[i].Distance = &newDistance
+				if acc.Latitude != nil && acc.Longitude != nil {
+					lat, err1 := strconv.ParseFloat(*acc.Latitude, 64)
+					lon, err2 := strconv.ParseFloat(*acc.Longitude, 64)
+					if err1 == nil && err2 == nil {
+						distance := haversine(userLat, userLon, lat, lon)
+						distanceStr := fmt.Sprintf("%.2f", distance)
+						accounts[i].Distance = &distanceStr // dalam meter
+					}
+				}
+			}
+		}
+	}
+	return accounts, total, nil
+}
+
+const EarthRadius = 6371000 // meters
+
+// Function to calculate the distance between two points on the Earth using the Haversine formula
+func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+	dLat := toRadians(lat2 - lat1)
+	dLon := toRadians(lon2 - lon1)
+
+	lat1 = toRadians(lat1)
+	lat2 = toRadians(lat2)
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1)*math.Cos(lat2)*math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return EarthRadius * c
+}
+
+// Convert degrees to radians
+func toRadians(deg float64) float64 {
+	return deg * math.Pi / 180
 }
 
 func (r *accountRepository) CreateAccount(requestBody map[string]string, userID int) ([]models.Account, error) {
