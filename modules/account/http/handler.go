@@ -89,6 +89,8 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 		"only_skulid":      c.Query("only_skulid", "0"),
 		"is_priority":      c.Query("is_priority", "0"),
 		"priority":         c.Query("priority", "P1"),
+		"longitude":        c.Query("user_longitude", ""),
+		"latitude":         c.Query("user_latitude", ""),
 	}
 
 	// Parse integer and boolean values
