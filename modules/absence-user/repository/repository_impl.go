@@ -59,6 +59,11 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 		query = query.Where("absence_users.type = ?", absence_type)
 	}
 
+	status, hasStatus := filters["status"]
+	if hasStatus && status == "0" {
+		query = query.Where("absence_users.status = ?", status)
+	}
+
 	// Get total count before applying pagination
 	query.Count(&total)
 
@@ -255,4 +260,8 @@ func (r *absenceUserRepository) AlreadyAbsenceInSameDay(user_id int, type_absenc
 	}
 
 	return &absence_user, nil
+}
+
+func (r *absenceUserRepository) DeleteAbsenceUser(id int) error {
+	return r.db.Delete(&models.AbsenceUser{}, id).Error
 }
