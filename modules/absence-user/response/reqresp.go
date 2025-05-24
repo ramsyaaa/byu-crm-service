@@ -26,6 +26,7 @@ type ResponseSingleAbsenceUser struct {
 	VisitHistory  *models.VisitHistory `gorm:"-" json:"visit_history"`
 	Target        *OrderedTargetMap    `json:"target,omitempty"`
 	DetailVisit   *map[string]string   `json:"detail_visit"`
+	UserName      *string              `json:"user_name"`
 }
 
 type OrderedTargetMap struct {
