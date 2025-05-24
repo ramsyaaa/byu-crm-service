@@ -121,6 +121,7 @@ func (s *absenceUserService) GetAbsenceUserByID(id int) (*response.ResponseSingl
 		VisitHistory:  absenceUser.VisitHistory,
 		Target:        targetMap,
 		DetailVisit:   detailVisitMap,
+		UserName:      &absenceUser.UserName,
 	}
 
 	return res, nil
