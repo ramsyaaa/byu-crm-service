@@ -19,18 +19,23 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	var absence_users []models.AbsenceUser
 	var total int64
 
-	query := r.db.Model(&models.AbsenceUser{})
+	query := r.db.Model(&models.AbsenceUser{}).
+		Joins("LEFT JOIN users ON users.id = absence_users.user_id").
+		Select("absence_users.*, users.name AS user_name")
 
-	if user_id != 0 {
-		query = query.Where("absence_users.user_id = ?", user_id)
+	if all_user, exists := filters["all_user"]; exists && all_user != "1" {
+		if user_id != 0 {
+			query = query.Where("absence_users.user_id = ?", user_id)
+		}
 	}
 
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
 		searchTokens := strings.Fields(search)
+
 		for _, token := range searchTokens {
 			query = query.Where(
-				r.db.Where("absence_users.description LIKE ?", "%"+token+"%"),
+				r.db.Where("absence_users.description LIKE ? OR users.name LIKE ?", "%"+token+"%", "%"+token+"%"),
 			)
 		}
 	}
@@ -100,10 +105,16 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 
 func (r *absenceUserRepository) GetAbsenceUserByID(id int) (*models.AbsenceUser, error) {
 	var absence_user models.AbsenceUser
-	err := r.db.First(&absence_user, id).Error
+
+	err := r.db.
+		Joins("LEFT JOIN users ON users.id = absence_users.user_id").
+		Select("absence_users.*, users.name AS user_name").
+		First(&absence_user, id).Error
 	if err != nil {
 		return nil, err
 	}
+
+	// Load related Account jika SubjectType = Account
 	if absence_user.SubjectType != nil && absence_user.SubjectID != nil && *absence_user.SubjectType == "App\\Models\\Account" {
 		var account models.Account
 		if err := r.db.First(&account, *absence_user.SubjectID).Error; err == nil {
@@ -111,6 +122,7 @@ func (r *absenceUserRepository) GetAbsenceUserByID(id int) (*models.AbsenceUser,
 		}
 	}
 
+	// Load related VisitHistory
 	var visit models.VisitHistory
 	if err := r.db.Where("absence_user_id = ?", absence_user.ID).First(&visit).Error; err == nil {
 		absence_user.VisitHistory = &visit

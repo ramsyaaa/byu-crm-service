@@ -50,6 +50,7 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 		"start_date": c.Query("start_date", ""),
 		"end_date":   c.Query("end_date", ""),
 		"status":     c.Query("status", "1"),
+		"all_user":   c.Query("all_user", "0"),
 	}
 
 	// Parse integer and boolean values

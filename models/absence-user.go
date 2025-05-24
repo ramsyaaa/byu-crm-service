@@ -19,4 +19,5 @@ type AbsenceUser struct {
 	UpdatedAt     time.Time     `json:"updated_at"`
 	Account       *Account      `gorm:"-" json:"account"`
 	VisitHistory  *VisitHistory `gorm:"-" json:"visit_history"`
+	UserName      string        `gorm:"->" json:"user_name"`
 }
