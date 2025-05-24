@@ -10,4 +10,5 @@ type AbsenceUserRepository interface {
 	UpdateAbsenceUser(AbsenceUser *models.AbsenceUser, id int) (*models.AbsenceUser, error)
 	GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error)
 	AlreadyAbsenceInSameDay(user_id int, type_absence *string, type_checking string, action_type string, subject_type string, subject_id int) (*models.AbsenceUser, error)
+	DeleteAbsenceUser(id int) error
 }

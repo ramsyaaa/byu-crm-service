@@ -49,6 +49,7 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 		"order":      c.Query("order", "DESC"),
 		"start_date": c.Query("start_date", ""),
 		"end_date":   c.Query("end_date", ""),
+		"status":     c.Query("status", "1"),
 	}
 
 	// Parse integer and boolean values
@@ -204,49 +205,80 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
+			typeClockIn := c.FormValue("type_clock_in")
 
-			if userRole != "Super-Admin" {
-				if getAccount.Latitude != nil && getAccount.Longitude != nil &&
-					*getAccount.Latitude != "" && *getAccount.Longitude != "" {
-					latitude, err := strconv.ParseFloat(req.Latitude, 64)
-					if err != nil {
-						response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
-						return c.Status(fiber.StatusBadRequest).JSON(response)
+			if typeClockIn == "image" {
+				evidence_image := c.FormValue("evidence_image")
+
+				if evidence_image == "" {
+					errors := map[string]string{
+						"evidence_image": "Gambar harus diisi",
 					}
-					longitude, err := strconv.ParseFloat(req.Longitude, 64)
-					if err != nil {
-						response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
-						return c.Status(fiber.StatusBadRequest).JSON(response)
+					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+
+				decoded, _, err := helper.DecodeBase64Image(evidence_image)
+				if err != nil {
+					errors := map[string]string{
+						"evidence_image": "Gambar tidak valid: " + err.Error(),
 					}
-					accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
-					if err != nil {
-						response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
-						return c.Status(fiber.StatusBadRequest).JSON(response)
+					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+
+				// Validasi ukuran maksimum 5MB
+				if len(decoded) > 5*1024*1024 {
+					errors := map[string]string{
+						"evidence_image": "Ukuran file maksimum adalah 5MB",
 					}
-					accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
-					if err != nil {
-						response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
-						return c.Status(fiber.StatusBadRequest).JSON(response)
-					}
-					inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
-					if !inRadius {
-						errors := map[string]string{
-							"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+			} else {
+				if userRole != "Super-Admin" {
+					if getAccount.Latitude != nil && getAccount.Longitude != nil &&
+						*getAccount.Latitude != "" && *getAccount.Longitude != "" {
+						latitude, err := strconv.ParseFloat(req.Latitude, 64)
+						if err != nil {
+							response := helper.APIResponse("Invalid latitude value", fiber.StatusBadRequest, "error", nil)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
-						response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-						return c.Status(fiber.StatusBadRequest).JSON(response)
-					}
-				} else {
-					requestBody := map[string]interface{}{
-						"longitude": req.Longitude,
-						"latitude":  req.Latitude,
-					}
-					err := h.accountService.UpdateFields(uint(parsedSubjectID), requestBody)
-					// _, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
+						longitude, err := strconv.ParseFloat(req.Longitude, 64)
+						if err != nil {
+							response := helper.APIResponse("Invalid longitude value", fiber.StatusBadRequest, "error", nil)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+						accountLatitude, err := strconv.ParseFloat(*getAccount.Latitude, 64)
+						if err != nil {
+							response := helper.APIResponse("Invalid latitude value in account", fiber.StatusBadRequest, "error", nil)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+						accountLongitude, err := strconv.ParseFloat(*getAccount.Longitude, 64)
+						if err != nil {
+							response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+						inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+						if !inRadius {
+							errors := map[string]string{
+								"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusUnprocessableEntity, "error", errors)
+							return c.Status(fiber.StatusUnprocessableEntity).JSON(response)
+						}
+					} else {
+						requestBody := map[string]interface{}{
+							"longitude": req.Longitude,
+							"latitude":  req.Latitude,
+						}
+						err := h.accountService.UpdateFields(uint(parsedSubjectID), requestBody)
+						// _, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
 
-					if err != nil {
-						response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
-						return c.Status(fiber.StatusInternalServerError).JSON(response)
+						if err != nil {
+							response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+							return c.Status(fiber.StatusInternalServerError).JSON(response)
+						}
 					}
 				}
 			}
@@ -449,6 +481,35 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			0,
 		)
 
+		typeClockIn := c.FormValue("type_clock_in")
+		var evidenceImage *string
+		status := 1
+
+		if typeClockIn == "image" {
+			status = 0
+			typeClockIn := c.FormValue("evidence_image", "")
+			if typeClockIn == "" {
+				errors := map[string]string{
+					"evidence_image": "Dokumentasi demo harus diisi",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+
+			// Simpan gambar base64
+			filePath, err := helper.SaveValidatedBase64File(typeClockIn, "public/uploads/evidence_absence")
+			if err != nil {
+				errors := map[string]string{
+					"evidence_image": err.Error(),
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+
+			// Simpan relative path
+			evidenceImage = &filePath
+		}
+
 		if existingAbsenceUser != nil {
 			errors := map[string]string{
 				"message": message,
@@ -457,7 +518,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		AbsenceUser, err := h.absenceUserService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude)
+		statusUint := uint(status)
+		AbsenceUser, err := h.absenceUserService.CreateAbsenceUser(userID, subjectTypeStr, subjectID, &description, &req.Type, &req.Latitude, &req.Longitude, &statusUint, evidenceImage)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
@@ -502,7 +564,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			}
 		}
 
-		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type)
+		status := 1
+		statusUint := uint(status)
+		AbsenceUser, err := h.absenceUserService.UpdateAbsenceUser(int(existingAbsenceUser.ID), userID, subjectTypeStr, subjectID, &description, &req.Type, &statusUint)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
@@ -544,6 +608,79 @@ func (h *AbsenceUserHandler) GetAbsenceActive(c *fiber.Ctx) error {
 	}
 
 	response := helper.APIResponse("Get Absences Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+	id := c.Params("id")
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		errors := map[string]string{
+			"id": "ID tidak valid",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	status := c.Params("status")
+	if status != "accept" && status != "reject" {
+		errors := map[string]string{
+			"status": "Status tidak valid",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	AbsenceUser, err := h.absenceUserService.GetAbsenceUserByID(intID)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch Absence User", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	if *AbsenceUser.Status != 0 {
+		response := helper.APIResponse("Absence already accepted", fiber.StatusOK, "error", nil)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
+	statusint := 1
+	statusUint, err := strconv.ParseUint(strconv.Itoa(statusint), 10, 32)
+	if err != nil {
+		response := helper.APIResponse("Invalid status value", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	var AbsenceUserUpdate interface{}
+
+	if status == "accept" {
+		statusPtr := uint(statusUint)
+		var err error
+		AbsenceUserUpdate, err = h.absenceUserService.UpdateAbsenceUser(intID, userID, *AbsenceUser.SubjectType, int(*AbsenceUser.SubjectID), &AbsenceUser.Description, AbsenceUser.Type, &statusPtr)
+		if err != nil {
+			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
+			return c.Status(fiber.StatusUnauthorized).JSON(response)
+		}
+	} else if status == "reject" {
+		err = h.absenceUserService.DeleteAbsenceUser(intID)
+		if err != nil {
+			response := helper.APIResponse("Failed to reject", fiber.StatusOK, "error", nil)
+			return c.Status(fiber.StatusOK).JSON(response)
+		}
+
+		if AbsenceUser.EvidenceImage != nil && *AbsenceUser.EvidenceImage != "" {
+			err := helper.DeleteFileIfExists(*AbsenceUser.EvidenceImage)
+			if err != nil {
+				response := helper.APIResponse("Failed to reject", fiber.StatusOK, "error", err.Error())
+				return c.Status(fiber.StatusOK).JSON(response)
+			}
+		}
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"absence": AbsenceUserUpdate,
+	}
+
+	response := helper.APIResponse("Approval Absence User Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
