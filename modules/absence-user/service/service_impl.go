@@ -127,6 +127,10 @@ func (s *absenceUserService) GetAbsenceUserByID(id int) (*response.ResponseSingl
 	return res, nil
 }
 
+func (s *absenceUserService) UpdateFields(id uint, fields map[string]interface{}) error {
+	return s.repo.UpdateFields(id, fields)
+}
+
 func (s *absenceUserService) GetAbsenceUserToday(only_today bool, user_id int, type_absence *string, type_checking string, action_type string, subject_type string, subject_id int) (*models.AbsenceUser, string, error) {
 	return s.repo.GetAbsenceUserToday(only_today, user_id, type_absence, type_checking, action_type, subject_type, subject_id)
 }

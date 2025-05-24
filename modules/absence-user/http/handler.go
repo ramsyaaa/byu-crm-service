@@ -613,7 +613,6 @@ func (h *AbsenceUserHandler) GetAbsenceActive(c *fiber.Ctx) error {
 }
 
 func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
@@ -643,23 +642,24 @@ func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(response)
 	}
 
-	statusint := 1
-	statusUint, err := strconv.ParseUint(strconv.Itoa(statusint), 10, 32)
 	if err != nil {
 		response := helper.APIResponse("Invalid status value", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	var AbsenceUserUpdate interface{}
-
 	if status == "accept" {
-		statusPtr := uint(statusUint)
 		var err error
-		AbsenceUserUpdate, err = h.absenceUserService.UpdateAbsenceUser(intID, userID, *AbsenceUser.SubjectType, int(*AbsenceUser.SubjectID), &AbsenceUser.Description, AbsenceUser.Type, &statusPtr)
+		updateData := map[string]interface{}{
+			"status": 1,
+		}
+
+		err = h.absenceUserService.UpdateFields(uint(intID), updateData)
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", AbsenceUser)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
 		}
+		var statusInt uint = 1
+		AbsenceUser.Status = &statusInt
 	} else if status == "reject" {
 		err = h.absenceUserService.DeleteAbsenceUser(intID)
 		if err != nil {
@@ -678,7 +678,7 @@ func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
 
 	// Return response
 	responseData := map[string]interface{}{
-		"absence": AbsenceUserUpdate,
+		"absence": AbsenceUser,
 	}
 
 	response := helper.APIResponse("Approval Absence User Successfully", fiber.StatusOK, "success", responseData)
