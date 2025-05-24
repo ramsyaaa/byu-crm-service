@@ -256,6 +256,35 @@ func DeleteFile(filePath string) error {
 	return nil
 }
 
+func DeleteFileIfExists(path string) error {
+	baseURL := os.Getenv("BASE_URL")
+
+	// Pastikan baseURL tidak memiliki trailing slash
+	baseURL = strings.TrimRight(baseURL, "/")
+
+	// Hapus baseURL dari awal path jika ada
+	path = strings.TrimPrefix(path, baseURL)
+	path = strings.TrimPrefix(path, "/") // Hapus slash di awal jika ada
+
+	// Ubah semua backslash menjadi slash
+	normalizedPath := strings.ReplaceAll(path, "\\", "/")
+
+	// Cek apakah file ada
+	if _, err := os.Stat(normalizedPath); err == nil {
+		// File ditemukan, hapus
+		err := os.Remove(normalizedPath)
+		if err != nil {
+			return fmt.Errorf("gagal menghapus file: %v", err)
+		}
+	} else if !os.IsNotExist(err) {
+		// Error selain file tidak ditemukan
+		return fmt.Errorf("gagal mengecek file: %v", err)
+	}
+
+	// Jika file tidak ada, tidak dianggap error
+	return nil
+}
+
 func SaveValidatedBase64File(base64Str string, uploadDir string) (string, error) {
 	// Decode base64
 	parts := strings.SplitN(base64Str, ",", 2)
