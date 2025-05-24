@@ -103,6 +103,10 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	return absence_users, total, err
 }
 
+func (r *absenceUserRepository) UpdateFields(id uint, fields map[string]interface{}) error {
+	return r.db.Model(&models.AbsenceUser{}).Where("id = ?", id).Updates(fields).Error
+}
+
 func (r *absenceUserRepository) GetAbsenceUserByID(id int) (*models.AbsenceUser, error) {
 	var absence_user models.AbsenceUser
 
