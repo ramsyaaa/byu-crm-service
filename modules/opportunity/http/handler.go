@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"byu-crm-service/models"
 	"byu-crm-service/modules/opportunity/service"
 	"byu-crm-service/modules/opportunity/validation"
@@ -96,7 +97,7 @@ func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Create Opportunity: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Create Opportunity: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -171,7 +172,7 @@ func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -187,7 +188,7 @@ func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -204,7 +205,7 @@ func (h *OpportunityHandler) CreateOpportunity(c *fiber.Ctx) error {
 	default:
 		opportunity, serviceErr = h.opportunityService.CreateOpportunity(reqMap, userID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create opportunity: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to create opportunity: %v", serviceErr))
 			response := helper.APIResponse("Failed to create opportunity: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -223,7 +224,7 @@ func (h *OpportunityHandler) UpdateOpportunity(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Update Opportunity: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Update Opportunity: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -310,7 +311,7 @@ func (h *OpportunityHandler) UpdateOpportunity(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -326,7 +327,7 @@ func (h *OpportunityHandler) UpdateOpportunity(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -343,7 +344,7 @@ func (h *OpportunityHandler) UpdateOpportunity(c *fiber.Ctx) error {
 	default:
 		opportunity, serviceErr = h.opportunityService.UpdateOpportunity(reqMap, userID, opportunityID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to update opportunity: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to update opportunity: %v", serviceErr))
 			response := helper.APIResponse("Failed to update opportunity: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -98,7 +99,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Create Product: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Create Product: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -286,7 +287,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -302,7 +303,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -319,7 +320,7 @@ func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	default:
 		product, serviceErr = h.service.CreateProduct(reqMap)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create product: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to create product: %v", serviceErr))
 			response := helper.APIResponse("Failed to create product: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -340,7 +341,7 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Update Product: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Update Product: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -546,7 +547,7 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -562,7 +563,7 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -579,7 +580,7 @@ func (h *ProductHandler) UpdateProduct(c *fiber.Ctx) error {
 	default:
 		product, serviceErr = h.service.UpdateProduct(reqMap, productID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to update product: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to update product: %v", serviceErr))
 			response := helper.APIResponse("Failed to update product: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}

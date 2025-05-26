@@ -6,10 +6,11 @@ import (
 	"runtime/debug"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
-// RecoverMiddleware catches any panics and logs them to the logging system
-func RecoverMiddleware() fiber.Handler {
+// DatabaseRecoverMiddleware catches any panics and logs them to the database
+func DatabaseRecoverMiddleware(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		defer func() {
 			if r := recover(); r != nil {
@@ -19,8 +20,8 @@ func RecoverMiddleware() fiber.Handler {
 				// Log the panic with stack trace
 				errorMsg := fmt.Sprintf("PANIC RECOVERED: %v\nStack Trace:\n%s", r, stackTrace)
 
-				// Log to file using our enhanced logger's format
-				helper.LogError(c, errorMsg)
+				// Log to database
+				helper.LogPanicToDatabase(db, c, errorMsg)
 
 				// Return a 500 response to the client
 				// Check if headers have been sent by checking if status code is not 0
