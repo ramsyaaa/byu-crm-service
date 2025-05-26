@@ -303,28 +303,106 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 
 	} else if *account.AccountCategory == "KAMPUS" {
 		if account.AccountTypeCampusDetail != nil {
-			rangeAge, _ := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
-			accountResponse.Age = rangeAge["age"]
-			accountResponse.PercentageAge = rangeAge["percentage_age"]
-			origin, _ := SplitFields(*account.AccountTypeCampusDetail.Origin, []string{"origin", "percentage_origin"})
-			accountResponse.Origin = origin["origin"]
-			accountResponse.PercentageOrigin = origin["percentage_origin"]
-			organization_name, _ := SplitFields(*account.AccountTypeCampusDetail.OrganizationName, []string{"organization_name"})
-			accountResponse.OrganizationName = organization_name["organization_name"]
-			accountResponse.PreferenceTechnologies, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.PreferenceTechnologies)
-			accountResponse.MemberNeeds, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.MemberNeeds)
-			accountResponse.ItInfrastructures, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ItInfrastructures)
-			accountResponse.DigitalCollaborations, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.DigitalCollaborations)
+			if account.AccountTypeCampusDetail.RangeAge != nil {
+				rangeAge, err := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
+				if err != nil {
+					accountResponse.Age = []string{}
+					accountResponse.PercentageAge = []string{}
+				} else {
+					accountResponse.Age = rangeAge["age"]
+					accountResponse.PercentageAge = rangeAge["percentage_age"]
+				}
+			}
+
+			if account.AccountTypeCampusDetail.Origin != nil {
+				origin, err := SplitFields(*account.AccountTypeCampusDetail.Origin, []string{"origin", "percentage_origin"})
+				if err != nil {
+					accountResponse.Origin = []string{}
+					accountResponse.PercentageOrigin = []string{}
+				} else {
+					accountResponse.Origin = origin["origin"]
+					accountResponse.PercentageOrigin = origin["percentage_origin"]
+				}
+			}
+
+			if account.AccountTypeCampusDetail.OrganizationName != nil {
+				organization_name, _ := SplitFields(*account.AccountTypeCampusDetail.OrganizationName, []string{"organization_name"})
+				if err != nil {
+					accountResponse.OrganizationName = []string{}
+				} else {
+					accountResponse.OrganizationName = organization_name["organization_name"]
+				}
+			}
+
+			if account.AccountTypeCampusDetail.PreferenceTechnologies != nil {
+				preferenceTechnologies, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.PreferenceTechnologies)
+				if err != nil {
+					accountResponse.PreferenceTechnologies = []string{}
+				} else {
+					accountResponse.PreferenceTechnologies = preferenceTechnologies
+				}
+			}
+
+			if account.AccountTypeCampusDetail.MemberNeeds != nil {
+				memberNeeds, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.MemberNeeds)
+				if err != nil {
+					accountResponse.MemberNeeds = []string{}
+				} else {
+					accountResponse.MemberNeeds = memberNeeds
+				}
+			}
+
+			if account.AccountTypeCampusDetail.ItInfrastructures != nil {
+				itInfrastructures, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.ItInfrastructures)
+				if err != nil {
+					accountResponse.ItInfrastructures = []string{}
+				} else {
+					accountResponse.ItInfrastructures = itInfrastructures
+				}
+			}
+
+			if account.AccountTypeCampusDetail.DigitalCollaborations != nil {
+				digitalCollaborations, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.DigitalCollaborations)
+				if err != nil {
+					accountResponse.DigitalCollaborations = []string{}
+				} else {
+					accountResponse.DigitalCollaborations = digitalCollaborations
+				}
+			}
 			accountResponse.AccessTechnology = account.AccountTypeCampusDetail.AccessTechnology
 			accountResponse.CampusAdministrationApp = account.AccountTypeCampusDetail.CampusAdministrationApp
 
 			accountResponse.PotentionalCollaboration = account.AccountTypeCampusDetail.PotentionalCollaboration
 
-			rank, _ := SplitFields(*account.AccountTypeCampusDetail.UniversityRank, []string{"rank", "year_rank"})
-			accountResponse.Rank = rank["rank"]
-			accountResponse.YearRank = rank["year_rank"]
-			accountResponse.ProgramStudy, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.FocusProgramStudy)
-			accountResponse.ProgramIdentification, _ = parseJSONStringToArray(*account.AccountTypeCampusDetail.ProgramIdentification)
+			if account.AccountTypeCampusDetail.UniversityRank != nil {
+				rank, err := SplitFields(*account.AccountTypeCampusDetail.UniversityRank, []string{"rank", "year_rank"})
+				if err != nil {
+					accountResponse.Rank = []string{}
+					accountResponse.YearRank = []string{}
+				} else {
+					accountResponse.Rank = rank["rank"]
+					accountResponse.YearRank = rank["year_rank"]
+				}
+			}
+
+			if account.AccountTypeCampusDetail.FocusProgramStudy != nil {
+				programStudy, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.FocusProgramStudy)
+				if err != nil {
+					accountResponse.ProgramStudy = []string{}
+				} else {
+					accountResponse.ProgramStudy = programStudy
+				}
+			}
+
+			if account.AccountTypeCampusDetail.ProgramIdentification != nil {
+				programIdentification, err := parseJSONStringToArray(*account.AccountTypeCampusDetail.ProgramIdentification)
+				if err != nil {
+					accountResponse.ProgramIdentification = []string{}
+				} else {
+					accountResponse.ProgramIdentification = programIdentification
+				}
+			}
+
 			if account.AccountTypeCampusDetail.Byod != nil {
 				byodStr := fmt.Sprintf("%d", *account.AccountTypeCampusDetail.Byod)
 				accountResponse.Byod = &byodStr
@@ -441,36 +519,61 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 		// Cek data AccountTypeCampusDetail
 		if account.AccountTypeCampusDetail != nil {
 			if account.AccountTypeCampusDetail.RangeAge != nil {
-				rangeAge, _ := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
-				accountResponse.Age = rangeAge["age"]
-				accountResponse.PercentageAge = rangeAge["percentage_age"]
+				rangeAge, err := SplitFields(*account.AccountTypeCampusDetail.RangeAge, []string{"age", "percentage_age"})
+				if err != nil {
+					accountResponse.Age = []string{}
+					accountResponse.PercentageAge = []string{}
+				} else {
+					accountResponse.Age = rangeAge["age"]
+					accountResponse.PercentageAge = rangeAge["percentage_age"]
+				}
 			}
 		}
 
 		// Cek data AccountTypeCommunityDetail
 		if account.AccountTypeCommunityDetail != nil {
 			if account.AccountTypeCommunityDetail.Gender != nil {
-				gender, _ := SplitFields(*account.AccountTypeCommunityDetail.Gender, []string{"gender", "percentage_gender"})
-				accountResponse.Gender = gender["gender"]
-				accountResponse.PercentageGender = gender["percentage_gender"]
+				gender, err := SplitFields(*account.AccountTypeCommunityDetail.Gender, []string{"gender", "percentage_gender"})
+				if err != nil {
+					accountResponse.Gender = []string{}
+					accountResponse.PercentageGender = []string{}
+				} else {
+					accountResponse.Gender = gender["gender"]
+					accountResponse.PercentageGender = gender["percentage_gender"]
+				}
 			}
 
 			if account.AccountTypeCommunityDetail.EducationalBackground != nil {
-				educationalBackground, _ := SplitFields(*account.AccountTypeCommunityDetail.EducationalBackground, []string{"educational_background", "percentage_educational_background"})
-				accountResponse.EducationalBackground = educationalBackground["educational_background"]
-				accountResponse.PercentageEducationalBackground = educationalBackground["percentage_educational_background"]
+				educationalBackground, err := SplitFields(*account.AccountTypeCommunityDetail.EducationalBackground, []string{"educational_background", "percentage_educational_background"})
+				if err != nil {
+					accountResponse.EducationalBackground = []string{}
+					accountResponse.PercentageEducationalBackground = []string{}
+				} else {
+					accountResponse.EducationalBackground = educationalBackground["educational_background"]
+					accountResponse.PercentageEducationalBackground = educationalBackground["percentage_educational_background"]
+				}
 			}
 
 			if account.AccountTypeCommunityDetail.Profession != nil {
-				profession, _ := SplitFields(*account.AccountTypeCommunityDetail.Profession, []string{"profession", "percentage_profession"})
-				accountResponse.Profession = profession["profession"]
-				accountResponse.PercentageProfession = profession["percentage_profession"]
+				profession, err := SplitFields(*account.AccountTypeCommunityDetail.Profession, []string{"profession", "percentage_profession"})
+				if err != nil {
+					accountResponse.Profession = []string{}
+					accountResponse.PercentageProfession = []string{}
+				} else {
+					accountResponse.Profession = profession["profession"]
+					accountResponse.PercentageProfession = profession["percentage_profession"]
+				}
 			}
 
 			if account.AccountTypeCommunityDetail.Income != nil {
-				income, _ := SplitFields(*account.AccountTypeCommunityDetail.Income, []string{"income", "percentage_income"})
-				accountResponse.Income = income["income"]
-				accountResponse.PercentageIncome = income["percentage_income"]
+				income, err := SplitFields(*account.AccountTypeCommunityDetail.Income, []string{"income", "percentage_income"})
+				if err != nil {
+					accountResponse.Income = []string{}
+					accountResponse.PercentageIncome = []string{}
+				} else {
+					accountResponse.Income = income["income"]
+					accountResponse.PercentageIncome = income["percentage_income"]
+				}
 			}
 		}
 
@@ -488,6 +591,7 @@ func (s *accountService) CountAccount(userRole string, territoryID int) (int64, 
 }
 
 func SplitFields(jsonString string, keys []string) (map[string][]string, error) {
+	fmt.Println("ahoy1")
 	// Cek jika JSON string kosong atau null
 	if jsonString == "" || jsonString == "null" {
 		// Jika kosong atau null, kembalikan array kosong untuk setiap key
@@ -495,8 +599,10 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 		for _, key := range keys {
 			result[key] = []string{}
 		}
+		fmt.Println("ahoy2")
 		return result, nil
 	}
+	fmt.Println("ahoy3")
 
 	// Slice untuk menampung hasil decoding JSON
 	var rawData []map[string]string
@@ -504,13 +610,17 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 	// Decode JSON menjadi slice of map[string]string
 	err := json.Unmarshal([]byte(jsonString), &rawData)
 	if err != nil {
+		fmt.Println("ahoy4")
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}
+	fmt.Println("ahoy5")
 
 	// Map untuk menyimpan hasil pemisahan berdasarkan key
 	result := make(map[string][]string)
+	fmt.Println("ahoy6")
 
 	// Iterasi untuk setiap record dalam rawData
+	fmt.Println("ahoy7")
 	for _, item := range rawData {
 		// Iterasi setiap key yang ingin dipisahkan
 		for _, key := range keys {
@@ -523,6 +633,7 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 			}
 		}
 	}
+	fmt.Println("ahoy8")
 
 	return result, nil
 }
