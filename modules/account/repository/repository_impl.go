@@ -161,8 +161,26 @@ func (r *accountRepository) GetAllAccounts(
 	}
 
 	if isPriority, exists := filters["is_priority"]; exists && isPriority == "1" {
+
 		if priority, exists := filters["priority"]; exists {
 			query = query.Where("accounts.priority = ?", priority)
+		}
+
+		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
+			if territoryID == 84 {
+				var cityIDs []int
+				// Ambil semua ID kota yang termasuk dalam cluster_id = 243
+				err := r.db.Model(&models.City{}).
+					Where("cluster_id = ?", 243).
+					Pluck("id", &cityIDs).Error
+
+				fmt.Println(&cityIDs)
+
+				if err == nil && len(cityIDs) > 0 {
+					// Tambahkan pengecualian OR untuk city id tersebut
+					query = query.Or("accounts.City IN ?", cityIDs)
+				}
+			}
 		}
 	}
 
