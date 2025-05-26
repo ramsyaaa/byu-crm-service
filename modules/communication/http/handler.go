@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -93,7 +94,7 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Create Communication: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Create Communication: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -165,7 +166,7 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -181,7 +182,7 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -193,7 +194,7 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 		reqMap["description"] = reqMap["note"]
 		opportunity, err := h.opportunityService.CreateOpportunity(reqMap, userID)
 		if err != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create opportunity: %v", err))
+			log.Printf(fmt.Sprintf("Failed to create opportunity: %v", err))
 			response := helper.APIResponse("Failed to create opportunity: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -212,7 +213,7 @@ func (h *CommunicationHandler) CreateCommunication(c *fiber.Ctx) error {
 	default:
 		communication, serviceErr = h.service.CreateCommunication(reqMap, userID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create communication: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to create communication: %v", serviceErr))
 			response := helper.APIResponse("Failed to create communication: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -231,7 +232,7 @@ func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Update Communication: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Update Communication: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -316,7 +317,7 @@ func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -332,7 +333,7 @@ func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -344,7 +345,7 @@ func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
 		reqMap["description"] = reqMap["note"]
 		opportunity, err := h.opportunityService.CreateOpportunity(reqMap, userID)
 		if err != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create opportunity: %v", err))
+			log.Printf(fmt.Sprintf("Failed to create opportunity: %v", err))
 			response := helper.APIResponse("Failed to create opportunity: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -363,7 +364,7 @@ func (h *CommunicationHandler) UpdateCommunication(c *fiber.Ctx) error {
 	default:
 		communication, serviceErr = h.service.UpdateCommunication(reqMap, userID, communicationID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to update communication: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to update communication: %v", serviceErr))
 			response := helper.APIResponse("Failed to update communication: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}

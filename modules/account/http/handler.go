@@ -287,7 +287,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Create Account: %v", r))
+			log.Printf("Panic in Create Account: %v", r)
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -375,7 +375,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -391,7 +391,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -408,7 +408,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	default:
 		account, serviceErr = h.service.CreateAccount(reqMap, userID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create account: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to create account: %v", serviceErr))
 			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -424,7 +424,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		categoryStr, ok := category.(string)
 		if !ok {
 			// Log the error but don't panic
-			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+			log.Printf(fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
 		} else {
 			switch categoryStr {
 			case "SEKOLAH":
@@ -441,15 +441,15 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 			default:
 				// Log unexpected category value
-				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
+				log.Printf(fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
 	} else if !exists {
 		// Log missing account_category
-		helper.LogError(c, "account_category field is missing in the request")
+		log.Printf("account_category field is missing in the request")
 	} else {
 		// Log nil account_category
-		helper.LogError(c, "account_category field is nil")
+		log.Printf("account_category field is nil")
 	}
 
 	// Return success response
@@ -465,7 +465,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Update Account: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Update Account: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -567,7 +567,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -583,7 +583,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -600,7 +600,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 	default:
 		account, serviceErr = h.service.UpdateAccount(reqMap, accountID, userRole, territoryID, userID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to update account: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to update account: %v", serviceErr))
 			response := helper.APIResponse("Failed to update account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -637,7 +637,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		categoryStr, ok := category.(string)
 		if !ok {
 			// Log the error but don't panic
-			helper.LogError(c, fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
+			log.Printf(fmt.Sprintf("account_category is not a string: %v (type: %T)", category, category))
 		} else {
 			switch categoryStr {
 			case "SEKOLAH":
@@ -653,15 +653,15 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 				_, _ = h.accountScheduleService.Insert(reqMap, "App\\Models\\Account", account[0].ID)
 			default:
 				// Log unexpected category value
-				helper.LogError(c, fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
+				log.Printf(fmt.Sprintf("Unexpected account_category value: %s", categoryStr))
 			}
 		}
 	} else if !exists {
 		// Log missing account_category
-		helper.LogError(c, "account_category field is missing in the request")
+		log.Printf("account_category field is missing in the request")
 	} else {
 		// Log nil account_category
-		helper.LogError(c, "account_category field is nil")
+		log.Printf("account_category field is nil")
 	}
 
 	// Return success response

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"byu-crm-service/helper"
 	"byu-crm-service/models"
 	"byu-crm-service/modules/contact-account/service"
@@ -97,7 +98,7 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Create Contact: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Create Contact: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -154,7 +155,7 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -170,7 +171,7 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -186,7 +187,7 @@ func (h *ContactAccountHandler) CreateContact(c *fiber.Ctx) error {
 	default:
 		contact, serviceErr = h.service.CreateContact(reqMap)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to create account: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to create account: %v", serviceErr))
 			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -208,7 +209,7 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 	// Use a recovery function to catch any panics
 	defer func() {
 		if r := recover(); r != nil {
-			helper.LogError(c, fmt.Sprintf("Panic in Update Contact: %v", r))
+			log.Printf(fmt.Sprintf("Panic in Update Contact: %v", r))
 			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
 			c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -276,7 +277,7 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 	default:
 		reqBytes, marshalErr = json.Marshal(req)
 		if marshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -292,7 +293,7 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
@@ -308,7 +309,7 @@ func (h *ContactAccountHandler) UpdateContact(c *fiber.Ctx) error {
 	default:
 		contact, serviceErr = h.service.UpdateContact(reqMap, contactID)
 		if serviceErr != nil {
-			helper.LogError(c, fmt.Sprintf("Failed to update contact: %v", serviceErr))
+			log.Printf(fmt.Sprintf("Failed to update contact: %v", serviceErr))
 			response := helper.APIResponse("Failed to update contact: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}

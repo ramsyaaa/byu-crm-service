@@ -30,8 +30,8 @@ func Route(db *gorm.DB) {
 				code = e.Code
 			}
 
-			// Log the error
-			helper.LogError(c, fmt.Sprintf("Error in request: %s", err.Error()))
+			// Log the error to database
+			helper.LogErrorToDatabase(db, c, fmt.Sprintf("Error in request: %s", err.Error()))
 
 			// Return JSON response with error message
 			return c.Status(code).JSON(fiber.Map{
@@ -50,8 +50,8 @@ func Route(db *gorm.DB) {
 		MaxAge:        86400, // 24 hours
 	}))
 
-	// Add recover middleware to catch panics
-	app.Use(middleware.RecoverMiddleware())
+	// Add database recover middleware to catch panics
+	app.Use(middleware.DatabaseRecoverMiddleware(db))
 
 	if os.Getenv("APP_ENV") != "production" {
 		app.Get("/swagger/*", swagger.HandlerDefault)
@@ -65,11 +65,18 @@ func Route(db *gorm.DB) {
 		return c.SendFile("./static/index.html")
 	})
 
-	// Get available log files (uses helper function)
-	app.Get("/logs", helper.GetLogFiles)
+	// Database log viewer endpoints
+	logHandler := helper.NewLogViewerHandler(db)
+	app.Get("/api-logs", logHandler.GetApiLogs)
+	app.Get("/api-logs/stats", logHandler.GetLogStats)
+	app.Get("/api-logs/errors", logHandler.GetErrorLogs)
+	app.Get("/api-logs/slow", logHandler.GetSlowRequests)
+	app.Get("/api-logs/:id", logHandler.GetLogById)
+	app.Post("/api-logs/cleanup", logHandler.CleanupLogs)
 
-	// Get content from a specific log file (uses helper function)
-	app.Get("/logs/:filename", helper.GetLogFileContent)
+	// Chart data endpoints
+	app.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
+	app.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
@@ -85,8 +92,8 @@ func Route(db *gorm.DB) {
 				code = e.Code
 			}
 
-			// Log the error with more details
-			helper.LogError(c, fmt.Sprintf("API Error: %s", err.Error()))
+			// Log the error to database with more details
+			helper.LogErrorToDatabase(db, c, fmt.Sprintf("API Error: %s", err.Error()))
 
 			// Return JSON response with error message
 			return c.Status(code).JSON(fiber.Map{
@@ -105,11 +112,11 @@ func Route(db *gorm.DB) {
 		MaxAge:        86400, // 24 hours
 	}))
 
-	// Add recover middleware to catch panics
-	api.Use(middleware.RecoverMiddleware())
+	// Add database recover middleware to catch panics
+	api.Use(middleware.DatabaseRecoverMiddleware(db))
 
-	// Add logger middleware
-	api.Use(helper.LogToFile())
+	// Add database logger middleware
+	api.Use(helper.DatabaseLogger(db))
 	// Register your routes here
 	routes.PerformanceNamiRouter(api, db)
 	routes.PerformanceSkulIdRouter(api, db)
