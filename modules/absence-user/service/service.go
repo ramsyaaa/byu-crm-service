@@ -3,6 +3,7 @@ package service
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/absence-user/response"
+	"io"
 )
 
 type AbsenceUserService interface {
@@ -15,4 +16,5 @@ type AbsenceUserService interface {
 	GetAbsenceActive(user_id int, type_absence string) ([]models.AbsenceUser, error)
 	DeleteAbsenceUser(id int) error
 	UpdateFields(id uint, fields map[string]interface{}) error
+	GenerateAbsenceExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error)
 }
