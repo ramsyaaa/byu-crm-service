@@ -1,7 +1,9 @@
 package config
 
 import (
+	"byu-crm-service/models"
 	"fmt"
+	"log"
 	"os"
 
 	"gorm.io/driver/mysql"
@@ -23,6 +25,11 @@ func Connect() *gorm.DB {
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to database: %v", err))
+	}
+
+	// Auto-migrate the ApiLog model
+	if err := db.AutoMigrate(&models.ApiLog{}); err != nil {
+		log.Printf("Failed to auto-migrate ApiLog model: %v", err)
 	}
 
 	return db
