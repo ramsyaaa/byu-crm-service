@@ -21,18 +21,29 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 
 	query := r.db.Model(&models.AbsenceUser{}).
 		Joins("LEFT JOIN users ON users.id = absence_users.user_id").
-		Select("absence_users.*, users.name AS user_name")
+		Joins("LEFT JOIN accounts ON accounts.id = absence_users.subject_id AND absence_users.subject_type = ?", "App\\Models\\Account").
+		Joins("LEFT JOIN account_type_school_details ON account_type_school_details.account_id = accounts.id").
+		Select(`absence_users.*, 
+			users.name AS user_name, 
+			accounts.account_name, 
+			accounts.account_code, 
+			account_type_school_details.dies_natalis, 
+			account_type_school_details.extracurricular, 
+			account_type_school_details.football_field_brannnding, 
+			account_type_school_details.basketball_field_branding, 
+			account_type_school_details.wall_painting_branding, 
+			account_type_school_details.wall_magazine_branding`)
 
-	if all_user, exists := filters["all_user"]; exists && all_user != "1" {
+	// Filter: all_user
+	if allUser, exists := filters["all_user"]; exists && allUser != "1" {
 		if user_id != 0 {
 			query = query.Where("absence_users.user_id = ?", user_id)
 		}
 	}
 
-	// Apply search filter
+	// Filter: search
 	if search, exists := filters["search"]; exists && search != "" {
 		searchTokens := strings.Fields(search)
-
 		for _, token := range searchTokens {
 			query = query.Where(
 				r.db.Where("absence_users.description LIKE ? OR users.name LIKE ?", "%"+token+"%", "%"+token+"%"),
@@ -40,7 +51,7 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 		}
 	}
 
-	// Apply date range filter
+	// Filter: date range
 	startDate, hasStart := filters["start_date"]
 	endDate, hasEnd := filters["end_date"]
 
@@ -56,28 +67,36 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 		query = query.Where("absence_users.created_at <= ?", endDateTime)
 	}
 
+	// Filter: month & year
 	if month != 0 && year != 0 {
 		query = query.Where("MONTH(absence_users.created_at) = ? AND YEAR(absence_users.created_at) = ?", month, year)
 	}
 
+	// Filter: absence_type
 	if absence_type != "" {
 		query = query.Where("absence_users.type = ?", absence_type)
 	}
 
-	status, hasStatus := filters["status"]
-	if hasStatus && status == "0" {
+	// Filter: status
+	if status, hasStatus := filters["status"]; hasStatus && status == "0" {
 		query = query.Where("absence_users.status = ?", status)
 	}
 
-	// Get total count before applying pagination
+	// Get total count before pagination
 	query.Count(&total)
 
-	// Apply ordering
+	// Ordering
 	orderBy := filters["order_by"]
 	order := filters["order"]
+	if orderBy == "" {
+		orderBy = "absence_users.created_at"
+	}
+	if order == "" {
+		order = "desc"
+	}
 	query = query.Order(orderBy + " " + order)
 
-	// Apply pagination
+	// Pagination
 	if paginate {
 		offset := (page - 1) * limit
 		query = query.Limit(limit).Offset(offset)
@@ -86,11 +105,11 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	}
 
 	err := query.Find(&absence_users).Error
-
 	if err != nil {
 		return nil, total, err
 	}
 
+	// Optional: Load full Account with SchoolDetail for each absence_user if needed
 	for i := range absence_users {
 		if absence_users[i].SubjectType != nil && *absence_users[i].SubjectType == "App\\Models\\Account" {
 			var account models.Account
@@ -98,9 +117,15 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 				absence_users[i].Account = &account
 			}
 		}
+
+		// Join visit_histories
+		var visit models.VisitHistory
+		if err := r.db.Where("absence_user_id = ?", absence_users[i].ID).First(&visit).Error; err == nil {
+			absence_users[i].VisitHistory = &visit
+		}
 	}
 
-	return absence_users, total, err
+	return absence_users, total, nil
 }
 
 func (r *absenceUserRepository) UpdateFields(id uint, fields map[string]interface{}) error {

@@ -22,6 +22,18 @@ type Account struct {
 	IsSkulid                *uint     `json:"is_skulid"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
+
+	SchoolDetail *AccountTypeSchoolDetails `gorm:"foreignKey:AccountID;references:ID"`
+}
+
+type AccountTypeSchoolDetails struct {
+	AccountID               int        `json:"account_id"`
+	DiesNatalis             *time.Time `json:"dies_natalis"`
+	Extracurricular         *string    `json:"extracurricular"`
+	FootballFieldBrannnding *string    `json:"football_field_brannnding"`
+	BasketballFieldBranding *string    `json:"basketball_field_branding"`
+	WallPaintingBranding    *string    `json:"wall_painting_branding"`
+	WallMagazineBranding    *string    `json:"wall_magazine_branding"`
 }
 
 type AccountSimple struct {
