@@ -1,14 +1,18 @@
 package service
 
 import (
+	"bytes"
 	"byu-crm-service/models"
 	"byu-crm-service/modules/absence-user/repository"
 	"byu-crm-service/modules/absence-user/response"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type absenceUserService struct {
@@ -177,4 +181,214 @@ func (s *absenceUserService) AlreadyAbsenceInSameDay(user_id int, type_absence *
 
 func (s *absenceUserService) DeleteAbsenceUser(id int) error {
 	return s.repo.DeleteAbsenceUser(id)
+}
+
+func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error) {
+	// Ambil data
+	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter data sesuai yang sudah ada (Visit Account)
+	var filtered []models.AbsenceUser
+	for _, abs := range absences {
+		if abs.Type != nil && *abs.Type == "Visit Account" &&
+			abs.SubjectType != nil && *abs.SubjectType == "App\\Models\\Account" &&
+			abs.Account != nil {
+			filtered = append(filtered, abs)
+		}
+	}
+
+	f := excelize.NewFile()
+	sheet := "Absence Export"
+	f.NewSheet(sheet)
+	f.DeleteSheet("Sheet1")
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#0070C0"}, // biru
+			Pattern: 1,
+		},
+		Font: &excelize.Font{
+			Bold:  true,
+			Color: "#FFFFFF", // putih
+			Size:  11,
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+			WrapText:   true,
+		},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+
+	headers := []string{
+		"No", "Nama Pengguna", "Clock In", "Clock Out", "Nama Akun", "Kode Akun",
+		"School Campus Profiling", "Activity & Engagement", "Gambar Presentasi Demo", "Deskripsi Presentasi Demo", "Alasan Tidak Presentasi", "Sales Performance", "Gambar Dealing", "Alasan Tidak Dealing", "SkulID Activity",
+		"Deskripsi SkulID",
+	}
+
+	// Atur lebar kolom (A - P) dan tulis header
+	for i, header := range headers {
+		colLetter, _ := excelize.ColumnNumberToName(i + 1)
+		cell := fmt.Sprintf("%s1", colLetter)
+		f.SetCellValue(sheet, cell, header)
+		f.SetColWidth(sheet, colLetter, colLetter, 25) // Atur lebar kolom jadi 25
+		f.SetCellStyle(sheet, cell, cell, headerStyle)
+	}
+
+	baseURL := os.Getenv("BASE_URL")
+
+	for i, abs := range filtered {
+		row := i + 2
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), i+1)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), abs.UserName)
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), abs.ClockIn.Format("2006-01-02 15:04:05"))
+
+		if abs.ClockOut != nil {
+			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), abs.ClockOut.Format("2006-01-02 15:04:05"))
+		} else {
+			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), "-")
+		}
+
+		isPresentationDemo := "No"
+		presentasiImage := "-"
+		presentasiDescription := "-"
+		presentationReason := "-"
+		isDealingSekolah := "No"
+		dealingImage := "-"
+		dealingReason := "-"
+		isSkulId := "No"
+		skulIdDescription := "-"
+
+		if abs.VisitHistory != nil && abs.VisitHistory.DetailVisit != nil {
+			detailVisitMap, err := parseJSONStringToMap(*abs.VisitHistory.DetailVisit)
+			if err == nil {
+				if val, ok := detailVisitMap["presentasi_demo"]; ok {
+					if val != "" {
+						// Ganti semua backslash jadi slash agar menjadi path yang valid
+						if strVal, ok := val.(string); ok {
+							strVal = strings.ReplaceAll(strVal, "\\", "/")
+
+							// Tambahkan BASE_URL jika belum ada prefix http
+							if !strings.HasPrefix(strVal, "http") {
+								strVal = fmt.Sprintf("%s/%s", strings.TrimRight(baseURL, "/"), strings.TrimLeft(strVal, "/"))
+							}
+							presentasiImage = fmt.Sprintf("%v", strVal)
+						}
+					}
+				}
+				if val, ok := detailVisitMap["presentasi_demo_description"]; ok {
+					presentasiDescription = fmt.Sprintf("%v", val)
+				}
+				if val, ok := detailVisitMap["presentasi_demo_reason"]; ok {
+					presentationReason = fmt.Sprintf("%v", val)
+				}
+				if val, ok := detailVisitMap["dealing_sekolah"]; ok {
+					if val != "" {
+						// Ganti semua backslash jadi slash agar menjadi path yang valid
+						if strVal, ok := val.(string); ok {
+							strVal = strings.ReplaceAll(strVal, "\\", "/")
+
+							// Tambahkan BASE_URL jika belum ada prefix http
+							if !strings.HasPrefix(strVal, "http") {
+								strVal = fmt.Sprintf("%s/%s", strings.TrimRight(baseURL, "/"), strings.TrimLeft(strVal, "/"))
+							}
+							dealingImage = fmt.Sprintf("%v", strVal)
+						}
+					}
+				}
+				if val, ok := detailVisitMap["dealing_sekolah_reason"]; ok {
+					dealingReason = fmt.Sprintf("%v", val)
+				}
+				if val, ok := detailVisitMap["skul_id_description"]; ok {
+					skulIdDescription = fmt.Sprintf("%v", val)
+				}
+			}
+		}
+
+		if abs.VisitHistory != nil && abs.VisitHistory.Target != nil {
+			TargetMap, err := parseJSONStringToMap(*abs.VisitHistory.Target)
+			if err == nil {
+				if val, ok := TargetMap["presentasi_demo"]; ok {
+					if num, ok := val.(float64); ok && num == 1 {
+						isPresentationDemo = "Yes"
+					}
+				}
+				if val, ok := TargetMap["dealing_sekolah"]; ok {
+					if num, ok := val.(float64); ok && num == 1 {
+						isDealingSekolah = "Yes"
+					}
+				}
+				if val, ok := TargetMap["skul_id"]; ok {
+					if num, ok := val.(float64); ok && num == 1 {
+						isSkulId = "Yes"
+					}
+				}
+			}
+		}
+
+		if abs.Account != nil {
+			if abs.Account.AccountName != nil {
+				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), *abs.Account.AccountName)
+			} else {
+				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
+			}
+
+			if abs.Account.AccountCode != nil {
+				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *abs.Account.AccountCode)
+			} else {
+				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "-")
+			}
+
+			// Cek kelengkapan data school profiling
+			school := abs.Account.SchoolDetail
+			if school != nil &&
+				school.DiesNatalis != nil &&
+				school.Extracurricular != nil && *school.Extracurricular != "" &&
+				school.FootballFieldBrannnding != nil && *school.FootballFieldBrannnding != "" &&
+				school.BasketballFieldBranding != nil && *school.BasketballFieldBranding != "" &&
+				school.WallPaintingBranding != nil && *school.WallPaintingBranding != "" &&
+				school.WallMagazineBranding != nil && *school.WallMagazineBranding != "" {
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Sudah Dilengkapi")
+			} else {
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Belum Dilengkapi")
+			}
+		} else {
+			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
+			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "-")
+			f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Belum Dilengkapi")
+		}
+
+		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), isPresentationDemo)
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), presentasiImage)
+		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), presentasiDescription)
+		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), presentationReason)
+		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), isDealingSekolah)
+		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), dealingImage)
+		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), dealingReason)
+		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), isSkulId)
+		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), skulIdDescription)
+
+	}
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func parseJSONStringToMap(jsonStr string) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	err := json.Unmarshal([]byte(jsonStr), &result)
+	return result, err
 }
