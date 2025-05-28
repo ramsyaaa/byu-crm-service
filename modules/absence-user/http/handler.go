@@ -260,10 +260,10 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							response := helper.APIResponse("Invalid longitude value in account", fiber.StatusBadRequest, "error", nil)
 							return c.Status(fiber.StatusBadRequest).JSON(response)
 						}
-						inRadius := helper.IsWithinRadius(100, latitude, longitude, accountLatitude, accountLongitude)
+						inRadius := helper.IsWithinRadius(500, latitude, longitude, accountLatitude, accountLongitude)
 						if !inRadius {
 							errors := map[string]string{
-								"radius": "Anda tidak berada dalam radius 100 meter dari lokasi account / data longitude dan latitude tidak valid",
+								"radius": "Anda tidak berada dalam radius 500 meter dari lokasi account / data longitude dan latitude tidak valid",
 							}
 							response := helper.APIResponse("Validation error", fiber.StatusUnprocessableEntity, "error", errors)
 							return c.Status(fiber.StatusUnprocessableEntity).JSON(response)
