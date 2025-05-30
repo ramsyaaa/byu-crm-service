@@ -257,15 +257,27 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), abs.UserName)
 		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), abs.ClockIn.Format("2006-01-02 15:04:05"))
 
+		durasi := ""
 		if abs.ClockOut != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), abs.ClockOut.Format("2006-01-02 15:04:05"))
 			duration := abs.ClockOut.Sub(abs.ClockIn)
-			hours := int(duration.Hours())
-			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), fmt.Sprintf("%d jam", hours))
+			jam := int(duration.Hours())
+			menit := int(duration.Minutes()) % 60
+			if jam > 0 || menit > 0 {
+				if jam > 0 {
+					durasi += fmt.Sprintf("%d jam", jam)
+				}
+				if menit > 0 {
+					if durasi != "" {
+						durasi += " "
+					}
+					durasi += fmt.Sprintf("%d menit", menit)
+				}
+			}
 		} else {
 			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
-			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "")
 		}
+
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", row), durasi)
 
 		isPresentationDemo := "No"
 		presentasiImage := "-"
