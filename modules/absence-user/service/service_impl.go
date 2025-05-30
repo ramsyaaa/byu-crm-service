@@ -230,7 +230,7 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 	})
 
 	headers := []string{
-		"No", "Nama Pengguna", "Clock In", "Clock Out", "Nama Akun", "Kode Akun",
+		"No", "Kode YAE", "Nama Pengguna", "Clock In", "Clock Out", "Nama Akun", "Kode Akun",
 		"School Campus Profiling", "Activity & Engagement", "Gambar Presentasi Demo", "Deskripsi Presentasi Demo", "Alasan Tidak Presentasi", "Sales Performance", "Gambar Dealing", "Alasan Tidak Dealing", "SkulID Activity",
 		"Deskripsi SkulID",
 	}
@@ -248,14 +248,19 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 
 	for i, abs := range filtered {
 		row := i + 2
+		yaeCode := ""
+		if abs.YaeCode != nil {
+			yaeCode = *abs.YaeCode
+		}
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), i+1)
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), abs.UserName)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), abs.ClockIn.Format("2006-01-02 15:04:05"))
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), yaeCode)
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), abs.UserName)
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), abs.ClockIn.Format("2006-01-02 15:04:05"))
 
 		if abs.ClockOut != nil {
-			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), abs.ClockOut.Format("2006-01-02 15:04:05"))
+			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), abs.ClockOut.Format("2006-01-02 15:04:05"))
 		} else {
-			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), "-")
+			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
 		}
 
 		isPresentationDemo := "No"
@@ -337,15 +342,15 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 
 		if abs.Account != nil {
 			if abs.Account.AccountName != nil {
-				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), *abs.Account.AccountName)
+				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *abs.Account.AccountName)
 			} else {
-				f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
+				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "-")
 			}
 
 			if abs.Account.AccountCode != nil {
-				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), *abs.Account.AccountCode)
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), *abs.Account.AccountCode)
 			} else {
-				f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "-")
+				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "-")
 			}
 
 			// Cek kelengkapan data school profiling
@@ -357,25 +362,25 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 				school.BasketballFieldBranding != nil && *school.BasketballFieldBranding != "" &&
 				school.WallPaintingBranding != nil && *school.WallPaintingBranding != "" &&
 				school.WallMagazineBranding != nil && *school.WallMagazineBranding != "" {
-				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Sudah Dilengkapi")
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", row), "Sudah Dilengkapi")
 			} else {
-				f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Belum Dilengkapi")
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", row), "Belum Dilengkapi")
 			}
 		} else {
-			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), "-")
 			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), "-")
-			f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "Belum Dilengkapi")
+			f.SetCellValue(sheet, fmt.Sprintf("G%d", row), "-")
+			f.SetCellValue(sheet, fmt.Sprintf("H%d", row), "Belum Dilengkapi")
 		}
 
-		f.SetCellValue(sheet, fmt.Sprintf("H%d", row), isPresentationDemo)
-		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), presentasiImage)
-		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), presentasiDescription)
-		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), presentationReason)
-		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), isDealingSekolah)
-		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), dealingImage)
-		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), dealingReason)
-		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), isSkulId)
-		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), skulIdDescription)
+		f.SetCellValue(sheet, fmt.Sprintf("I%d", row), isPresentationDemo)
+		f.SetCellValue(sheet, fmt.Sprintf("J%d", row), presentasiImage)
+		f.SetCellValue(sheet, fmt.Sprintf("K%d", row), presentasiDescription)
+		f.SetCellValue(sheet, fmt.Sprintf("L%d", row), presentationReason)
+		f.SetCellValue(sheet, fmt.Sprintf("M%d", row), isDealingSekolah)
+		f.SetCellValue(sheet, fmt.Sprintf("N%d", row), dealingImage)
+		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), dealingReason)
+		f.SetCellValue(sheet, fmt.Sprintf("P%d", row), isSkulId)
+		f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), skulIdDescription)
 
 	}
 

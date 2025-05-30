@@ -1,7 +1,6 @@
 package http
 
 import (
-	"log"
 	"strconv"
 
 	"byu-crm-service/helper"
