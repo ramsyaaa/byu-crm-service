@@ -25,6 +25,7 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 		Joins("LEFT JOIN account_type_school_details ON account_type_school_details.account_id = accounts.id").
 		Select(`absence_users.*, 
 			users.name AS user_name, 
+			users.yae_code AS yae_code,
 			accounts.account_name, 
 			accounts.account_code, 
 			account_type_school_details.dies_natalis, 
