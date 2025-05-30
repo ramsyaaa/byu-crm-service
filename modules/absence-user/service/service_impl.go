@@ -259,6 +259,7 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 
 		durasi := ""
 		if abs.ClockOut != nil {
+			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), abs.ClockOut.Format("2006-01-02 15:04:05"))
 			duration := abs.ClockOut.Sub(abs.ClockIn)
 			jam := int(duration.Hours())
 			menit := int(duration.Minutes()) % 60
