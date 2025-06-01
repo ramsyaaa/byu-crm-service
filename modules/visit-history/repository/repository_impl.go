@@ -31,16 +31,25 @@ func (r *visitHistoryRepository) CreateVisitHistory(visit_history *models.VisitH
 func (r *visitHistoryRepository) CountVisitHistory(user_id int, month uint, year uint, kpi_name string) (int, error) {
 	var count int64
 
-	query := r.db.
-		Model(&models.VisitHistory{}).
-		Select("COUNT(DISTINCT subject_id)").
-		Where("user_id = ? AND subject_type = ? AND MONTH(created_at) = ? AND YEAR(created_at) = ?",
-			user_id, "App\\Models\\Account", month, year)
+	query := r.db.Model(&models.VisitHistory{}).
+		Where("subject_type = ? AND MONTH(created_at) = ? AND YEAR(created_at) = ?",
+			"App\\Models\\Account", month, year)
 
+	// Tambahkan filter kpi_name jika ada
 	if kpi_name != "" {
-		// LIKE tanpa escape tanda kutip dua
 		likePattern := fmt.Sprintf("%%%s\":1%%", kpi_name)
 		query = query.Where("target LIKE ?", likePattern)
+	}
+
+	if user_id != 0 {
+		// Hitung distinct subject_id tapi difilter berdasarkan user_id
+		query = query.
+			Select("COUNT(DISTINCT subject_id)").
+			Where("user_id = ?", user_id)
+	} else {
+		// Hitung distinct kombinasi subject_id dan user_id
+		query = query.
+			Select("COUNT(DISTINCT CONCAT(subject_id, '-', user_id))")
 	}
 
 	err := query.Count(&count).Error
