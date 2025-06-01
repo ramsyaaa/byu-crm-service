@@ -43,6 +43,13 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	// Default query params
 	user_id := c.Locals("user_id").(int)
 
+	paramUserID := c.Query("user_id")
+	if paramUserID != "" {
+		if parsedID, err := strconv.Atoi(paramUserID); err == nil {
+			user_id = parsedID
+		}
+	}
+
 	filters := map[string]string{
 		"search":     c.Query("search", ""),
 		"order_by":   c.Query("order_by", "id"),

@@ -140,6 +140,17 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 	year := uint(now.Year())
 	userID := c.Locals("user_id").(int)
 
+	paramUserID := c.Query("user_id")
+	if paramUserID != "" {
+		if parsedID, err := strconv.Atoi(paramUserID); err == nil {
+			userID = parsedID
+		}
+	}
+
+	if c.Query("all_user") == "1" {
+		userID = 0
+	}
+
 	kpi_lists, err := h.service.GetKpiYaeRangeByDate(month, year)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch KPI", fiber.StatusInternalServerError, "error", nil)
