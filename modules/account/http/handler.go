@@ -128,6 +128,12 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 	var userRole string
 	var err error
 
+	withGeoJson, err := strconv.ParseBool(c.Query("with_geojson", "0"))
+	if err != nil {
+		response := helper.APIResponse("Bad Request: Invalid with_geojson parameter", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
 	// Ambil user_role dari query jika ada, jika tidak ambil dari locals
 	userRoleParam := c.Query("user_role")
 	if userRoleParam != "" {
@@ -159,7 +165,7 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 	}
 
 	// Call service with filters
-	total, categories, territories, territory_info, err := h.service.CountAccount(userRole, territoryID)
+	total, categories, territories, territory_info, err := h.service.CountAccount(userRole, territoryID, withGeoJson)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
