@@ -425,26 +425,42 @@ func (r *accountRepository) CountAccount(
 	// Set currentTerritory
 	switch userRole {
 	case "Super-Admin", "HQ":
-		currentTerritory = response.TerritoryInfo{ID: 0, Name: "Indonesia"}
+		currentTerritory = response.TerritoryInfo{ID: 0, Name: "Indonesia", Geojson: ""}
 	case "Area":
 		var area models.Area
-		if err := r.db.Select("id", "name").First(&area, territoryID).Error; err == nil {
-			currentTerritory = response.TerritoryInfo{ID: int(area.ID), Name: area.Name}
+		if err := r.db.Select("id", "name", "geojson").First(&area, territoryID).Error; err == nil {
+			geoJson := ""
+			if area.Geojson != nil {
+				geoJson = *area.Geojson
+			}
+			currentTerritory = response.TerritoryInfo{ID: int(area.ID), Name: area.Name, Geojson: geoJson}
 		}
 	case "Regional":
 		var region models.Region
-		if err := r.db.Select("id", "name").First(&region, territoryID).Error; err == nil {
-			currentTerritory = response.TerritoryInfo{ID: int(region.ID), Name: region.Name}
+		if err := r.db.Select("id", "name", "geojson").First(&region, territoryID).Error; err == nil {
+			geoJson := ""
+			if region.Geojson != nil {
+				geoJson = *region.Geojson
+			}
+			currentTerritory = response.TerritoryInfo{ID: int(region.ID), Name: region.Name, Geojson: geoJson}
 		}
 	case "Branch", "Buddies", "DS", "Organic", "YAE":
 		var branch models.Branch
-		if err := r.db.Select("id", "name").First(&branch, territoryID).Error; err == nil {
-			currentTerritory = response.TerritoryInfo{ID: int(branch.ID), Name: branch.Name}
+		if err := r.db.Select("id", "name", "geojson").First(&branch, territoryID).Error; err == nil {
+			geoJson := ""
+			if branch.Geojson != nil {
+				geoJson = *branch.Geojson
+			}
+			currentTerritory = response.TerritoryInfo{ID: int(branch.ID), Name: branch.Name, Geojson: geoJson}
 		}
 	case "Admin-Tap", "Cluster":
 		var cluster models.Cluster
-		if err := r.db.Select("id", "name").First(&cluster, territoryID).Error; err == nil {
-			currentTerritory = response.TerritoryInfo{ID: int(cluster.ID), Name: cluster.Name}
+		if err := r.db.Select("id", "name", "geojson").First(&cluster, territoryID).Error; err == nil {
+			geoJson := ""
+			if cluster.Geojson != nil {
+				geoJson = *cluster.Geojson
+			}
+			currentTerritory = response.TerritoryInfo{ID: int(cluster.ID), Name: cluster.Name, Geojson: geoJson}
 		}
 	}
 
@@ -458,6 +474,7 @@ func (r *accountRepository) CountByTerritories(
 	type Result struct {
 		TerritoryID     int
 		TerritoryName   string
+		Geojson         *string
 		AccountCategory string
 		Count           int64
 	}
@@ -471,13 +488,14 @@ func (r *accountRepository) CountByTerritories(
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
 		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
 
-	var groupColumn, displayColumn, idColumn, nextTerritory string
+	var groupColumn, displayColumn, idColumn, nextTerritory, geoJson string
 
 	switch userRole {
 	case "Super-Admin", "HQ":
 		groupColumn = "areas.id"
 		displayColumn = "areas.name"
 		idColumn = "areas.id"
+		geoJson = "areas.geojson"
 		nextTerritory = "Area"
 
 	case "Area":
@@ -485,6 +503,7 @@ func (r *accountRepository) CountByTerritories(
 		groupColumn = "regions.id"
 		displayColumn = "regions.name"
 		idColumn = "regions.id"
+		geoJson = "regions.geojson"
 		nextTerritory = "Regional"
 
 	case "Regional":
@@ -492,6 +511,7 @@ func (r *accountRepository) CountByTerritories(
 		groupColumn = "branches.id"
 		displayColumn = "branches.name"
 		idColumn = "branches.id"
+		geoJson = "branches.geojson"
 		nextTerritory = "Branch"
 
 	case "Branch", "Buddies", "DS", "YAE", "Organic":
@@ -499,6 +519,7 @@ func (r *accountRepository) CountByTerritories(
 		groupColumn = "clusters.id"
 		displayColumn = "clusters.name"
 		idColumn = "clusters.id"
+		geoJson = "clusters.geojson"
 		nextTerritory = "Cluster"
 
 	case "Cluster", "Admin-Tap":
@@ -506,6 +527,7 @@ func (r *accountRepository) CountByTerritories(
 		groupColumn = "cities.id"
 		displayColumn = "cities.name"
 		idColumn = "cities.id"
+		geoJson = "cities.geojson"
 		nextTerritory = ""
 
 	default:
@@ -513,7 +535,7 @@ func (r *accountRepository) CountByTerritories(
 	}
 
 	err := query.
-		Select(fmt.Sprintf("%s AS territory_id, %s AS territory_name, account_category, COUNT(*) AS count", idColumn, displayColumn)).
+		Select(fmt.Sprintf("%s AS territory_id, %s AS territory_name, account_category, COUNT(*) AS count, %s as geojson", idColumn, displayColumn, geoJson)).
 		Group(fmt.Sprintf("%s, %s, account_category", groupColumn, displayColumn)).
 		Scan(&results).Error
 	if err != nil {
@@ -530,6 +552,7 @@ func (r *accountRepository) CountByTerritories(
 				"id":             res.TerritoryID,
 				"name":           res.TerritoryName,
 				"next_territory": nextTerritory,
+				"geojson":        res.Geojson,
 				"total":          int64(0),
 				"categories":     make(map[string]int64),
 			}

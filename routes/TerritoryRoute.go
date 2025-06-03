@@ -1,6 +1,7 @@
 package routes
 
 import (
+	accountRepo "byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/territory/http"
 	"byu-crm-service/modules/territory/repository"
 	"byu-crm-service/modules/territory/service"
@@ -11,8 +12,9 @@ import (
 
 func TerritoryRouter(router fiber.Router, db *gorm.DB) {
 	territoryRepo := repository.NewTerritoryRepository(db)
+	accountRepo := accountRepo.NewAccountRepository(db)
 
-	territoryService := service.NewTerritoryService(territoryRepo)
+	territoryService := service.NewTerritoryService(territoryRepo, accountRepo)
 
 	territoryHandler := http.NewTerritoryHandler(territoryService)
 

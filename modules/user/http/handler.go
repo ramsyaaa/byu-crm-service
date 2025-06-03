@@ -108,6 +108,70 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *UserHandler) GetUsersResume(c *fiber.Ctx) error {
+	// Parse integer and boolean values
+	onlyRole := []string{"YAE", "Buddies", "DS"}
+
+	var userRole string
+	if queryUserRole := c.Query("user_role"); queryUserRole != "" {
+		userRole = queryUserRole
+	} else {
+		local := c.Locals("user_role")
+		if local == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "user_role tidak ditemukan",
+			})
+		}
+		userRoleStr, ok := local.(string)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "user_role is not a string",
+			})
+		}
+		userRole = userRoleStr
+	}
+	var territoryID int
+	if queryTerritoryID := c.Query("territory_id"); queryTerritoryID != "" {
+		var err error
+		territoryID, err = strconv.Atoi(queryTerritoryID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Invalid territory_id parameter",
+				"error":   err.Error(),
+			})
+		}
+	} else {
+		local := c.Locals("territory_id")
+		if local == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "territory_id tidak ditemukan",
+			})
+		}
+		territoryIDStr, ok := local.(int)
+		if !ok {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "territory_id is not a int",
+			})
+		}
+		territoryID = territoryIDStr
+	}
+
+	// Call service with filters
+	users, err := h.service.GetUsersResume(onlyRole, userRole, territoryID)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"users": users,
+	}
+
+	response := helper.APIResponse("Get Users Resume Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 	req := new(validation.UpdateProfileRequest)
 	if err := c.BodyParser(req); err != nil {
