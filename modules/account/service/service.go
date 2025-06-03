@@ -8,7 +8,7 @@ import (
 
 type AccountService interface {
 	GetAllAccounts(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int, onlyUserPic bool, excludeVisited bool) ([]response.AccountResponse, int64, error)
-	CountAccount(userRole string, territoryID int) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error)
+	CountAccount(userRole string, territoryID int, withGeoJson bool) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error)
 	CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error)
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
 	UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error)
