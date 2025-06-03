@@ -591,7 +591,6 @@ func (s *accountService) CountAccount(userRole string, territoryID int) (int64, 
 }
 
 func SplitFields(jsonString string, keys []string) (map[string][]string, error) {
-	fmt.Println("ahoy1")
 	// Cek jika JSON string kosong atau null
 	if jsonString == "" || jsonString == "null" {
 		// Jika kosong atau null, kembalikan array kosong untuk setiap key
@@ -599,10 +598,8 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 		for _, key := range keys {
 			result[key] = []string{}
 		}
-		fmt.Println("ahoy2")
 		return result, nil
 	}
-	fmt.Println("ahoy3")
 
 	// Slice untuk menampung hasil decoding JSON
 	var rawData []map[string]string
@@ -610,17 +607,13 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 	// Decode JSON menjadi slice of map[string]string
 	err := json.Unmarshal([]byte(jsonString), &rawData)
 	if err != nil {
-		fmt.Println("ahoy4")
 		return nil, fmt.Errorf("error decoding JSON: %v", err)
 	}
-	fmt.Println("ahoy5")
 
 	// Map untuk menyimpan hasil pemisahan berdasarkan key
 	result := make(map[string][]string)
-	fmt.Println("ahoy6")
 
 	// Iterasi untuk setiap record dalam rawData
-	fmt.Println("ahoy7")
 	for _, item := range rawData {
 		// Iterasi setiap key yang ingin dipisahkan
 		for _, key := range keys {
@@ -633,7 +626,6 @@ func SplitFields(jsonString string, keys []string) (map[string][]string, error) 
 			}
 		}
 	}
-	fmt.Println("ahoy8")
 
 	return result, nil
 }

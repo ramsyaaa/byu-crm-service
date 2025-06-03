@@ -147,6 +147,7 @@ type SingleAccountResponse struct {
 }
 
 type TerritoryInfo struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Geojson string `json:"geojson" gorm:"type:longtext"`
 }

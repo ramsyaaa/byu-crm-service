@@ -117,12 +117,15 @@ func (r *userRepository) GetAllUsers(
 	}
 
 	// Order
+	// Tambahkan count total_pic terlepas dari urutan
+	query = query.
+		Select("users.*, COUNT(accounts.pic) as total_pic").
+		Joins("LEFT JOIN accounts ON accounts.pic = users.id").
+		Group("users.id")
+
+	// Lalu baru tambahkan urutan kalau diperlukan
 	if orderByMostAssignedPic {
-		query = query.
-			Select("users.id, users.name, users.avatar, COUNT(accounts.pic) as total_pic").
-			Joins("LEFT JOIN accounts ON accounts.pic = users.id").
-			Group("users.id, users.name, users.avatar").
-			Order("total_pic DESC")
+		query = query.Order("total_pic DESC")
 	} else {
 		orderBy := filters["order_by"]
 		order := filters["order"]
@@ -146,15 +149,34 @@ func (r *userRepository) GetAllUsers(
 
 	// Bangun response
 	var responses []response.UserResponse
+	// Ambil semua user IDs
+	var userIDs []uint
 	for _, user := range users {
-		var roleNames []string
+		userIDs = append(userIDs, user.ID)
+	}
+
+	// Ambil semua role untuk user sekaligus
+	var userRoles []struct {
+		UserID uint
+		Name   string
+	}
+	if len(userIDs) > 0 {
 		r.db.
 			Table("roles").
-			Select("roles.name").
+			Select("model_has_roles.model_id as user_id, roles.name").
 			Joins("JOIN model_has_roles ON model_has_roles.role_id = roles.id").
-			Where("model_has_roles.model_id = ? AND model_has_roles.model_type = ?", user.ID, "App\\Models\\User").
-			Scan(&roleNames)
+			Where("model_has_roles.model_id IN ? AND model_has_roles.model_type = ?", userIDs, "App\\Models\\User").
+			Scan(&userRoles)
+	}
 
+	// Mapping userID ke roleNames
+	roleMap := make(map[uint][]string)
+	for _, ur := range userRoles {
+		roleMap[ur.UserID] = append(roleMap[ur.UserID], ur.Name)
+	}
+
+	// Bangun response
+	for _, user := range users {
 		response := response.UserResponse{
 			ID:            user.ID,
 			Name:          user.Name,
@@ -165,7 +187,8 @@ func (r *userRepository) GetAllUsers(
 			UserType:      user.UserType,
 			TerritoryID:   user.TerritoryID,
 			TerritoryType: user.TerritoryType,
-			RoleNames:     roleNames,
+			TotalPic:      user.TotalPic, // Pastikan field TotalPic bertipe int64 di models.User
+			RoleNames:     roleMap[user.ID],
 		}
 		responses = append(responses, response)
 	}
