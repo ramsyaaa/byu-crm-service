@@ -366,6 +366,7 @@ func (r *accountRepository) UpdateAccount(requestBody map[string]string, account
 func (r *accountRepository) CountAccount(
 	userRole string,
 	territoryID int,
+	withGeoJson bool,
 ) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error) {
 	var total int64
 	categories := make(map[string]int64)
@@ -376,91 +377,88 @@ func (r *accountRepository) CountAccount(
 		Count           int64
 	}
 
-	// Base query
-	query := r.db.Model(&models.Account{}).
-		Joins("LEFT JOIN cities ON accounts.City = cities.id").
+	baseQuery := r.db.Model(&models.Account{}).
+		Joins("LEFT JOIN cities ON accounts.city = cities.id").
 		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
 		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
 
-	// Role-based filter
-	if userRole != "Super-Admin" && userRole != "HQ" {
-		switch userRole {
-		case "Area":
-			query = query.Where("areas.id = ?", territoryID)
-		case "Regional":
-			query = query.Where("regions.id = ?", territoryID)
-		case "Branch", "Buddies", "DS", "Organic", "YAE":
-			query = query.Where("branches.id = ?", territoryID)
-		case "Admin-Tap", "Cluster":
-			query = query.Where("clusters.id = ?", territoryID)
-		}
+	// Apply role-based filters
+	switch userRole {
+	case "Area":
+		baseQuery = baseQuery.Where("areas.id = ?", territoryID)
+	case "Regional":
+		baseQuery = baseQuery.Where("regions.id = ?", territoryID)
+	case "Branch", "Buddies", "DS", "Organic", "YAE":
+		baseQuery = baseQuery.Where("branches.id = ?", territoryID)
+	case "Admin-Tap", "Cluster":
+		baseQuery = baseQuery.Where("clusters.id = ?", territoryID)
 	}
 
-	// Total count
-	if err := query.Count(&total).Error; err != nil {
+	// Count total accounts
+	if err := baseQuery.Count(&total).Error; err != nil {
 		return 0, nil, nil, currentTerritory, err
 	}
 
-	// Group by account_category
+	// Count grouped by category
 	var results []Result
-	err := query.
+	if err := baseQuery.
 		Select("account_category, COUNT(*) AS count").
 		Group("account_category").
-		Scan(&results).Error
-	if err != nil {
+		Scan(&results).Error; err != nil {
 		return 0, nil, nil, currentTerritory, err
 	}
+
 	for _, res := range results {
 		categories[res.AccountCategory] = res.Count
 	}
 
-	// Get count by territories
-	countByTerritories, err := r.CountByTerritories(userRole, territoryID)
+	// Count by territories
+	countByTerritories, err := r.CountByTerritories(userRole, territoryID, withGeoJson)
 	if err != nil {
 		return 0, nil, nil, currentTerritory, err
 	}
 
-	// Set currentTerritory
+	// Set current territory
 	switch userRole {
 	case "Super-Admin", "HQ":
 		currentTerritory = response.TerritoryInfo{ID: 0, Name: "Indonesia", Geojson: ""}
 	case "Area":
 		var area models.Area
-		if err := r.db.Select("id", "name", "geojson").First(&area, territoryID).Error; err == nil {
-			geoJson := ""
+		if err := r.db.Select("id", "name").First(&area, territoryID).Error; err == nil {
+			geojson := ""
 			if area.Geojson != nil {
-				geoJson = *area.Geojson
+				geojson = *area.Geojson
 			}
-			currentTerritory = response.TerritoryInfo{ID: int(area.ID), Name: area.Name, Geojson: geoJson}
+			currentTerritory = response.TerritoryInfo{ID: int(area.ID), Name: area.Name, Geojson: geojson}
 		}
 	case "Regional":
 		var region models.Region
-		if err := r.db.Select("id", "name", "geojson").First(&region, territoryID).Error; err == nil {
-			geoJson := ""
+		if err := r.db.Select("id", "name").First(&region, territoryID).Error; err == nil {
+			geojson := ""
 			if region.Geojson != nil {
-				geoJson = *region.Geojson
+				geojson = *region.Geojson
 			}
-			currentTerritory = response.TerritoryInfo{ID: int(region.ID), Name: region.Name, Geojson: geoJson}
+			currentTerritory = response.TerritoryInfo{ID: int(region.ID), Name: region.Name, Geojson: geojson}
 		}
 	case "Branch", "Buddies", "DS", "Organic", "YAE":
 		var branch models.Branch
-		if err := r.db.Select("id", "name", "geojson").First(&branch, territoryID).Error; err == nil {
-			geoJson := ""
+		if err := r.db.Select("id", "name").First(&branch, territoryID).Error; err == nil {
+			geojson := ""
 			if branch.Geojson != nil {
-				geoJson = *branch.Geojson
+				geojson = *branch.Geojson
 			}
-			currentTerritory = response.TerritoryInfo{ID: int(branch.ID), Name: branch.Name, Geojson: geoJson}
+			currentTerritory = response.TerritoryInfo{ID: int(branch.ID), Name: branch.Name, Geojson: geojson}
 		}
 	case "Admin-Tap", "Cluster":
 		var cluster models.Cluster
-		if err := r.db.Select("id", "name", "geojson").First(&cluster, territoryID).Error; err == nil {
-			geoJson := ""
+		if err := r.db.Select("id", "name").First(&cluster, territoryID).Error; err == nil {
+			geojson := ""
 			if cluster.Geojson != nil {
-				geoJson = *cluster.Geojson
+				geojson = *cluster.Geojson
 			}
-			currentTerritory = response.TerritoryInfo{ID: int(cluster.ID), Name: cluster.Name, Geojson: geoJson}
+			currentTerritory = response.TerritoryInfo{ID: int(cluster.ID), Name: cluster.Name, Geojson: geojson}
 		}
 	}
 
@@ -470,64 +468,52 @@ func (r *accountRepository) CountAccount(
 func (r *accountRepository) CountByTerritories(
 	userRole string,
 	territoryID int,
+	withGeoJson bool,
 ) ([]map[string]interface{}, error) {
-	type Result struct {
-		TerritoryID     int
-		TerritoryName   string
-		Geojson         *string
-		AccountCategory string
-		Count           int64
-	}
 
-	results := make([]Result, 0)
-
+	var results []Result
 	query := r.db.Model(&models.Account{}).
-		Joins("LEFT JOIN cities ON accounts.City = cities.id").
+		Joins("LEFT JOIN cities ON accounts.city = cities.id").
 		Joins("LEFT JOIN clusters ON cities.cluster_id = clusters.id").
 		Joins("LEFT JOIN branches ON clusters.branch_id = branches.id").
 		Joins("LEFT JOIN regions ON branches.region_id = regions.id").
 		Joins("LEFT JOIN areas ON regions.area_id = areas.id")
 
-	var groupColumn, displayColumn, idColumn, nextTerritory, geoJson string
+	var groupCol, nameCol, idCol, nextTerritory string
 
 	switch userRole {
 	case "Super-Admin", "HQ":
-		groupColumn = "areas.id"
-		displayColumn = "areas.name"
-		idColumn = "areas.id"
-		geoJson = "areas.geojson"
+		groupCol = "areas.id"
+		nameCol = "areas.name"
+		idCol = "areas.id"
 		nextTerritory = "Area"
 
 	case "Area":
 		query = query.Where("areas.id = ?", territoryID)
-		groupColumn = "regions.id"
-		displayColumn = "regions.name"
-		idColumn = "regions.id"
-		geoJson = "regions.geojson"
+		groupCol = "regions.id"
+		nameCol = "regions.name"
+		idCol = "regions.id"
 		nextTerritory = "Regional"
 
 	case "Regional":
 		query = query.Where("regions.id = ?", territoryID)
-		groupColumn = "branches.id"
-		displayColumn = "branches.name"
-		idColumn = "branches.id"
-		geoJson = "branches.geojson"
+		groupCol = "branches.id"
+		nameCol = "branches.name"
+		idCol = "branches.id"
 		nextTerritory = "Branch"
 
 	case "Branch", "Buddies", "DS", "YAE", "Organic":
 		query = query.Where("branches.id = ?", territoryID)
-		groupColumn = "clusters.id"
-		displayColumn = "clusters.name"
-		idColumn = "clusters.id"
-		geoJson = "clusters.geojson"
+		groupCol = "clusters.id"
+		nameCol = "clusters.name"
+		idCol = "clusters.id"
 		nextTerritory = "Cluster"
 
 	case "Cluster", "Admin-Tap":
 		query = query.Where("clusters.id = ?", territoryID)
-		groupColumn = "cities.id"
-		displayColumn = "cities.name"
-		idColumn = "cities.id"
-		geoJson = "cities.geojson"
+		groupCol = "cities.id"
+		nameCol = "cities.name"
+		idCol = "cities.id"
 		nextTerritory = ""
 
 	default:
@@ -535,41 +521,119 @@ func (r *accountRepository) CountByTerritories(
 	}
 
 	err := query.
-		Select(fmt.Sprintf("%s AS territory_id, %s AS territory_name, account_category, COUNT(*) AS count, %s as geojson", idColumn, displayColumn, geoJson)).
-		Group(fmt.Sprintf("%s, %s, account_category", groupColumn, displayColumn)).
+		Select(fmt.Sprintf("%s AS territory_id, %s AS territory_name, account_category, COUNT(*) AS count",
+			idCol, nameCol)).
+		Group(fmt.Sprintf("%s, %s, account_category", groupCol, nameCol)).
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// Susun hasil sesuai format
-	grouped := make(map[string]map[string]interface{})
-
-	for _, res := range results {
-		entry, exists := grouped[res.TerritoryName]
-		if !exists {
-			entry = map[string]interface{}{
-				"id":             res.TerritoryID,
-				"name":           res.TerritoryName,
-				"next_territory": nextTerritory,
-				"geojson":        res.Geojson,
-				"total":          int64(0),
-				"categories":     make(map[string]int64),
-			}
-			grouped[res.TerritoryName] = entry
+	geojsonMap := make(map[int]string)
+	if withGeoJson && len(results) > 0 {
+		geojsonMap, err = r.fetchGeojsonByRole(userRole, getTerritoryIDs(results))
+		if err != nil {
+			return nil, err
 		}
-		entry["total"] = entry["total"].(int64) + res.Count
-		categories := entry["categories"].(map[string]int64)
-		categories[res.AccountCategory] = res.Count
 	}
 
-	// Konversi ke slice
+	grouped := make(map[int]map[string]interface{})
+
+	for _, res := range results {
+		if _, exists := grouped[res.TerritoryID]; !exists {
+			geo := ""
+			if withGeoJson {
+				if g, ok := geojsonMap[res.TerritoryID]; ok {
+					geo = g
+				}
+			}
+
+			grouped[res.TerritoryID] = map[string]interface{}{
+				"id":             res.TerritoryID,
+				"name":           res.TerritoryName,
+				"geojson":        geo,
+				"next_territory": nextTerritory,
+				"total":          int64(0),
+				"categories":     map[string]int64{},
+			}
+		}
+		entry := grouped[res.TerritoryID]
+		entry["total"] = entry["total"].(int64) + res.Count
+		entry["categories"].(map[string]int64)[res.AccountCategory] = res.Count
+	}
+
 	final := make([]map[string]interface{}, 0, len(grouped))
 	for _, v := range grouped {
 		final = append(final, v)
 	}
 
 	return final, nil
+}
+
+type Result struct {
+	TerritoryID     int
+	TerritoryName   string
+	Geojson         *string
+	AccountCategory string
+	Count           int64
+}
+
+func getTerritoryIDs(results []Result) []int {
+	idMap := make(map[int]bool)
+	for _, r := range results {
+		idMap[r.TerritoryID] = true
+	}
+	ids := make([]int, 0, len(idMap))
+	for id := range idMap {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (r *accountRepository) fetchGeojsonByRole(role string, ids []int) (map[int]string, error) {
+	var table string
+	switch role {
+	case "Super-Admin", "HQ":
+		table = "areas"
+	case "Area":
+		table = "regions"
+	case "Regional":
+		table = "branches"
+	case "Branch", "Buddies", "DS", "YAE", "Organic":
+		table = "clusters"
+	case "Cluster", "Admin-Tap":
+		table = "cities"
+	default:
+		return nil, fmt.Errorf("unsupported role for geojson fetch")
+	}
+
+	type Row struct {
+		ID      int
+		Geojson *string
+	}
+
+	var rows []Row
+	fmt.Println("Total ID:", len(ids))
+	start := time.Now()
+
+	// Lakukan query
+	err := r.db.Table(table).Select("id, geojson").Where("id IN ?", ids).Find(&rows).Error
+
+	fmt.Println("Query waktu:", time.Since(start))
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[int]string)
+	for _, row := range rows {
+		if row.Geojson != nil {
+			result[row.ID] = *row.Geojson
+		} else {
+			result[row.ID] = ""
+		}
+	}
+	return result, nil
 }
 
 func (r *accountRepository) FindByAccountName(account_name string) (*models.Account, error) {

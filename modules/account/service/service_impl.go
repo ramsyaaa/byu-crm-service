@@ -582,8 +582,8 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	return &accountResponse, nil
 }
 
-func (s *accountService) CountAccount(userRole string, territoryID int) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error) {
-	count, categories, territories, territory_info, err := s.repo.CountAccount(userRole, territoryID)
+func (s *accountService) CountAccount(userRole string, territoryID int, withGeoJson bool) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error) {
+	count, categories, territories, territory_info, err := s.repo.CountAccount(userRole, territoryID, withGeoJson)
 	if err != nil {
 		return 0, nil, nil, response.TerritoryInfo{}, err
 	}
