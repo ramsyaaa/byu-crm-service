@@ -20,6 +20,7 @@ type User struct {
 	Roles       []Role   `gorm:"many2many:model_has_roles;joinForeignKey:ID;joinReferences:RoleID;foreignKey:ID;references:ID"`
 	RoleNames   []string `gorm:"-" json:"role_names"`
 	Permissions []string `gorm:"-" json:"permissions"`
+	TotalPic    *uint    `gorm:"column:total_pic" json:"total_pic"`
 }
 
 type UserResponse struct {

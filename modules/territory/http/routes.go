@@ -12,4 +12,5 @@ func TerritoryRoutes(router fiber.Router, handler *TerritoryHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllTerritories)
+	authRouter.Get("/resume", handler.GetAllTerritoryResume)
 }
