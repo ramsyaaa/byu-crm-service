@@ -140,6 +140,19 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 	year := uint(now.Year())
 	userID := c.Locals("user_id").(int)
 
+	if m := c.Query("month"); m != "" {
+		if parsedMonth, err := strconv.Atoi(m); err == nil && parsedMonth >= 1 && parsedMonth <= 12 {
+			month = uint(parsedMonth)
+		}
+	}
+
+	// Cek jika parameter year dikirim
+	if y := c.Query("year"); y != "" {
+		if parsedYear, err := strconv.Atoi(y); err == nil && parsedYear > 0 {
+			year = uint(parsedYear)
+		}
+	}
+
 	paramUserID := c.Query("user_id")
 	if paramUserID != "" {
 		if parsedID, err := strconv.Atoi(paramUserID); err == nil {
@@ -188,7 +201,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 				Percentage: fmt.Sprintf("%d%%", percentage),
 			})
 		} else if item.Name == "Presentasi Demo" {
-			PresentationActual, err := h.visitHistoryService.CountVisitHistory(userID, month, year, item.Name)
+			PresentationActual, err := h.visitHistoryService.CountVisitHistory(userID, month, year, "presentasi_demo")
 			if err != nil {
 				response := helper.APIResponse("Counting Visit Error", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
