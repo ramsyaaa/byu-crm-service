@@ -151,6 +151,7 @@ func Route(db *gorm.DB) {
 	routes.CategoryRouter(api, db)
 	routes.TypeRouter(api, db)
 	routes.ConstantDataRouter(api, db)
+	routes.MenuRouter(api, db)
 
 	app.Mount("/api/v1", api)
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
