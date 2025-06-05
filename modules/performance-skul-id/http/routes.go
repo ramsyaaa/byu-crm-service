@@ -1,8 +1,19 @@
 package http
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"byu-crm-service/middleware"
 
-func PerformanceSkulIdRoutes(app *fiber.App, handler *PerformanceSkulIdHandler) {
+	"github.com/gofiber/fiber/v2"
+)
 
-	app.Post("/performance-skul-id/import", handler.Import)
+func PerformanceSkulIdRoutes(router fiber.Router, handler *PerformanceSkulIdHandler) {
+
+	authRouter := router.Group("/performance-skul-id",
+		middleware.JWTMiddleware,
+		middleware.JWTUserContextMiddleware(),
+	)
+
+	authRouter.Post("/import", handler.Import)
+	authRouter.Get("/", handler.GetAllSkulIds)
+	authRouter.Post("/:account_id", handler.CreatePerformanceSkulID)
 }

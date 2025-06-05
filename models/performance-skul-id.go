@@ -20,6 +20,7 @@ type PerformanceSkulId struct {
 	ActivityMtd    *string    `gorm:"column:activity_mtd" json:"activity_mtd"`
 	FlagActiveMtd  *string    `gorm:"column:flag_active_mtd" json:"flag_active_mtd"`
 	SubdistrictId  *uint      `gorm:"column:subdistrict_id" json:"subdistrict_id"`
+	Batch          *string    `gorm:"column:batch" json:"batch"`
 	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt      time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
