@@ -78,6 +78,10 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 	return s.repo.Create(&performanceSkulId)
 }
 
+func (s *performanceSkulIdService) FindAll(limit, offset int, filters map[string]string, accountID int, page int, paginate bool) ([]models.PerformanceSkulId, int64, error) {
+	return s.repo.FindAll(limit, offset, filters, accountID, page, paginate)
+}
+
 func boolToInt(value string) *int {
 	var result int
 	if value == "Y" {
@@ -112,4 +116,35 @@ func parseDate(dateStr string) *time.Time {
 		return nil
 	}
 	return &parsedDate
+}
+
+func (s *performanceSkulIdService) FindBySerialNumberMsisdn(serial string) (*models.PerformanceSkulId, error) {
+	return s.repo.FindBySerialNumberMsisdn(serial)
+}
+
+func (s *performanceSkulIdService) FindByIdSkulId(idSkulId string) (*models.PerformanceSkulId, error) {
+	return s.repo.FindByIdSkulId(idSkulId)
+}
+
+func (s *performanceSkulIdService) CreatePerformanceSkulID(acccount_id int, userName, idSkulId, msisdn string, registeredDate *time.Time, provider *string, batch *string, user_type *string) (*models.PerformanceSkulId, error) {
+	uAccountId := uint(acccount_id)
+	performance := &models.PerformanceSkulId{
+		UserName:       &userName,
+		UserType:       user_type,
+		IdSkulid:       &idSkulId,
+		Msisdn:         &msisdn,
+		RegisteredDate: registeredDate,
+		Provider:       provider,
+		Batch:          batch,
+		AccountId:      &uAccountId,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	err := s.repo.Create(performance)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create performance skul id: %w", err)
+	}
+
+	return performance, nil
 }

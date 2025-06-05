@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"byu-crm-service/helper"
 	"byu-crm-service/modules/performance-skul-id/service"
 	"byu-crm-service/modules/performance-skul-id/validation"
 	"context"
@@ -11,6 +12,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -144,6 +147,112 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 	})
 }
 
+func (h *PerformanceSkulIdHandler) CreatePerformanceSkulID(c *fiber.Ctx) error {
+	req := new(validation.CreatePerformanceSkulIdRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Request Validation
+	errors := validation.ValidateCreate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	idParam := c.Params("account_id")
+
+	// Convert to int
+	account_id, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := helper.APIResponse("Invalid ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	existingIdSkulId, _ := h.service.FindByIdSkulId(req.IDSkulId)
+	if existingIdSkulId != nil {
+		errors := map[string]string{
+			"id_skulid": "ID SkulID sudah digunakan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	existingMSISDN, _ := h.service.FindBySerialNumberMsisdn(normalizePhoneNumber(req.MSISDN))
+	if existingMSISDN != nil {
+		errors := map[string]string{
+			"msisdn": "MSISDN sudah digunakan",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Parse RegisteredDate from string to *time.Time
+	var registeredDate *time.Time
+	if req.RegisteredDate != "" {
+		parsedDate, err := time.Parse("2006-01-02", req.RegisteredDate)
+		if err != nil {
+			response := helper.APIResponse("Invalid date format for RegisteredDate, expected YYYY-MM-DD", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+		registeredDate = &parsedDate
+	}
+
+	performance, err := h.service.CreatePerformanceSkulID(account_id, req.UserName, req.IDSkulId, normalizePhoneNumber(req.MSISDN), registeredDate, &req.Provider, &req.Batch, &req.UserType)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	// Response
+	response := helper.APIResponse("Performance created successful", fiber.StatusOK, "success", performance)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *PerformanceSkulIdHandler) GetAllSkulIds(c *fiber.Ctx) error {
+	// Default query params
+	var account_id int
+	paramAccountID := c.Query("account_id")
+	if parsedID, err := strconv.Atoi(paramAccountID); err == nil {
+		account_id = parsedID
+	} else {
+		response := helper.APIResponse("Invalid account_id", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	filters := map[string]string{
+		"search":     c.Query("search", ""),
+		"order_by":   c.Query("order_by", "id"),
+		"order":      c.Query("order", "DESC"),
+		"start_date": c.Query("start_date", ""),
+		"end_date":   c.Query("end_date", ""),
+		"user_type":  c.Query("user_type", ""),
+	}
+
+	// Parse integer and boolean values
+	limit, _ := strconv.Atoi(c.Query("limit", "10"))
+	paginate, _ := strconv.ParseBool(c.Query("paginate", "true"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+
+	// Call service with filters
+	performance_skulid, total, err := h.service.FindAll(limit, (page-1)*limit, filters, account_id, page, paginate)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch performance", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"performance_skulid": performance_skulid,
+		"total":              total,
+		"page":               page,
+	}
+
+	response := helper.APIResponse("Get Performance Skul ID Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 // countCSVRows menghitung jumlah total baris dalam file CSV
 func countCSVRows(filePath string) (int, error) {
 	file, err := os.Open(filePath)
@@ -168,4 +277,16 @@ func countCSVRows(filePath string) (int, error) {
 	}
 
 	return totalRows, nil
+}
+
+func normalizePhoneNumber(input string) string {
+	input = strings.TrimSpace(input)
+	input = strings.TrimPrefix(input, "+")
+	if strings.HasPrefix(input, "62") {
+		return input
+	}
+	if strings.HasPrefix(input, "0") {
+		return "62" + input[1:]
+	}
+	return input
 }
