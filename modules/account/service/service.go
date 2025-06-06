@@ -18,4 +18,6 @@ type AccountService interface {
 	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error
 	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.SingleAccountResponse, error)
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
+	UpdatePicMultipleAccounts(accountIDs []int, userID int) error
+	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
 }
