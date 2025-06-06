@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -209,6 +210,18 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
+
+	// Sort territories by id ASC
+	sort.Slice(territories, func(i, j int) bool {
+		idI, okI := territories[i]["id"].(int)
+		idJ, okJ := territories[j]["id"].(int)
+
+		if !okI || !okJ {
+			return false
+		}
+
+		return idI < idJ
+	})
 
 	// Return response
 	responseData := map[string]interface{}{
