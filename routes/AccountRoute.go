@@ -21,6 +21,7 @@ import (
 	productRepo "byu-crm-service/modules/product/repository"
 	regionRepo "byu-crm-service/modules/region/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
+	userRepo "byu-crm-service/modules/user/repository"
 
 	absenceUserService "byu-crm-service/modules/absence-user/service"
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
@@ -32,6 +33,7 @@ import (
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
+	userService "byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -55,6 +57,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	branchRepo := branchRepo.NewBranchRepository(db)
 	clusterRepo := clusterRepo.NewClusterRepository(db)
 	absenceUserRepo := absenceUserRepo.NewAbsenceUserRepository(db)
+	userRepo := userRepo.NewUserRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -70,8 +73,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountTypeCommunityDetailService := accountTypeCommunityDetailService.NewAccountTypeCommunityDetailService(accountTypeCommunityDetailRepo)
 	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
 	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo)
+	userService := userService.NewUserService(userRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService)
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService)
 
 	http.AccountRoutes(router, accountHandler)
 

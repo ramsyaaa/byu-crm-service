@@ -31,6 +31,7 @@ import (
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
+	userService "byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -47,6 +48,7 @@ type AccountHandler struct {
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService
 	productService                    productService.ProductService
 	absenceUserService                absenceUserService.AbsenceUserService
+	userService                       userService.UserService
 }
 
 func NewAccountHandler(
@@ -60,7 +62,8 @@ func NewAccountHandler(
 	accountTypeCampusDetailService accountTypeCampusDetailService.AccountTypeCampusDetailService,
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService,
 	productService productService.ProductService,
-	absenceUserService absenceUserService.AbsenceUserService) *AccountHandler {
+	absenceUserService absenceUserService.AbsenceUserService,
+	userService userService.UserService) *AccountHandler {
 
 	return &AccountHandler{
 		service:                           service,
@@ -73,7 +76,8 @@ func NewAccountHandler(
 		accountTypeCampusDetailService:    accountTypeCampusDetailService,
 		accountTypeCommunityDetailService: accountTypeCommunityDetailService,
 		productService:                    productService,
-		absenceUserService:                absenceUserService}
+		absenceUserService:                absenceUserService,
+		userService:                       userService}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -99,7 +103,40 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
-	userID := c.Locals("user_id").(int)
+
+	// Ambil user_id dari query jika tersedia, jika tidak pakai dari middleware
+	userIDStr := c.Query("user_id", "")
+	var userID int
+	var err error
+	if userIDStr != "" {
+		userID, err = strconv.Atoi(userIDStr)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "user_id harus berupa angka",
+			})
+		}
+
+		user, err := h.userService.GetUserByID(uint(userID))
+		if err != nil {
+			response := helper.APIResponse("User Not Found", fiber.StatusNotFound, "error", nil)
+			return c.Status(fiber.StatusNotFound).JSON(response)
+		}
+		if user.UserType == "Administrator" {
+			userRole = "Super-Admin"
+		} else if user.UserType == "HQ" {
+			userRole = "HQ"
+		} else if user.UserType == "AREA" {
+			userRole = "Area"
+		} else if user.UserType == "REGIONAL" {
+			userRole = "Regional"
+		} else if user.UserType == "BRANCH" {
+			userRole = "Branch"
+		}
+		territoryID = int(user.TerritoryID)
+	} else {
+		userID = c.Locals("user_id").(int)
+	}
+
 	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
 	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
 
