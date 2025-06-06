@@ -570,6 +570,37 @@ func (r *accountRepository) CountByTerritories(
 	return final, nil
 }
 
+func (r *accountRepository) FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error) {
+	var accounts []models.Account
+	if len(accountIDs) == 0 {
+		return accounts, nil
+	}
+
+	userIDStr := fmt.Sprintf("%d", userID)
+	err := r.db.Model(&models.Account{}).
+		Where("id IN ?", accountIDs).
+		Where("pic IS NOT NULL").
+		Where("pic != ''").
+		Where("pic != ?", userIDStr).
+		Find(&accounts).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return accounts, nil
+}
+
+func (r *accountRepository) UpdatePicMultipleAccounts(accountIDs []int, picID int) error {
+	if len(accountIDs) == 0 {
+		return nil // Tidak ada akun untuk diupdate
+	}
+
+	// Update hanya kolom 'pic'
+	return r.db.Model(&models.Account{}).
+		Where("id IN ?", accountIDs).
+		Updates(map[string]interface{}{"pic": picID}).Error
+}
+
 type Result struct {
 	TerritoryID     int
 	TerritoryName   string

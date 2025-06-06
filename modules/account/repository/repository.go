@@ -20,4 +20,6 @@ type AccountRepository interface {
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
 	CheckAlreadyUpdateData(accountID int, userID int, clockInTime time.Time) (bool, error)
 	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error
+	UpdatePicMultipleAccounts(accountIDs []int, picID int) error
+	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
 }
