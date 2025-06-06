@@ -590,6 +590,33 @@ func (s *accountService) CountAccount(userRole string, territoryID int, withGeoJ
 	return count, categories, territories, territory_info, nil
 }
 
+// FindAccountsWithDifferentPic retrieves accounts that have a different PIC than the specified user ID.
+func (s *accountService) FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error) {
+	// Validasi jika accountIDs kosong
+	if len(accountIDs) == 0 {
+		return nil, errors.New("no account IDs provided")
+	}
+	accounts, err := s.repo.FindAccountsWithDifferentPic(accountIDs, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error finding accounts with different PIC: %v", err)
+	}
+	return accounts, nil
+}
+
+func (s *accountService) UpdatePicMultipleAccounts(accountIDs []int, userID int) error {
+	// Validasi jika accountIDs kosong
+	if len(accountIDs) == 0 {
+		return errors.New("no account IDs provided")
+	}
+
+	err := s.repo.UpdatePicMultipleAccounts(accountIDs, userID)
+	if err != nil {
+		return fmt.Errorf("error updating PIC for account ID %d: %v", accountIDs, err)
+	}
+
+	return nil
+}
+
 func SplitFields(jsonString string, keys []string) (map[string][]string, error) {
 	// Cek jika JSON string kosong atau null
 	if jsonString == "" || jsonString == "null" {

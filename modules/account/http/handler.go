@@ -802,6 +802,70 @@ func (h *AccountHandler) UpdatePic(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *AccountHandler) UpdatePicMultipleAccounts(c *fiber.Ctx) error {
+
+	// Get the account IDs from the request body
+	var req struct {
+		AccountID     []string `json:"account_id"`
+		UserID        string   `json:"user_id"`
+		ConfirmChange string   `json:"confirm_change"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	userIDStr := req.UserID
+	if userIDStr == "" {
+		response := helper.APIResponse("User ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid User ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if len(req.AccountID) == 0 {
+		response := helper.APIResponse("Pilih minimal 1 account", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Convert []string to []int
+	accountIDs := make([]int, 0, len(req.AccountID))
+	for _, idStr := range req.AccountID {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			response := helper.APIResponse("Invalid Account ID in list: "+idStr, fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+		accountIDs = append(accountIDs, id)
+	}
+
+	if req.ConfirmChange != "1" {
+		// Check for accounts with different PIC
+		accountsWithDifferentPic, err := h.service.FindAccountsWithDifferentPic(accountIDs, userID)
+		if err != nil {
+			response := helper.APIResponse("Failed to check PIC accounts: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+		if len(accountsWithDifferentPic) > 0 {
+			response := helper.APIResponse("Sudah ada account dengan PIC yang lain yang sudah terdaftar", fiber.StatusUnprocessableEntity, "error", accountsWithDifferentPic)
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(response)
+		}
+	}
+
+	err = h.service.UpdatePicMultipleAccounts(accountIDs, userID)
+	if err != nil {
+		response := helper.APIResponse("Gagal update PIC accounts: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	response := helper.APIResponse("PIC Accounts successfully updated", fiber.StatusOK, "success", nil)
+
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func saveFileToLocal(file *multipart.FileHeader, directory string, allowedFormats []string) (*string, error) {
 	// Validate file type
 	ext := filepath.Ext(file.Filename)
