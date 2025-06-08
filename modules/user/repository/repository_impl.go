@@ -318,3 +318,90 @@ func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{})
 
 	return response, nil
 }
+
+func (r *userRepository) GetUserCountByRoles(
+	onlyRoles []string,
+	userRole string,
+	territoryID interface{},
+) (map[string]int64, error) {
+	type RoleCount struct {
+		RoleName string
+		Total    int64
+	}
+
+	var results []RoleCount
+	query := r.db.Table("users").
+		Select("roles.name as role_name, COUNT(users.id) as total").
+		Joins("JOIN model_has_roles ON model_has_roles.model_id = users.id AND model_has_roles.model_type = ?", "App\\Models\\User").
+		Joins("JOIN roles ON roles.id = model_has_roles.role_id").
+		Group("roles.name")
+
+	// Filter role
+	if len(onlyRoles) > 0 {
+		query = query.Where("roles.name IN ?", onlyRoles)
+	}
+
+	// Filter territory
+	if userRole != "" && territoryID != nil {
+		switch userRole {
+		case "Area":
+			var regionIDs []uint
+			if ids, ok := territoryID.([]uint); ok {
+				r.db.Model(&models.Region{}).Where("area_id IN ?", ids).Pluck("id", &regionIDs)
+			} else {
+				r.db.Model(&models.Region{}).Where("area_id = ?", territoryID).Pluck("id", &regionIDs)
+			}
+			var branchIDs []uint
+			r.db.Model(&models.Branch{}).Where("region_id IN ?", regionIDs).Pluck("id", &branchIDs)
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("users.territory_type = ? AND users.territory_id = ?", "App\\Models\\Area", territoryID).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Region", regionIDs).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Branch", branchIDs).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Region":
+			var branchIDs []uint
+			if ids, ok := territoryID.([]uint); ok {
+				r.db.Model(&models.Branch{}).Where("region_id IN ?", ids).Pluck("id", &branchIDs)
+			} else {
+				r.db.Model(&models.Branch{}).Where("region_id = ?", territoryID).Pluck("id", &branchIDs)
+			}
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("users.territory_type = ? AND users.territory_id = ?", "App\\Models\\Region", territoryID).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Branch", branchIDs).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Branch", "DS", "Buddies", "YAE":
+			var clusterIDs []uint
+			r.db.Model(&models.Cluster{}).Where("branch_id = ?", territoryID).Pluck("id", &clusterIDs)
+
+			query = query.Where(
+				r.db.Where("users.territory_type = ? AND users.territory_id = ?", "App\\Models\\Branch", territoryID).
+					Or("users.territory_type = ? AND users.territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
+			)
+
+		case "Cluster":
+			query = query.Where("users.territory_type = ? AND users.territory_id = ?", "App\\Models\\Cluster", territoryID)
+		}
+	}
+
+	if err := query.Scan(&results).Error; err != nil {
+		return nil, err
+	}
+
+	// Convert to map
+	countMap := make(map[string]int64)
+	for _, row := range results {
+		countMap[row.RoleName] = row.Total
+	}
+
+	return countMap, nil
+}
