@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"byu-crm-service/helper"
+	accountResponse "byu-crm-service/modules/account/response"
+	accountService "byu-crm-service/modules/account/service"
 	authService "byu-crm-service/modules/auth/service"
 	"byu-crm-service/modules/user/service"
 	"byu-crm-service/modules/user/validation"
@@ -13,12 +15,13 @@ import (
 )
 
 type UserHandler struct {
-	service     service.UserService
-	authService authService.AuthService
+	service        service.UserService
+	authService    authService.AuthService
+	accountService accountService.AccountService
 }
 
-func NewUserHandler(service service.UserService, authService authService.AuthService) *UserHandler {
-	return &UserHandler{service: service, authService: authService}
+func NewUserHandler(service service.UserService, authService authService.AuthService, accountService accountService.AccountService) *UserHandler {
+	return &UserHandler{service: service, authService: authService, accountService: accountService}
 }
 
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
@@ -38,9 +41,52 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 		})
 	}
 
+	accountsData := []accountResponse.AccountResponse{}
+	filters := map[string]string{
+		"search":           c.Query("search", ""),
+		"order_by":         c.Query("order_by", "id"),
+		"order":            c.Query("order", "DESC"),
+		"start_date":       c.Query("start_date", ""),
+		"end_date":         c.Query("end_date", ""),
+		"account_category": c.Query("account_category", ""),
+		"account_type":     c.Query("account_type", ""),
+		"only_skulid":      c.Query("only_skulid", "0"),
+		"is_priority":      c.Query("is_priority", "0"),
+	}
+
+	// Parse integer and boolean values
+	limit := 0
+	paginate := false
+	page := 1
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+
+	if user.UserType == "Administrator" {
+		userRole = "Super-Admin"
+	} else if user.UserType == "HQ" {
+		userRole = "HQ"
+	} else if user.UserType == "AREA" {
+		userRole = "Area"
+	} else if user.UserType == "REGIONAL" {
+		userRole = "Regional"
+	} else if user.UserType == "BRANCH" {
+		userRole = "Branch"
+	}
+
+	territoryID = int(user.TerritoryID)
+
+	onlyUserPic := true
+	accounts, _, err := h.accountService.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, intID, onlyUserPic, false)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch account PICs", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+	accountsData = accounts
+
 	// Return response
 	responseData := map[string]interface{}{
-		"user": user,
+		"user":     user,
+		"accounts": accountsData,
 	}
 
 	response := helper.APIResponse("Get User Successfully", fiber.StatusOK, "success", responseData)
