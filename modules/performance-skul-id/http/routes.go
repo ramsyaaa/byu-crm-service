@@ -14,6 +14,7 @@ func PerformanceSkulIdRoutes(router fiber.Router, handler *PerformanceSkulIdHand
 	)
 
 	authRouter.Post("/import", handler.Import)
+	authRouter.Post("/import-by-account/:id", handler.ImportByAccount)
 	authRouter.Get("/", handler.GetAllSkulIds)
 	authRouter.Post("/:account_id", handler.CreatePerformanceSkulID)
 }
