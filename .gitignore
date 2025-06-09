@@ -19,7 +19,7 @@
 # Dependency directories (remove the comment below to include it)
 tmp/
 temp/
-public/
+public/uploads/
 
 # Go workspace file
 go.work
