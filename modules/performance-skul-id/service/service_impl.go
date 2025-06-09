@@ -93,10 +93,12 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulIdByAccount(data []stri
 		return fmt.Errorf("id_skulid tidak boleh kosong")
 	}
 
+	formattedUserType := capitalizeFirst(userType)
+
 	performanceSkulId := models.PerformanceSkulId{
 		UserId:         func(u int) *uint { v := uint(u); return &v }(userID),
 		IdSkulid:       idSkulId,
-		UserType:       &userType,
+		UserType:       &formattedUserType,
 		RegisteredDate: parseDate(data[4]),
 		Msisdn:         &data[2],
 		Provider:       &data[3],
@@ -132,7 +134,7 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulIdByAccount(data []stri
 			updates["batch"] = data[5]
 		}
 
-		updates["user_type"] = userType
+		updates["user_type"] = formattedUserType
 		updates["user_id"] = userID
 		updates["account_id"] = account.ID
 		performanceSkulId.ID = existingPerformance.ID // Gunakan ID yang sudah ada
@@ -146,6 +148,14 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulIdByAccount(data []stri
 
 func (s *performanceSkulIdService) FindAll(limit, offset int, filters map[string]string, accountID int, page int, paginate bool) ([]models.PerformanceSkulId, int64, error) {
 	return s.repo.FindAll(limit, offset, filters, accountID, page, paginate)
+}
+
+func capitalizeFirst(s string) string {
+	s = strings.ToLower(s)
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToUpper(string(s[0])) + s[1:]
 }
 
 func boolToInt(value string) *int {
@@ -210,9 +220,10 @@ func (s *performanceSkulIdService) FindByIdSkulId(idSkulId string) (*models.Perf
 
 func (s *performanceSkulIdService) CreatePerformanceSkulID(acccount_id int, userName, idSkulId, msisdn string, registeredDate *time.Time, provider *string, batch *string, user_type *string) (*models.PerformanceSkulId, error) {
 	uAccountId := uint(acccount_id)
+	formattedUserType := capitalizeFirst(*user_type)
 	performance := &models.PerformanceSkulId{
 		UserName:       &userName,
-		UserType:       user_type,
+		UserType:       &formattedUserType,
 		IdSkulid:       &idSkulId,
 		Msisdn:         &msisdn,
 		RegisteredDate: registeredDate,
