@@ -12,11 +12,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/xuri/excelize/v2"
 )
 
 type PerformanceSkulIdHandler struct {
@@ -139,6 +141,121 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 			return
 		}
 		fmt.Println("Notification sent successfully:", responseMap["message"])
+	}()
+
+	return c.JSON(fiber.Map{
+		"message":           "File upload successful, processing in background",
+		"estimated_seconds": estimatedDuration.Seconds(),
+	})
+}
+
+func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
+	// Validate the uploaded file
+	if err := validation.ValidatePerformanceSkulIdRequest(c); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	userID := c.Locals("user_id").(int)
+	territoryID := c.Locals("territory_id").(int)
+	userRole := c.Locals("user_role").(string)
+	idParam := c.Params("id")
+
+	// Convert to int
+	accountID, err := strconv.Atoi(idParam)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID format", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Ambil user_type dari form-data
+	userType := c.FormValue("user_type")
+	if strings.TrimSpace(userType) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user_type tidak boleh kosong"})
+	}
+
+	if userType != "Siswa" && userType != "Sekolah" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user_type harus 'Siswa' atau 'Sekolah'"})
+	}
+
+	// Save file temporarily
+	file, err := c.FormFile("file_import")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to retrieve file"})
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".csv" && ext != ".xlsx" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be CSV or XLSX"})
+	}
+
+	tempPath := "./temp/" + file.Filename
+	if _, err := os.Stat("./temp/"); os.IsNotExist(err) {
+		if err := os.Mkdir("./temp/", os.ModePerm); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create temp directory"})
+		}
+	}
+
+	if err := c.SaveFile(file, tempPath); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file"})
+	}
+
+	// Estimasi waktu pemrosesan
+	totalRows, err := countRows(tempPath, ext)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to count rows"})
+	}
+
+	processingTimePerRow := 0.5
+	estimatedDuration := time.Duration(float64(totalRows) * processingTimePerRow * float64(time.Second))
+
+	go func() {
+		defer os.Remove(tempPath)
+
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		var rows [][]string
+
+		if ext == ".csv" {
+			f, err := os.Open(tempPath)
+			if err != nil {
+				fmt.Println("Failed to open CSV file:", err)
+				return
+			}
+			defer f.Close()
+
+			reader := csv.NewReader(f)
+			rows, err = reader.ReadAll()
+			if err != nil {
+				fmt.Println("Failed to read CSV:", err)
+				return
+			}
+
+		} else if ext == ".xlsx" {
+			f, err := excelize.OpenFile(tempPath)
+			if err != nil {
+				fmt.Println("Failed to open Excel file:", err)
+				return
+			}
+			defer f.Close()
+
+			sheet := f.GetSheetName(0)
+			rows, err = f.GetRows(sheet)
+			if err != nil {
+				fmt.Println("Failed to read Excel rows:", err)
+				return
+			}
+		}
+
+		for i, row := range rows {
+			if i == 0 {
+				continue // skip header
+			}
+			if err := h.service.ProcessPerformanceSkulIdByAccount(row, userID, accountID, userRole, territoryID, userType); err != nil {
+				fmt.Println("Error processing row:", err)
+				continue
+			}
+		}
 	}()
 
 	return c.JSON(fiber.Map{
@@ -289,4 +406,37 @@ func normalizePhoneNumber(input string) string {
 		return "62" + input[1:]
 	}
 	return input
+}
+
+func countRows(path, ext string) (int, error) {
+	if ext == ".csv" {
+		f, err := os.Open(path)
+		if err != nil {
+			return 0, err
+		}
+		defer f.Close()
+
+		reader := csv.NewReader(f)
+		rows, err := reader.ReadAll()
+		if err != nil {
+			return 0, err
+		}
+		return len(rows) - 1, nil // minus header
+
+	} else if ext == ".xlsx" {
+		f, err := excelize.OpenFile(path)
+		if err != nil {
+			return 0, err
+		}
+		defer f.Close()
+
+		sheet := f.GetSheetName(0)
+		rows, err := f.GetRows(sheet)
+		if err != nil {
+			return 0, err
+		}
+		return len(rows) - 1, nil
+	}
+
+	return 0, fmt.Errorf("unsupported file extension")
 }

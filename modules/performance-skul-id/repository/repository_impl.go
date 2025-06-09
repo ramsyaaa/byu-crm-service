@@ -3,7 +3,9 @@ package repository
 import (
 	"byu-crm-service/models"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -103,4 +105,16 @@ func (r *performanceSkulIdRepository) FindAll(limit, offset int, filters map[str
 
 func (r *performanceSkulIdRepository) Update(performance *models.PerformanceSkulId) error {
 	return r.db.Save(performance).Error
+}
+
+func (r *performanceSkulIdRepository) UpdateByFields(id uint, fields map[string]interface{}) error {
+	if len(fields) == 0 {
+		return fmt.Errorf("no fields provided to update")
+	}
+
+	fields["updated_at"] = time.Now()
+
+	return r.db.Model(&models.PerformanceSkulId{}).
+		Where("id = ?", id).
+		Updates(fields).Error
 }
