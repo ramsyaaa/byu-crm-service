@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -150,7 +149,7 @@ func (h *PerformanceSkulIdHandler) Import(c *fiber.Ctx) error {
 }
 
 func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
-	// Validate the uploaded file
+	// Validasi form
 	if err := validation.ValidatePerformanceSkulIdRequest(c); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -160,14 +159,12 @@ func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
 	idParam := c.Params("id")
 
-	// Convert to int
 	accountID, err := strconv.Atoi(idParam)
 	if err != nil {
 		response := helper.APIResponse("Invalid Account ID format", fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Ambil user_type dari form-data
 	userType := c.FormValue("user_type")
 	if strings.TrimSpace(userType) == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user_type tidak boleh kosong"})
@@ -177,49 +174,60 @@ func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user_type harus 'Siswa' atau 'Sekolah'"})
 	}
 
-	// Save file temporarily
-	file, err := c.FormFile("file_import")
+	// Ambil base64 dari form
+	base64File := c.FormValue("file_import")
+	if strings.TrimSpace(base64File) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus diunggah dalam bentuk base64"})
+	}
+
+	// Decode file base64
+	decoded, mimeType, err := helper.DecodeBase64File(base64File)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to retrieve file"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File tidak valid: " + err.Error()})
 	}
 
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if ext != ".csv" && ext != ".xlsx" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File must be CSV or XLSX"})
+	// Validasi ukuran maksimal 5MB
+	if len(decoded) > 5*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ukuran file maksimum adalah 5MB"})
 	}
 
-	tempPath := "./temp/" + file.Filename
+	// Validasi MIME type
+	var ext string
+	switch mimeType {
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		ext = ".xlsx"
+	case "application/vnd.ms-excel", "text/csv":
+		ext = ".csv"
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus berformat CSV atau XLSX"})
+	}
+
+	// Simpan file sementara
+	tempPath := fmt.Sprintf("./temp/upload_%d%s", time.Now().UnixNano(), ext)
 	if _, err := os.Stat("./temp/"); os.IsNotExist(err) {
-		if err := os.Mkdir("./temp/", os.ModePerm); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create temp directory"})
-		}
+		_ = os.Mkdir("./temp/", os.ModePerm)
+	}
+	if err := os.WriteFile(tempPath, decoded, 0644); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan file sementara"})
 	}
 
-	if err := c.SaveFile(file, tempPath); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save file"})
-	}
-
-	// Estimasi waktu pemrosesan
+	// Hitung estimasi proses
 	totalRows, err := countRows(tempPath, ext)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to count rows"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menghitung jumlah baris data"})
 	}
+	estimatedDuration := time.Duration(float64(totalRows)*0.5) * time.Second
 
-	processingTimePerRow := 0.5
-	estimatedDuration := time.Duration(float64(totalRows) * processingTimePerRow * float64(time.Second))
-
+	// Proses di background
 	go func() {
 		defer os.Remove(tempPath)
-
-		_, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
 
 		var rows [][]string
 
 		if ext == ".csv" {
 			f, err := os.Open(tempPath)
 			if err != nil {
-				fmt.Println("Failed to open CSV file:", err)
+				fmt.Println("Gagal membuka file CSV:", err)
 				return
 			}
 			defer f.Close()
@@ -227,14 +235,14 @@ func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
 			reader := csv.NewReader(f)
 			rows, err = reader.ReadAll()
 			if err != nil {
-				fmt.Println("Failed to read CSV:", err)
+				fmt.Println("Gagal membaca file CSV:", err)
 				return
 			}
 
 		} else if ext == ".xlsx" {
 			f, err := excelize.OpenFile(tempPath)
 			if err != nil {
-				fmt.Println("Failed to open Excel file:", err)
+				fmt.Println("Gagal membuka file Excel:", err)
 				return
 			}
 			defer f.Close()
@@ -242,24 +250,24 @@ func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
 			sheet := f.GetSheetName(0)
 			rows, err = f.GetRows(sheet)
 			if err != nil {
-				fmt.Println("Failed to read Excel rows:", err)
+				fmt.Println("Gagal membaca baris Excel:", err)
 				return
 			}
 		}
 
 		for i, row := range rows {
 			if i == 0 {
-				continue // skip header
+				continue // Lewati header
 			}
 			if err := h.service.ProcessPerformanceSkulIdByAccount(row, userID, accountID, userRole, territoryID, userType); err != nil {
-				fmt.Println("Error processing row:", err)
+				fmt.Println("Gagal memproses baris:", err)
 				continue
 			}
 		}
 	}()
 
 	response := helper.APIResponse(
-		"File upload successful, processing in background",
+		"File berhasil diunggah dan sedang diproses di latar belakang",
 		fiber.StatusOK,
 		"success",
 		map[string]interface{}{
