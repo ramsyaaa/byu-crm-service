@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"database/sql"
 	"log"
 	"time"
 
@@ -116,62 +117,91 @@ func (s *LogRetentionService) GetLogStats() (map[string]interface{}, error) {
 func (s *LogRetentionService) GetLogStatsWithFilters(apiOnly, startDate, endDate string) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	// Build base query
-	query := s.db.Model(&models.ApiLog{})
+	// Base query
+	baseQuery := s.db.Model(&models.ApiLog{})
 
-	// Apply API only filter
+	// Apply filters
 	if apiOnly == "true" {
-		query = query.Where("endpoint LIKE '/api/%'")
+		baseQuery = baseQuery.Where("endpoint LIKE '/api/%'")
 	}
-
-	// Apply date filters
 	if startDate != "" {
 		if start, err := time.Parse("2006-01-02", startDate); err == nil {
-			query = query.Where("accessed_at >= ?", start)
+			baseQuery = baseQuery.Where("accessed_at >= ?", start)
 		}
 	}
-
 	if endDate != "" {
 		if end, err := time.Parse("2006-01-02", endDate); err == nil {
-			// Add 24 hours to include the entire end date
-			endDateTime := end.Add(24 * time.Hour)
-			query = query.Where("accessed_at < ?", endDateTime)
+			baseQuery = baseQuery.Where("accessed_at < ?", end.Add(24*time.Hour))
 		}
 	}
 
 	// Total count
 	var totalCount int64
-	if err := query.Count(&totalCount).Error; err != nil {
+	if err := baseQuery.Count(&totalCount).Error; err != nil {
 		return nil, err
 	}
 	stats["total_logs"] = totalCount
 
-	// Count by status code ranges
+	// Status code counts
 	var successCount, clientErrorCount, serverErrorCount int64
-	query.Where("status_code >= 200 AND status_code < 300").Count(&successCount)
-	query.Where("status_code >= 400 AND status_code < 500").Count(&clientErrorCount)
-	query.Where("status_code >= 500").Count(&serverErrorCount)
+
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Where("status_code >= 200 AND status_code < 300").Count(&successCount)
+
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Where("status_code >= 400 AND status_code < 500").Count(&clientErrorCount)
+
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Where("status_code >= 500").Count(&serverErrorCount)
 
 	stats["success_count"] = successCount
 	stats["client_error_count"] = clientErrorCount
 	stats["server_error_count"] = serverErrorCount
 
-	// Average response time
-	var avgResponseTime float64
-	query.Select("AVG(response_time_ms)").Scan(&avgResponseTime)
-	stats["avg_response_time_ms"] = avgResponseTime
+	// Average response time (handle NULL)
+	var avg sql.NullFloat64
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Select("AVG(response_time_ms)").Scan(&avg)
 
-	// Most recent log
+	if avg.Valid {
+		stats["avg_response_time_ms"] = avg.Float64
+	} else {
+		stats["avg_response_time_ms"] = 0.0
+	}
+
+	// Most recent
 	var mostRecent time.Time
-	query.Select("MAX(created_at)").Scan(&mostRecent)
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Select("MAX(created_at)").Scan(&mostRecent)
 	stats["most_recent_log"] = mostRecent
 
-	// Oldest log
+	// Oldest
 	var oldest time.Time
-	query.Select("MIN(created_at)").Scan(&oldest)
+	s.db.Model(&models.ApiLog{}).Scopes(applyFilters(apiOnly, startDate, endDate)).
+		Select("MIN(created_at)").Scan(&oldest)
 	stats["oldest_log"] = oldest
 
 	return stats, nil
+}
+
+// Reusable filter scope
+func applyFilters(apiOnly, startDate, endDate string) func(*gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if apiOnly == "true" {
+			db = db.Where("endpoint LIKE '/api/%'")
+		}
+		if startDate != "" {
+			if start, err := time.Parse("2006-01-02", startDate); err == nil {
+				db = db.Where("accessed_at >= ?", start)
+			}
+		}
+		if endDate != "" {
+			if end, err := time.Parse("2006-01-02", endDate); err == nil {
+				db = db.Where("accessed_at < ?", end.Add(24*time.Hour))
+			}
+		}
+		return db
+	}
 }
 
 // StartPeriodicCleanup starts a background goroutine that periodically cleans up old logs
