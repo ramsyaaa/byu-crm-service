@@ -258,10 +258,15 @@ func (h *PerformanceSkulIdHandler) ImportByAccount(c *fiber.Ctx) error {
 		}
 	}()
 
-	return c.JSON(fiber.Map{
-		"message":           "File upload successful, processing in background",
-		"estimated_seconds": estimatedDuration.Seconds(),
-	})
+	response := helper.APIResponse(
+		"File upload successful, processing in background",
+		fiber.StatusOK,
+		"success",
+		map[string]interface{}{
+			"estimated_seconds": estimatedDuration.Seconds(),
+		},
+	)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h *PerformanceSkulIdHandler) CreatePerformanceSkulID(c *fiber.Ctx) error {
