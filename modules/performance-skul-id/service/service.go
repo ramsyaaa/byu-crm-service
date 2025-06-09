@@ -7,6 +7,7 @@ import (
 
 type PerformanceSkulIdService interface {
 	ProcessPerformanceSkulId(data []string) error
+	ProcessPerformanceSkulIdByAccount(data []string, userID, accountID int, userRole string, territoryID int, userType string) error
 	FindAll(limit, offset int, filters map[string]string, accountID int, page int, paginate bool) ([]models.PerformanceSkulId, int64, error)
 	FindBySerialNumberMsisdn(serial string) (*models.PerformanceSkulId, error)
 	FindByIdSkulId(idSkulId string) (*models.PerformanceSkulId, error)

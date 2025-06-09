@@ -78,6 +78,72 @@ func (s *performanceSkulIdService) ProcessPerformanceSkulId(data []string) error
 	return s.repo.Create(&performanceSkulId)
 }
 
+func (s *performanceSkulIdService) ProcessPerformanceSkulIdByAccount(data []string, userID, accountID int, userRole string, territoryID int, userType string) error {
+	account, err := s.accountRepo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+	if err != nil {
+		return err
+	}
+
+	if account == nil {
+		return fmt.Errorf("account not found")
+	}
+
+	idSkulId := &data[0]
+	if idSkulId == nil || *idSkulId == "" {
+		return fmt.Errorf("id_skulid tidak boleh kosong")
+	}
+
+	performanceSkulId := models.PerformanceSkulId{
+		UserId:         func(u int) *uint { v := uint(u); return &v }(userID),
+		IdSkulid:       idSkulId,
+		UserType:       &userType,
+		RegisteredDate: parseDate(data[4]),
+		Msisdn:         &data[2],
+		Provider:       &data[3],
+		AccountId:      &account.ID,
+		UserName:       &data[1],
+		Batch:          &data[5],
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	existingPerformance, err := s.repo.FindByIdSkulId(*idSkulId)
+	if err != nil {
+		return err
+	}
+
+	if existingPerformance != nil {
+		updates := map[string]interface{}{}
+
+		updates["id_skulid"] = *idSkulId
+		if data[1] != "" {
+			updates["user_name"] = data[1]
+		}
+		if data[2] != "" {
+			updates["msisdn"] = data[2]
+		}
+		if data[3] != "" {
+			updates["provider"] = data[3]
+		}
+		if date := parseDate(data[4]); !date.IsZero() {
+			updates["registered_date"] = date
+		}
+		if data[5] != "" {
+			updates["batch"] = data[5]
+		}
+
+		updates["user_type"] = userType
+		updates["user_id"] = userID
+		updates["account_id"] = account.ID
+		performanceSkulId.ID = existingPerformance.ID // Gunakan ID yang sudah ada
+		fmt.Printf("Updating existing performance skul id for %s\n", *idSkulId)
+
+		return s.repo.UpdateByFields(performanceSkulId.ID, updates)
+	}
+	fmt.Printf("Creating new performance skul id for %s\n", *idSkulId)
+	return s.repo.Create(&performanceSkulId)
+}
+
 func (s *performanceSkulIdService) FindAll(limit, offset int, filters map[string]string, accountID int, page int, paginate bool) ([]models.PerformanceSkulId, int64, error) {
 	return s.repo.FindAll(limit, offset, filters, accountID, page, paginate)
 }
@@ -110,12 +176,28 @@ func parseDate(dateStr string) *time.Time {
 		return nil
 	}
 
-	parsedDate, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		fmt.Printf("Error parsing date: %s\n", err)
-		return nil
+	formats := []string{
+		"2006-01-02",      // 2025-06-08
+		"02/01/2006",      // 08/06/2025
+		"02-01-2006",      // 08-06-2025
+		"02 Jan 2006",     // 08 Jun 2025
+		"January 2, 2006", // June 8, 2025
+		"2 Jan 2006",      // 8 Jun 2025
+		"2006/01/02",      // 2025/06/08
+		"2006.01.02",      // 2025.06.08
+		"02.01.2006",      // 08.06.2025
+		"02-Jan-2006",     // 08-Jun-2025
+		"02-01-06",        // 09-09-20 → 2020-09-09 (dd-MM-yy)
 	}
-	return &parsedDate
+
+	for _, format := range formats {
+		if parsedDate, err := time.Parse(format, dateStr); err == nil {
+			return &parsedDate
+		}
+	}
+
+	fmt.Printf("Error: unsupported date format: %s\n", dateStr)
+	return nil
 }
 
 func (s *performanceSkulIdService) FindBySerialNumberMsisdn(serial string) (*models.PerformanceSkulId, error) {
