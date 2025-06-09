@@ -1,8 +1,11 @@
 package routes
 
 import (
+	accountRepository "byu-crm-service/modules/account/repository"
+	accountService "byu-crm-service/modules/account/service"
 	authRepository "byu-crm-service/modules/auth/repository"
 	authService "byu-crm-service/modules/auth/service"
+	cityRepo "byu-crm-service/modules/city/repository"
 	"byu-crm-service/modules/user/http"
 	"byu-crm-service/modules/user/repository"
 	"byu-crm-service/modules/user/service"
@@ -14,9 +17,12 @@ import (
 func UserRouter(router fiber.Router, db *gorm.DB) {
 	userRepo := repository.NewUserRepository(db)
 	authRepo := authRepository.NewAuthRepository(db)
+	accountRepo := accountRepository.NewAccountRepository(db)
+	cityRepo := cityRepo.NewCityRepository(db)
 	userService := service.NewUserService(userRepo)
 	authService := authService.NewAuthService(authRepo)
-	userHandler := http.NewUserHandler(userService, authService)
+	accountService := accountService.NewAccountService(accountRepo, cityRepo)
+	userHandler := http.NewUserHandler(userService, authService, accountService)
 
 	http.UserRoutes(router, userHandler)
 
