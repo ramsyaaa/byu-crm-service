@@ -16,6 +16,8 @@ import (
 
 func Route(db *gorm.DB) {
 
+	RedisClient := InitRedis()
+
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
 		// Disable strict routing to allow more flexible URL handling
@@ -134,7 +136,7 @@ func Route(db *gorm.DB) {
 	routes.CityRouter(api, db)
 	routes.SubdistrictRouter(api, db)
 
-	routes.AccountRouter(api, db)
+	routes.AccountRouter(api, db, RedisClient)
 	routes.ContactRouter(api, db)
 	routes.OpportunityRouter(api, db)
 	routes.CommunicationRouter(api, db)

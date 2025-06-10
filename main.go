@@ -14,6 +14,8 @@ func main() {
 		log.Println(".env file not found, using environment variables instead")
 	}
 
+	config.InitRedis()
+
 	// Connect to database
 	db := config.Connect()
 

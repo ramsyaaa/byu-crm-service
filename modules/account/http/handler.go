@@ -6,16 +6,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"byu-crm-service/helper"
 	"byu-crm-service/models"
@@ -50,6 +48,7 @@ type AccountHandler struct {
 	productService                    productService.ProductService
 	absenceUserService                absenceUserService.AbsenceUserService
 	userService                       userService.UserService
+	redis                             *redis.Client
 }
 
 func NewAccountHandler(
@@ -64,7 +63,8 @@ func NewAccountHandler(
 	accountTypeCommunityDetailService accountTypeCommunityDetailService.AccountTypeCommunityDetailService,
 	productService productService.ProductService,
 	absenceUserService absenceUserService.AbsenceUserService,
-	userService userService.UserService) *AccountHandler {
+	userService userService.UserService,
+	redis *redis.Client) *AccountHandler {
 
 	return &AccountHandler{
 		service:                           service,
@@ -78,7 +78,8 @@ func NewAccountHandler(
 		accountTypeCommunityDetailService: accountTypeCommunityDetailService,
 		productService:                    productService,
 		absenceUserService:                absenceUserService,
-		userService:                       userService}
+		userService:                       userService,
+		redis:                             redis}
 }
 
 func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
@@ -141,6 +142,25 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
 	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
 
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("accounts:user=%d:role=%s:territory=%d:page=%d:limit=%d:paginate=%v:onlyUserPic=%v:excludeVisited=%v",
+		userID, userRole, territoryID, page, limit, paginate, onlyUserPic, excludeVisited)
+
+	for k, v := range filters {
+		cacheKey += fmt.Sprintf(":%s=%s", k, v)
+	}
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get Accounts (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	// Call service with filters
 	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 	if err != nil {
@@ -156,6 +176,10 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 		"total":    total,
 		"page":     page,
 	}
+
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(responseData)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -202,6 +226,20 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 		}
 	}
 
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("accountsOverview:role=%s:territory=%d:withGeoJson=%v", userRole, territoryID, withGeoJson)
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get Accounts Overview (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	// Call service with filters
 	total, categories, territories, territory_info, err := h.service.CountAccount(userRole, territoryID, withGeoJson)
 	if err != nil {
@@ -230,6 +268,10 @@ func (h *AccountHandler) GetCountAccount(c *fiber.Ctx) error {
 		"categories":     categories,
 		"territories":    territories,
 	}
+
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(responseData)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -291,6 +333,24 @@ func (h *AccountHandler) GetAccountVisitCounts(c *fiber.Ctx) error {
 	territoryID := c.Locals("territory_id").(int)
 	userID := c.Locals("user_id").(int)
 
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("accountsVisitCount:role=%s:territory=%d:userID=%d", userRole, territoryID, userID)
+
+	for k, v := range filters {
+		cacheKey += fmt.Sprintf(":%s=%s", k, v)
+	}
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get Accounts Visit Count (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	// Call service with filters
 	visited_account, not_visited, total, err := h.service.GetAccountVisitCounts(filters, userRole, territoryID, userID)
 	if err != nil {
@@ -306,6 +366,10 @@ func (h *AccountHandler) GetAccountVisitCounts(c *fiber.Ctx) error {
 		"not_visited":     not_visited,
 		"total":           total,
 	}
+
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(responseData)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -325,11 +389,29 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("accountByID:role=%s:territory=%d:userID=%d:accountID=%d", userRole, territoryID, userID, id)
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get Account By ID (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	account, err := h.service.FindByAccountID(uint(id), userRole, uint(territoryID), uint(userID))
 	if err != nil {
 		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
+
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(account)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Success get account", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -914,65 +996,4 @@ func (h *AccountHandler) UpdatePicMultipleAccounts(c *fiber.Ctx) error {
 	response := helper.APIResponse("PIC Accounts successfully updated", fiber.StatusOK, "success", nil)
 
 	return c.Status(fiber.StatusOK).JSON(response)
-}
-
-func saveFileToLocal(file *multipart.FileHeader, directory string, allowedFormats []string) (*string, error) {
-	// Validate file type
-	ext := filepath.Ext(file.Filename)
-	ext = strings.ToLower(ext)
-
-	// Check if the file extension is allowed
-	isValidExt := false
-	for _, allowedExt := range allowedFormats {
-		if ext == allowedExt {
-			isValidExt = true
-			break
-		}
-	}
-
-	if !isValidExt {
-		return nil, fmt.Errorf("invalid file format. Allowed formats are: %v", allowedFormats)
-	}
-
-	// Define a unique file name
-	filename := fmt.Sprintf("%s%s", generateUniqueID(), ext)
-
-	// Define the full path where to save the file
-	savePath := filepath.Join("public", directory, filename)
-
-	// Create the directory if it doesn't exist
-	dir := filepath.Dir(savePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			return nil, fmt.Errorf("failed to create directories for file storage: %v", err)
-		}
-	}
-
-	// Open the file from the incoming multipart request
-	fileSrc, err := file.Open()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %v", err)
-	}
-	defer fileSrc.Close()
-
-	// Create the destination file on the server
-	fileDest, err := os.Create(savePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create file: %v", err)
-	}
-	defer fileDest.Close()
-
-	// Copy the content of the uploaded file to the destination file
-	_, err = io.Copy(fileDest, fileSrc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to save file: %v", err)
-	}
-
-	// Return the relative path to the saved file
-	filePath := fmt.Sprintf("/%s/%s", directory, filename)
-	return &filePath, nil
-}
-
-func generateUniqueID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
