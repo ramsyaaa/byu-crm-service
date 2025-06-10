@@ -239,7 +239,7 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 
 	headers := []string{
 		"No", "Kode YAE", "Area", "Region", "Branch", "Cluster", "City", "Nama Pengguna", "Clock In", "Clock Out", "Durasi", "Nama Akun", "Kode Akun",
-		"School Campus Profiling", "Activity & Engagement", "Gambar Presentasi Demo", "Deskripsi Presentasi Demo", "Alasan Tidak Presentasi", "Sales Performance", "Gambar Dealing", "Alasan Tidak Dealing", "SkulID Activity",
+		"School Campus Profiling", "Activity & Engagement", "Gambar Presentasi Demo", "Deskripsi Presentasi Demo", "Alasan Tidak Presentasi", "Sales Performance", "Gambar Dealing", "Jumlah Dealing", "Alasan Tidak Dealing", "SkulID Activity",
 		"Deskripsi SkulID",
 	}
 
@@ -358,6 +358,7 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 		presentationReason := "-"
 		isDealingSekolah := "No"
 		dealingImage := "-"
+		amountDealing := ""
 		dealingReason := "-"
 		isSkulId := "No"
 		skulIdDescription := "-"
@@ -399,6 +400,9 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 						}
 					}
 				}
+				if val, ok := detailVisitMap["amount_dealing"]; ok {
+					amountDealing = fmt.Sprintf("%v", val)
+				}
 				if val, ok := detailVisitMap["dealing_sekolah_reason"]; ok {
 					dealingReason = fmt.Sprintf("%v", val)
 				}
@@ -408,9 +412,16 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 			}
 		}
 
+		schoolCampusProfiling := "Belum Dilengkapi"
+
 		if abs.VisitHistory != nil && abs.VisitHistory.Target != nil {
 			TargetMap, err := parseJSONStringToMap(*abs.VisitHistory.Target)
 			if err == nil {
+				if val, ok := TargetMap["survey_sekolah"]; ok {
+					if num, ok := val.(float64); ok && num == 1 {
+						schoolCampusProfiling = "Sudah Dilengkapi"
+					}
+				}
 				if val, ok := TargetMap["presentasi_demo"]; ok {
 					if num, ok := val.(float64); ok && num == 1 {
 						isPresentationDemo = "Yes"
@@ -442,23 +453,11 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 				f.SetCellValue(sheet, fmt.Sprintf("M%d", row), "-")
 			}
 
-			// Cek kelengkapan data school profiling
-			school := abs.Account.SchoolDetail
-			if school != nil &&
-				school.DiesNatalis != nil &&
-				school.Extracurricular != nil && *school.Extracurricular != "" &&
-				school.FootballFieldBrannnding != nil && *school.FootballFieldBrannnding != "" &&
-				school.BasketballFieldBranding != nil && *school.BasketballFieldBranding != "" &&
-				school.WallPaintingBranding != nil && *school.WallPaintingBranding != "" &&
-				school.WallMagazineBranding != nil && *school.WallMagazineBranding != "" {
-				f.SetCellValue(sheet, fmt.Sprintf("N%d", row), "Sudah Dilengkapi")
-			} else {
-				f.SetCellValue(sheet, fmt.Sprintf("N%d", row), "Belum Dilengkapi")
-			}
+			f.SetCellValue(sheet, fmt.Sprintf("N%d", row), schoolCampusProfiling)
 		} else {
 			f.SetCellValue(sheet, fmt.Sprintf("L%d", row), "-")
 			f.SetCellValue(sheet, fmt.Sprintf("M%d", row), "-")
-			f.SetCellValue(sheet, fmt.Sprintf("N%d", row), "Belum Dilengkapi")
+			f.SetCellValue(sheet, fmt.Sprintf("N%d", row), schoolCampusProfiling)
 		}
 
 		f.SetCellValue(sheet, fmt.Sprintf("O%d", row), isPresentationDemo)
@@ -467,9 +466,10 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 		f.SetCellValue(sheet, fmt.Sprintf("R%d", row), presentationReason)
 		f.SetCellValue(sheet, fmt.Sprintf("S%d", row), isDealingSekolah)
 		f.SetCellValue(sheet, fmt.Sprintf("T%d", row), dealingImage)
-		f.SetCellValue(sheet, fmt.Sprintf("U%d", row), dealingReason)
-		f.SetCellValue(sheet, fmt.Sprintf("V%d", row), isSkulId)
-		f.SetCellValue(sheet, fmt.Sprintf("W%d", row), skulIdDescription)
+		f.SetCellValue(sheet, fmt.Sprintf("U%d", row), amountDealing)
+		f.SetCellValue(sheet, fmt.Sprintf("V%d", row), dealingReason)
+		f.SetCellValue(sheet, fmt.Sprintf("W%d", row), isSkulId)
+		f.SetCellValue(sheet, fmt.Sprintf("X%d", row), skulIdDescription)
 
 	}
 

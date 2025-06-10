@@ -416,6 +416,28 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 						}
 
 						detailVisit["event_name"] = helper.UppercaseTrim(event_name)
+
+						amountDealingStr := c.FormValue("amount_dealing")
+						if amountDealingStr == "" {
+							errors := map[string]string{
+								"amount_dealing": "Jumlah dealing harus diisi",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						// Validasi bahwa amount_dealing adalah angka
+						amountDealing, err := strconv.Atoi(amountDealingStr)
+						if err != nil {
+							errors := map[string]string{
+								"amount_dealing": "Jumlah dealing harus berupa angka",
+							}
+							response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+							return c.Status(fiber.StatusBadRequest).JSON(response)
+						}
+
+						detailVisit["amount_dealing"] = strconv.Itoa(amountDealing)
+
 					} else if valueStr == "0" {
 						dealingReason := c.FormValue("dealing_reason")
 						if dealingReason == "" {
