@@ -22,10 +22,14 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	query := r.db.Model(&models.AbsenceUser{}).
 		Joins("LEFT JOIN users ON users.id = absence_users.user_id").
 		Joins("LEFT JOIN accounts ON accounts.id = absence_users.subject_id AND absence_users.subject_type = ?", "App\\Models\\Account").
+		Joins("LEFT JOIN cities ON cities.id = accounts.city").
 		Joins("LEFT JOIN account_type_school_details ON account_type_school_details.account_id = accounts.id").
 		Select(`absence_users.*, 
 			users.name AS user_name, 
 			users.yae_code AS yae_code,
+			cities.name AS city_name,
+			cities.cluster_id AS cluster_id,
+			cities.id AS city_id,
 			accounts.account_name, 
 			accounts.account_code, 
 			account_type_school_details.dies_natalis, 

@@ -22,4 +22,7 @@ type AbsenceUser struct {
 	UserName                 string                    `gorm:"->" json:"user_name"`
 	YaeCode                  *string                   `gorm:"->" json:"yae_code"`
 	AccountTypeSchoolDetails *AccountTypeSchoolDetails `json:"account_type_school_details,omitempty" gorm:"-"`
+	CityID                   *int                      `gorm:"->" json:"city_id"`
+	CityName                 *string                   `gorm:"->" json:"city_name"`
+	ClusterID                *int                      `gorm:"->" json:"cluster_id"`
 }

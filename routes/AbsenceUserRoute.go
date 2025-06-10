@@ -9,6 +9,7 @@ import (
 	cityRepo "byu-crm-service/modules/city/repository"
 	kpiYaeRangeRepo "byu-crm-service/modules/kpi-yae-range/repository"
 	kpiYaeRangeService "byu-crm-service/modules/kpi-yae-range/service"
+	territoryRepo "byu-crm-service/modules/territory/repository"
 	visitChecklistRepo "byu-crm-service/modules/visit-checklist/repository"
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryRepo "byu-crm-service/modules/visit-history/repository"
@@ -25,8 +26,9 @@ func AbsenceUserRouter(router fiber.Router, db *gorm.DB) {
 	cityRepo := cityRepo.NewCityRepository(db)
 	kpiYaeRangeRepo := kpiYaeRangeRepo.NewKpiYaeRangeRepository(db)
 	visitChecklistRepo := visitChecklistRepo.NewVisitChecklistRepository(db)
+	territoryRepo := territoryRepo.NewTerritoryRepository(db)
 
-	absenceUserService := service.NewAbsenceUserService(absenceUserRepo)
+	absenceUserService := service.NewAbsenceUserService(absenceUserRepo, territoryRepo)
 	visitHistoryService := visitHistoryService.NewVisitHistoryService(visitHistoryRepo)
 	accountService := accountService.NewAccountService(accountRepo, cityRepo)
 	kpiYaeRangeService := kpiYaeRangeService.NewKpiYaeRangeService(kpiYaeRangeRepo)
