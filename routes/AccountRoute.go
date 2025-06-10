@@ -1,6 +1,7 @@
 package routes
 
 import (
+	// "byu-crm-service/config" // Removed to fix import cycle
 	absenceUserRepo "byu-crm-service/modules/absence-user/repository"
 	accountFacultyRepo "byu-crm-service/modules/account-faculty/repository"
 	accountMemberRepo "byu-crm-service/modules/account-member/repository"
@@ -21,6 +22,7 @@ import (
 	productRepo "byu-crm-service/modules/product/repository"
 	regionRepo "byu-crm-service/modules/region/repository"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
+	territoryRepo "byu-crm-service/modules/territory/repository"
 	userRepo "byu-crm-service/modules/user/repository"
 
 	absenceUserService "byu-crm-service/modules/absence-user/service"
@@ -36,10 +38,13 @@ import (
 	userService "byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func AccountRouter(router fiber.Router, db *gorm.DB) {
+func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
+	// redisClient is now passed as a dependency to avoid import cycle
+
 	accountRepo := repository.NewAccountRepository(db)
 	cityRepo := cityRepo.NewCityRepository(db)
 	contactAccountRepo := contactAccountRepo.NewContactAccountRepository(db)
@@ -58,6 +63,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	clusterRepo := clusterRepo.NewClusterRepository(db)
 	absenceUserRepo := absenceUserRepo.NewAbsenceUserRepository(db)
 	userRepo := userRepo.NewUserRepository(db)
+	territoryRepo := territoryRepo.NewTerritoryRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -72,10 +78,10 @@ func AccountRouter(router fiber.Router, db *gorm.DB) {
 	accountTypeCampusDetailService := accountTypeCampusDetailService.NewAccountTypeCampusDetailService(accountTypeCampusDetailRepo)
 	accountTypeCommunityDetailService := accountTypeCommunityDetailService.NewAccountTypeCommunityDetailService(accountTypeCommunityDetailRepo)
 	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
-	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo)
+	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo, territoryRepo)
 	userService := userService.NewUserService(userRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService)
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, redisClient.(*redis.Client))
 
 	http.AccountRoutes(router, accountHandler)
 

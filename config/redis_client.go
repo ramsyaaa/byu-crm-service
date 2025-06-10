@@ -3,41 +3,37 @@ package config
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"time"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
+var RedisClient *redis.Client
 var Ctx = context.Background()
 
-// Redis Client global
-var RedisClient *redis.Client
-
-// Init Redis
-func InitRedis() {
-	// Load environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-
-	redisAddr := os.Getenv("REDIS_ADDR")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-	redisDB := 0
-
-	// Inisialisasi Redis Client
+func InitRedis() *redis.Client {
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword, // Kosong jika tanpa password
-		DB:       redisDB,       // Gunakan database Redis ke-0
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
+		Password: os.Getenv("REDIS_PASSWORD"), // kosongkan jika tidak pakai password
+		DB:       0,                           // gunakan DB default
 	})
 
-	// Cek koneksi Redis
-	pong, err := RedisClient.Ping(Ctx).Result()
+	// Test koneksi
+	_, err := RedisClient.Ping(Ctx).Result()
 	if err != nil {
-		log.Fatalf("❌ Redis Connection Failed: %v", err)
+		panic(fmt.Sprintf("Gagal terhubung ke Redis: %v", err))
 	}
-	fmt.Println("✅ Redis Connected:", pong)
+
+	fmt.Println("Redis berhasil terhubung!")
+	return RedisClient
+}
+
+// Contoh fungsi untuk menyimpan dan membaca data
+func SetRedis(key string, value string, expiration time.Duration) error {
+	return RedisClient.Set(Ctx, key, value, expiration).Err()
+}
+
+func GetRedis(key string) (string, error) {
+	return RedisClient.Get(Ctx, key).Result()
 }
