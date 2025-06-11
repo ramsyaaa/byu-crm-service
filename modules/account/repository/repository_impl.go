@@ -637,6 +637,20 @@ func (r *accountRepository) UpdatePicMultipleAccounts(accountIDs []int, picID in
 		Updates(map[string]interface{}{"pic": picID}).Error
 }
 
+func (r *accountRepository) UpdateAccountsPriority(accountIDs []int, priority string) error {
+	if len(accountIDs) == 0 {
+		return nil
+	}
+
+	if err := r.db.Model(&models.Account{}).
+		Where("id IN ?", accountIDs).
+		Update("priority", priority).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *accountRepository) FindByAccountName(account_name string) (*models.Account, error) {
 	var account models.Account
 	if err := r.db.Where("account_name = ?", account_name).First(&account).Error; err != nil {

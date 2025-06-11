@@ -19,5 +19,6 @@ type AccountService interface {
 	FindByAccountID(id uint, userRole string, territoryID uint, userID uint) (*response.SingleAccountResponse, error)
 	GetAccountVisitCounts(filters map[string]string, userRole string, territoryID int, userID int) (int64, int64, int64, error)
 	UpdatePicMultipleAccounts(accountIDs []int, userID int) error
+	UpdatePriorityMultipleAccounts(accountIDs []int, priority string) error
 	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
 }
