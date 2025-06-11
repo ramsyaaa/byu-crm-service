@@ -11,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -995,5 +996,63 @@ func (h *AccountHandler) UpdatePicMultipleAccounts(c *fiber.Ctx) error {
 
 	response := helper.APIResponse("PIC Accounts successfully updated", fiber.StatusOK, "success", nil)
 
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) UpdatePriorityMultipleAccounts(c *fiber.Ctx) error {
+	// Get the account IDs and priority from the request body
+	var req struct {
+		AccountID []string `json:"account_id"`
+		Priority  string   `json:"priority"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		response := helper.APIResponse("Format request tidak valid: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Validasi account_id
+	if len(req.AccountID) == 0 {
+		response := helper.APIResponse("Pilih minimal 1 account", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	if strings.TrimSpace(req.Priority) == "" {
+		errors := map[string]string{
+			"priority": "Priority harus diisi",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Validasi priority
+	validPriorities := map[string]bool{"P1": true, "P2": true, "P3": true}
+	if !validPriorities[req.Priority] {
+		errors := map[string]string{
+			"priority": "Priority tidak valid, harus P1, P2, atau P3",
+		}
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Convert []string to []int
+	accountIDs := make([]int, 0, len(req.AccountID))
+	for _, idStr := range req.AccountID {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			response := helper.APIResponse("ID akun tidak valid: "+idStr, fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+		accountIDs = append(accountIDs, id)
+	}
+
+	// Call service to update priority
+	err := h.service.UpdatePriorityMultipleAccounts(accountIDs, req.Priority)
+	if err != nil {
+		response := helper.APIResponse("Gagal update priority akun: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	response := helper.APIResponse("Priority akun berhasil diperbarui", fiber.StatusOK, "success", nil)
 	return c.Status(fiber.StatusOK).JSON(response)
 }

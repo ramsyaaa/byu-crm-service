@@ -617,6 +617,11 @@ func (s *accountService) UpdatePicMultipleAccounts(accountIDs []int, userID int)
 	return nil
 }
 
+func (s *accountService) UpdatePriorityMultipleAccounts(accountIDs []int, priority string) error {
+	// Update langsung di database
+	return s.repo.UpdateAccountsPriority(accountIDs, priority)
+}
+
 func SplitFields(jsonString string, keys []string) (map[string][]string, error) {
 	// Cek jika JSON string kosong atau null
 	if jsonString == "" || jsonString == "null" {
