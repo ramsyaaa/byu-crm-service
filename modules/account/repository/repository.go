@@ -21,5 +21,6 @@ type AccountRepository interface {
 	CheckAlreadyUpdateData(accountID int, userID int, clockInTime time.Time) (bool, error)
 	CreateHistoryActivityAccount(userID, accountID uint, updateType string, subjectType *string, subjectID *uint) error
 	UpdatePicMultipleAccounts(accountIDs []int, picID int) error
+	UpdateAccountsPriority(accountIDs []int, priority string) error
 	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
 }
