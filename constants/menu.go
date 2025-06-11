@@ -82,6 +82,13 @@ var MenuList = []Menu{
 				Status:     false,
 			},
 			{
+				Name:       "Setting Priority Account",
+				Icon:       "fa-solid fa-arrow-up-short-wide",
+				Permission: "view setting priority account",
+				Route:      "/accounts-priority",
+				Status:     true,
+			},
+			{
 				Name:       "Faculties",
 				Icon:       "fa-solid fa-building-columns",
 				Permission: "view user",
