@@ -86,7 +86,7 @@ var MenuList = []Menu{
 				Icon:       "fa-solid fa-arrow-up-short-wide",
 				Permission: "view setting priority account",
 				Route:      "/accounts-priority",
-				Status:     false,
+				Status:     true,
 			},
 			{
 				Name:       "Faculties",
