@@ -152,6 +152,7 @@ func Route(db *gorm.DB) {
 	routes.VisitChecklistRouter(api, db)
 	routes.CategoryRouter(api, db)
 	routes.TypeRouter(api, db)
+	routes.PermissionRouter(api, db, RedisClient)
 	routes.ConstantDataRouter(api, db)
 	routes.MenuRouter(api, db)
 
