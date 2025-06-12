@@ -18,6 +18,10 @@ func (s *permissionService) GetAllPermissions(limit int, paginate bool, page int
 	return s.repo.GetAllPermissions(limit, paginate, page, filters)
 }
 
+func (s *permissionService) GetAllPermissionsByRoleID(role_id int) ([]response.PermissionResponse, error) {
+	return s.repo.GetAllPermissionsByRoleID(role_id)
+}
+
 func (s *permissionService) GetPermissionByID(id int) (*response.PermissionResponse, error) {
 	return s.repo.GetPermissionByID(id)
 }
@@ -34,4 +38,11 @@ func (s *permissionService) CreatePermission(name *string) (*response.Permission
 func (s *permissionService) UpdatePermission(name *string, id int) (*response.PermissionResponse, error) {
 	Permission := &models.Permission{Name: *name, GuardName: "web"}
 	return s.repo.UpdatePermission(Permission, id)
+}
+
+func (s *permissionService) UpdateRolePermissions(roleID int, permissionIDs []int) error {
+	return s.repo.UpdateRolePermissions(roleID, permissionIDs)
+}
+func (s *permissionService) AddRolePermissions(roleID int, permissionIDs []int) error {
+	return s.repo.AddRolePermissions(roleID, permissionIDs)
 }
