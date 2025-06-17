@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/modules/faculty/service"
 	"byu-crm-service/modules/faculty/validation"
 	"strconv"
+	"strings"
 
 	"byu-crm-service/helper"
 
@@ -93,7 +94,7 @@ func (h *FacultyHandler) CreateFaculty(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	existingFaculty, _ := h.facultyService.GetFacultyByName(req.Name)
+	existingFaculty, _ := h.facultyService.GetFacultyByName(strings.ToUpper(strings.TrimSpace(req.Name)))
 	if existingFaculty != nil {
 		errors := map[string]string{
 			"name": "Nama Fakultas sudah digunakan",
@@ -102,7 +103,8 @@ func (h *FacultyHandler) CreateFaculty(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	faculty, err := h.facultyService.CreateFaculty(&req.Name)
+	upperName := strings.ToUpper(strings.TrimSpace(req.Name))
+	faculty, err := h.facultyService.CreateFaculty(&upperName)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
@@ -144,7 +146,7 @@ func (h *FacultyHandler) UpdateFaculty(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	existingFaculty, err := h.facultyService.GetFacultyByName(req.Name)
+	existingFaculty, err := h.facultyService.GetFacultyByName(strings.ToUpper(strings.TrimSpace(req.Name)))
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch faculty",
@@ -152,7 +154,7 @@ func (h *FacultyHandler) UpdateFaculty(c *fiber.Ctx) error {
 		})
 	}
 
-	if existingFaculty != nil && *currentFaculty.Name != req.Name {
+	if existingFaculty != nil && !strings.EqualFold(strings.TrimSpace(*currentFaculty.Name), strings.TrimSpace(req.Name)) {
 		errors := map[string]string{
 			"name": "Nama Fakultas sudah digunakan",
 		}
@@ -160,7 +162,8 @@ func (h *FacultyHandler) UpdateFaculty(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	faculty, err := h.facultyService.UpdateFaculty(&req.Name, intID)
+	updatedName := strings.ToUpper(strings.TrimSpace(req.Name))
+	faculty, err := h.facultyService.UpdateFaculty(&updatedName, intID)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
