@@ -31,31 +31,34 @@ func (r *userRepository) GetAllUsers(
 	var users []models.User
 	var total int64
 
-	query := r.db.Model(&models.User{}).
+	// ======================= Base Query for Filter =======================
+	baseQuery := r.db.Model(&models.User{}).
 		Joins("LEFT JOIN model_has_roles ON model_has_roles.model_id = users.id AND model_has_roles.model_type = ?", "App\\Models\\User").
 		Joins("LEFT JOIN roles ON roles.id = model_has_roles.role_id").
 		Group("users.id")
 
-	// Filter onlyRole
+	// Filter by Role
 	if len(onlyRole) > 0 {
-		query = query.Where("roles.name IN ?", onlyRole)
+		baseQuery = baseQuery.Where("roles.name IN ?", onlyRole)
 	}
 
-	// Filter search
+	// Search filter
 	if search, exists := filters["search"]; exists && search != "" {
 		tokens := strings.Fields(search)
 		for _, token := range tokens {
-			query = query.Where("users.name LIKE ?", "%"+token+"%")
+			baseQuery = baseQuery.Where("users.name LIKE ?", "%"+token+"%")
 		}
 	}
 
-	// Filter tanggal
+	// Date filter
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
-		query = query.Where("users.created_at >= ?", startDate)
+		baseQuery = baseQuery.Where("users.created_at >= ?", startDate)
 	}
 	if endDate, exists := filters["end_date"]; exists && endDate != "" {
-		query = query.Where("users.created_at <= ?", endDate)
+		baseQuery = baseQuery.Where("users.created_at <= ?", endDate)
 	}
+
+	// ======================= Role-based filtering =======================
 
 	if userRole != "" && territoryID != nil {
 		switch userRole {
@@ -66,14 +69,12 @@ func (r *userRepository) GetAllUsers(
 			} else {
 				r.db.Model(&models.Region{}).Where("area_id = ?", territoryID).Pluck("id", &regionIDs)
 			}
-
 			var branchIDs []uint
 			r.db.Model(&models.Branch{}).Where("region_id IN ?", regionIDs).Pluck("id", &branchIDs)
-
 			var clusterIDs []uint
 			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
 
-			query = query.Where(
+			baseQuery = baseQuery.Where(
 				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Area", territoryID).
 					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Region", regionIDs).
 					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Branch", branchIDs).
@@ -87,11 +88,10 @@ func (r *userRepository) GetAllUsers(
 			} else {
 				r.db.Model(&models.Branch{}).Where("region_id = ?", territoryID).Pluck("id", &branchIDs)
 			}
-
 			var clusterIDs []uint
 			r.db.Model(&models.Cluster{}).Where("branch_id IN ?", branchIDs).Pluck("id", &clusterIDs)
 
-			query = query.Where(
+			baseQuery = baseQuery.Where(
 				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Region", territoryID).
 					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Branch", branchIDs).
 					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
@@ -101,61 +101,67 @@ func (r *userRepository) GetAllUsers(
 			var clusterIDs []uint
 			r.db.Model(&models.Cluster{}).Where("branch_id = ?", territoryID).Pluck("id", &clusterIDs)
 
-			query = query.Where(
+			baseQuery = baseQuery.Where(
 				r.db.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Branch", territoryID).
 					Or("territory_type = ? AND territory_id IN ?", "App\\Models\\Cluster", clusterIDs),
 			)
 
 		case "Cluster":
-			query = query.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Cluster", territoryID)
+			baseQuery = baseQuery.Where("territory_type = ? AND territory_id = ?", "App\\Models\\Cluster", territoryID)
 		}
 	}
 
-	// Hitung total
-	if err := query.Count(&total).Error; err != nil {
+	// ======================= Count Query =======================
+	countQuery := baseQuery.Session(&gorm.Session{}) // clone
+	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Order
-	// Tambahkan count total_pic terlepas dari urutan
-	query = query.
-		Select("users.*, COUNT(accounts.pic) as total_pic").
-		Joins("LEFT JOIN accounts ON accounts.pic = users.id").
-		Group("users.id")
-
-	// Lalu baru tambahkan urutan kalau diperlukan
-	if orderByMostAssignedPic {
-		query = query.Order("total_pic DESC")
-	} else {
-		orderBy := filters["order_by"]
-		order := filters["order"]
-		if orderBy != "" && order != "" {
-			query = query.Order(orderBy + " " + order)
-		}
-	}
-
-	// Pagination
+	// ======================= Pagination =======================
 	if paginate {
 		offset := (page - 1) * limit
-		query = query.Limit(limit).Offset(offset)
+		baseQuery = baseQuery.Limit(limit).Offset(offset)
 	} else if limit > 0 {
-		query = query.Limit(limit)
+		baseQuery = baseQuery.Limit(limit)
 	}
 
-	// Ambil data user
-	if err := query.Find(&users).Error; err != nil {
+	// ======================= Order =======================
+	orderBy := filters["order_by"]
+	order := filters["order"]
+	if orderByMostAssignedPic {
+		// Diambil terpisah nanti
+	} else if orderBy != "" && order != "" {
+		baseQuery = baseQuery.Order(orderBy + " " + order)
+	}
+
+	// ======================= Query Data Users =======================
+	if err := baseQuery.Select("users.id, users.name, users.email, users.avatar, users.msisdn, users.user_status, users.user_type, users.territory_type, users.territory_id").Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Bangun response
-	var responses []response.UserResponse
-	// Ambil semua user IDs
+	// ======================= Ambil TotalPic =======================
 	var userIDs []uint
-	for _, user := range users {
-		userIDs = append(userIDs, user.ID)
+	for _, u := range users {
+		userIDs = append(userIDs, u.ID)
 	}
 
-	// Ambil semua role untuk user sekaligus
+	var userPics []struct {
+		UserID   uint
+		TotalPic int64
+	}
+	if len(userIDs) > 0 {
+		r.db.Model(&models.Account{}).
+			Select("pic as user_id, COUNT(*) as total_pic").
+			Where("pic IN ?", userIDs).
+			Group("pic").
+			Scan(&userPics)
+	}
+	picMap := map[uint]int64{}
+	for _, up := range userPics {
+		picMap[up.UserID] = up.TotalPic
+	}
+
+	// ======================= Ambil Role =======================
 	var userRoles []struct {
 		UserID uint
 		Name   string
@@ -168,16 +174,20 @@ func (r *userRepository) GetAllUsers(
 			Where("model_has_roles.model_id IN ? AND model_has_roles.model_type = ?", userIDs, "App\\Models\\User").
 			Scan(&userRoles)
 	}
-
-	// Mapping userID ke roleNames
 	roleMap := make(map[uint][]string)
 	for _, ur := range userRoles {
 		roleMap[ur.UserID] = append(roleMap[ur.UserID], ur.Name)
 	}
 
-	// Bangun response
+	// ======================= Bangun Response =======================
+	var responses []response.UserResponse
 	for _, user := range users {
-		response := response.UserResponse{
+		var totalPic *uint
+		if v, ok := picMap[user.ID]; ok {
+			u := uint(v)
+			totalPic = &u
+		}
+		responses = append(responses, response.UserResponse{
 			ID:            user.ID,
 			Name:          user.Name,
 			Email:         user.Email,
@@ -187,10 +197,9 @@ func (r *userRepository) GetAllUsers(
 			UserType:      user.UserType,
 			TerritoryID:   user.TerritoryID,
 			TerritoryType: user.TerritoryType,
-			TotalPic:      user.TotalPic, // Pastikan field TotalPic bertipe int64 di models.User
+			TotalPic:      totalPic,
 			RoleNames:     roleMap[user.ID],
-		}
-		responses = append(responses, response)
+		})
 	}
 
 	return responses, total, nil
