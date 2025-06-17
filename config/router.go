@@ -147,7 +147,7 @@ func Route(db *gorm.DB) {
 	routes.RegistrationDealingRouter(api, db)
 
 	routes.AbsenceUserRouter(api, db)
-	routes.UserRouter(api, db)
+	routes.UserRouter(api, db, RedisClient)
 	routes.KpiYaeRangeRouter(api, db)
 	routes.VisitChecklistRouter(api, db)
 	routes.CategoryRouter(api, db)

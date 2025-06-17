@@ -11,10 +11,11 @@ import (
 	"byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func UserRouter(router fiber.Router, db *gorm.DB) {
+func UserRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	userRepo := repository.NewUserRepository(db)
 	authRepo := authRepository.NewAuthRepository(db)
 	accountRepo := accountRepository.NewAccountRepository(db)
@@ -22,7 +23,7 @@ func UserRouter(router fiber.Router, db *gorm.DB) {
 	userService := service.NewUserService(userRepo)
 	authService := authService.NewAuthService(authRepo)
 	accountService := accountService.NewAccountService(accountRepo, cityRepo)
-	userHandler := http.NewUserHandler(userService, authService, accountService)
+	userHandler := http.NewUserHandler(userService, authService, accountService, redisClient.(*redis.Client))
 
 	http.UserRoutes(router, userHandler)
 
