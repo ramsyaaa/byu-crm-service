@@ -481,6 +481,360 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 	return &buf, nil
 }
 
+func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error) {
+	// Ambil data
+	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType)
+	if err != nil {
+		return nil, err
+	}
+
+	finalData := make(map[string]map[string]models.AbsenceUser)
+
+	for _, absence := range absences {
+		// Ambil bulan dan tahun
+		monthName := absence.ClockIn.Month().String()
+		year := absence.ClockIn.Year()
+		key := fmt.Sprintf("%s %d", monthName, year) // contoh: "April 2025"
+
+		// Buat uniqueKey: UserID + SubjectType + SubjectID
+		userID := uint(0)
+		if absence.UserID != nil {
+			userID = *absence.UserID
+		}
+		subjectType := ""
+		if absence.SubjectType != nil {
+			subjectType = *absence.SubjectType
+		}
+		subjectID := uint(0)
+		if absence.SubjectID != nil {
+			subjectID = *absence.SubjectID
+		}
+		uniqueKey := fmt.Sprintf("%d%s%d", userID, subjectType, subjectID)
+
+		// Inisialisasi jika key bulan belum ada
+		if _, ok := finalData[key]; !ok {
+			finalData[key] = make(map[string]models.AbsenceUser)
+		}
+
+		if existingAbsence, ok := finalData[key][uniqueKey]; ok {
+			if existingAbsence.VisitHistory != nil && absence.VisitHistory != nil {
+				// --- HANDLE TARGET ---
+				var existingTargetMap, newTargetMap map[string]int
+				if err := json.Unmarshal([]byte(*existingAbsence.VisitHistory.Target), &existingTargetMap); err != nil {
+					existingTargetMap = make(map[string]int)
+				}
+				if err := json.Unmarshal([]byte(*absence.VisitHistory.Target), &newTargetMap); err != nil {
+					newTargetMap = make(map[string]int)
+				}
+				targetUpdated := false
+				for k, newVal := range newTargetMap {
+					if newVal == 1 {
+						if existingTargetMap[k] != 1 {
+							existingTargetMap[k] = 1
+							targetUpdated = true
+						}
+					}
+				}
+				if targetUpdated {
+					if b, err := json.Marshal(existingTargetMap); err == nil {
+						targetStr := string(b)
+						existingAbsence.VisitHistory.Target = &targetStr
+					}
+				}
+
+				// --- HANDLE DETAIL VISIT ---
+				var existingDetailMap, newDetailMap map[string]string
+				if err := json.Unmarshal([]byte(*existingAbsence.VisitHistory.DetailVisit), &existingDetailMap); err != nil {
+					existingDetailMap = make(map[string]string)
+				}
+				if err := json.Unmarshal([]byte(*absence.VisitHistory.DetailVisit), &newDetailMap); err != nil {
+					newDetailMap = make(map[string]string)
+				}
+				detailUpdated := false
+				for k, newVal := range newDetailMap {
+					if _, exists := existingDetailMap[k]; !exists {
+						existingDetailMap[k] = newVal
+						detailUpdated = true
+					}
+				}
+				if detailUpdated {
+					if b, err := json.Marshal(existingDetailMap); err == nil {
+						detailStr := string(b)
+						existingAbsence.VisitHistory.DetailVisit = &detailStr
+					}
+				}
+			} else if absence.VisitHistory != nil {
+				// Jika existing belum ada VisitHistory, ambil dari absence
+				existingAbsence.VisitHistory = absence.VisitHistory
+			}
+
+			// Simpan hasil
+			finalData[key][uniqueKey] = existingAbsence
+
+		} else {
+			// Belum ada, simpan langsung
+			finalData[key][uniqueKey] = absence
+		}
+
+	}
+
+	territories, _, err := s.territoryRepo.GetAllTerritories()
+	if err != nil {
+		return nil, err
+	}
+
+	clusterMap := make(map[uint]territoryResp.ClusterResponse)
+	branchMap := make(map[uint]territoryResp.BranchResponse)
+	regionMap := make(map[uint]territoryResp.RegionResponse)
+	areaMap := make(map[uint]territoryResp.AreaResponse)
+
+	// Isi peta
+
+	if clusters, ok := territories["clusters"].([]territoryResp.ClusterResponse); ok {
+		for _, cluster := range clusters {
+			clusterMap[cluster.ID] = cluster
+		}
+	}
+	if branches, ok := territories["branches"].([]territoryResp.BranchResponse); ok {
+		for _, branch := range branches {
+			branchMap[branch.ID] = branch
+		}
+	}
+	if regions, ok := territories["regions"].([]territoryResp.RegionResponse); ok {
+		for _, region := range regions {
+			regionMap[region.ID] = region
+		}
+	}
+	if areas, ok := territories["areas"].([]territoryResp.AreaResponse); ok {
+		for _, area := range areas {
+			areaMap[area.ID] = area
+		}
+	}
+
+	headers := []string{
+		"No", "Kode YAE", "Area", "Region", "Branch", "Cluster", "City", "Nama Pengguna", "Nama Akun", "Kode Akun",
+		"School Campus Profiling", "Activity & Engagement", "Gambar Presentasi Demo", "Deskripsi Presentasi Demo", "Alasan Tidak Presentasi", "Sales Performance", "Gambar Dealing", "Jumlah Dealing", "Alasan Tidak Dealing", "SkulID Activity",
+		"Deskripsi SkulID",
+	}
+
+	baseURL := os.Getenv("BASE_URL")
+
+	f := excelize.NewFile()
+
+	for key, absence := range finalData {
+		sheet := key
+		f.NewSheet(sheet)
+		f.DeleteSheet("Sheet1")
+
+		headerStyle, _ := f.NewStyle(&excelize.Style{
+			Fill: excelize.Fill{
+				Type:    "pattern",
+				Color:   []string{"#0070C0"}, // biru
+				Pattern: 1,
+			},
+			Font: &excelize.Font{
+				Bold:  true,
+				Color: "#FFFFFF", // putih
+				Size:  11,
+			},
+			Alignment: &excelize.Alignment{
+				Horizontal: "center",
+				Vertical:   "center",
+				WrapText:   true,
+			},
+			Border: []excelize.Border{
+				{Type: "left", Color: "000000", Style: 1},
+				{Type: "top", Color: "000000", Style: 1},
+				{Type: "right", Color: "000000", Style: 1},
+				{Type: "bottom", Color: "000000", Style: 1},
+			},
+		})
+
+		// Atur lebar kolom (A - P) dan tulis header
+		for i, header := range headers {
+			colLetter, _ := excelize.ColumnNumberToName(i + 1)
+			cell := fmt.Sprintf("%s1", colLetter)
+			f.SetCellValue(sheet, cell, header)
+			f.SetColWidth(sheet, colLetter, colLetter, 25) // Atur lebar kolom jadi 25
+			f.SetCellStyle(sheet, cell, cell, headerStyle)
+		}
+
+		row := 2
+		for _, abs := range absence {
+			yaeCode := ""
+			if abs.YaeCode != nil {
+				yaeCode = *abs.YaeCode
+			}
+			f.SetCellValue(sheet, fmt.Sprintf("A%d", row), row-1)
+			f.SetCellValue(sheet, fmt.Sprintf("B%d", row), yaeCode)
+			areaName, regionName, branchName, clusterName, cityName := "", "", "", "", ""
+
+			if abs.Account != nil && abs.Account.City != nil {
+				cityName = *abs.CityName
+				if abs.ClusterID != nil {
+					// Convert *int to uint
+					clusterIDUint := uint(*abs.ClusterID)
+					if cluster, ok := clusterMap[clusterIDUint]; ok {
+						clusterName = cluster.Name
+						// Use BranchID directly since it's already uint
+						branchIDUint := cluster.BranchID
+						if branch, ok := branchMap[branchIDUint]; ok {
+							branchName = branch.Name
+							if branch.RegionID != 0 {
+								regionIDUint := branch.RegionID
+								if region, ok := regionMap[regionIDUint]; ok {
+									regionName = region.Name
+									if region.AreaID != 0 {
+										areaIDUint := region.AreaID
+										if area, ok := areaMap[areaIDUint]; ok {
+											areaName = area.Name
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Tulis ke file Excel
+			f.SetCellValue(sheet, fmt.Sprintf("C%d", row), areaName)
+			f.SetCellValue(sheet, fmt.Sprintf("D%d", row), regionName)
+			f.SetCellValue(sheet, fmt.Sprintf("E%d", row), branchName)
+			f.SetCellValue(sheet, fmt.Sprintf("F%d", row), clusterName)
+			f.SetCellValue(sheet, fmt.Sprintf("G%d", row), cityName)
+			f.SetCellValue(sheet, fmt.Sprintf("H%d", row), abs.UserName)
+
+			isPresentationDemo := "No"
+			presentasiImage := "-"
+			presentasiDescription := "-"
+			presentationReason := "-"
+			isDealingSekolah := "No"
+			dealingImage := "-"
+			amountDealing := ""
+			dealingReason := "-"
+			isSkulId := "No"
+			skulIdDescription := "-"
+
+			if abs.VisitHistory != nil && abs.VisitHistory.DetailVisit != nil {
+				detailVisitMap, err := parseJSONStringToMap(*abs.VisitHistory.DetailVisit)
+				if err == nil {
+					if val, ok := detailVisitMap["presentasi_demo"]; ok {
+						if val != "" {
+							// Ganti semua backslash jadi slash agar menjadi path yang valid
+							if strVal, ok := val.(string); ok {
+								strVal = strings.ReplaceAll(strVal, "\\", "/")
+
+								// Tambahkan BASE_URL jika belum ada prefix http
+								if !strings.HasPrefix(strVal, "http") {
+									strVal = fmt.Sprintf("%s/%s", strings.TrimRight(baseURL, "/"), strings.TrimLeft(strVal, "/"))
+								}
+								presentasiImage = fmt.Sprintf("%v", strVal)
+							}
+						}
+					}
+					if val, ok := detailVisitMap["presentasi_demo_description"]; ok {
+						presentasiDescription = fmt.Sprintf("%v", val)
+					}
+					if val, ok := detailVisitMap["presentasi_demo_reason"]; ok {
+						presentationReason = fmt.Sprintf("%v", val)
+					}
+					if val, ok := detailVisitMap["dealing_sekolah"]; ok {
+						if val != "" {
+							// Ganti semua backslash jadi slash agar menjadi path yang valid
+							if strVal, ok := val.(string); ok {
+								strVal = strings.ReplaceAll(strVal, "\\", "/")
+
+								// Tambahkan BASE_URL jika belum ada prefix http
+								if !strings.HasPrefix(strVal, "http") {
+									strVal = fmt.Sprintf("%s/%s", strings.TrimRight(baseURL, "/"), strings.TrimLeft(strVal, "/"))
+								}
+								dealingImage = fmt.Sprintf("%v", strVal)
+							}
+						}
+					}
+					if val, ok := detailVisitMap["amount_dealing"]; ok {
+						amountDealing = fmt.Sprintf("%v", val)
+					}
+					if val, ok := detailVisitMap["dealing_sekolah_reason"]; ok {
+						dealingReason = fmt.Sprintf("%v", val)
+					}
+					if val, ok := detailVisitMap["skul_id_description"]; ok {
+						skulIdDescription = fmt.Sprintf("%v", val)
+					}
+				}
+			}
+
+			schoolCampusProfiling := "Belum Dilengkapi"
+
+			if abs.VisitHistory != nil && abs.VisitHistory.Target != nil {
+				TargetMap, err := parseJSONStringToMap(*abs.VisitHistory.Target)
+				if err == nil {
+					if val, ok := TargetMap["survey_sekolah"]; ok {
+						if num, ok := val.(float64); ok && num == 1 {
+							schoolCampusProfiling = "Sudah Dilengkapi"
+						}
+					}
+					if val, ok := TargetMap["presentasi_demo"]; ok {
+						if num, ok := val.(float64); ok && num == 1 {
+							isPresentationDemo = "Yes"
+						}
+					}
+					if val, ok := TargetMap["dealing_sekolah"]; ok {
+						if num, ok := val.(float64); ok && num == 1 {
+							isDealingSekolah = "Yes"
+						}
+					}
+					if val, ok := TargetMap["skul_id"]; ok {
+						if num, ok := val.(float64); ok && num == 1 {
+							isSkulId = "Yes"
+						}
+					}
+				}
+			}
+
+			if abs.Account != nil {
+				if abs.Account.AccountName != nil {
+					f.SetCellValue(sheet, fmt.Sprintf("I%d", row), *abs.Account.AccountName)
+				} else {
+					f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "-")
+				}
+
+				if abs.Account.AccountCode != nil {
+					f.SetCellValue(sheet, fmt.Sprintf("J%d", row), *abs.Account.AccountCode)
+				} else {
+					f.SetCellValue(sheet, fmt.Sprintf("J%d", row), "-")
+				}
+
+				f.SetCellValue(sheet, fmt.Sprintf("K%d", row), schoolCampusProfiling)
+			} else {
+				f.SetCellValue(sheet, fmt.Sprintf("I%d", row), "-")
+				f.SetCellValue(sheet, fmt.Sprintf("J%d", row), "-")
+				f.SetCellValue(sheet, fmt.Sprintf("K%d", row), schoolCampusProfiling)
+			}
+
+			f.SetCellValue(sheet, fmt.Sprintf("L%d", row), isPresentationDemo)
+			f.SetCellValue(sheet, fmt.Sprintf("M%d", row), presentasiImage)
+			f.SetCellValue(sheet, fmt.Sprintf("N%d", row), presentasiDescription)
+			f.SetCellValue(sheet, fmt.Sprintf("O%d", row), presentationReason)
+			f.SetCellValue(sheet, fmt.Sprintf("P%d", row), isDealingSekolah)
+			f.SetCellValue(sheet, fmt.Sprintf("Q%d", row), dealingImage)
+			f.SetCellValue(sheet, fmt.Sprintf("R%d", row), amountDealing)
+			f.SetCellValue(sheet, fmt.Sprintf("S%d", row), dealingReason)
+			f.SetCellValue(sheet, fmt.Sprintf("T%d", row), isSkulId)
+			f.SetCellValue(sheet, fmt.Sprintf("U%d", row), skulIdDescription)
+			row++
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
 func parseJSONStringToMap(jsonStr string) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := json.Unmarshal([]byte(jsonStr), &result)

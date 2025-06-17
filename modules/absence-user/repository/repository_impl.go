@@ -37,7 +37,9 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 			account_type_school_details.football_field_brannnding, 
 			account_type_school_details.basketball_field_branding, 
 			account_type_school_details.wall_painting_branding, 
-			account_type_school_details.wall_magazine_branding`)
+			account_type_school_details.wall_magazine_branding`).
+		Preload("VisitHistory").
+		Preload("Account")
 
 	// Filter: all_user
 	if allUser, exists := filters["all_user"]; exists && allUser != "1" {
@@ -112,22 +114,6 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 	err := query.Find(&absence_users).Error
 	if err != nil {
 		return nil, total, err
-	}
-
-	// Optional: Load full Account with SchoolDetail for each absence_user if needed
-	for i := range absence_users {
-		if absence_users[i].SubjectType != nil && *absence_users[i].SubjectType == "App\\Models\\Account" {
-			var account models.Account
-			if err := r.db.First(&account, absence_users[i].SubjectID).Error; err == nil {
-				absence_users[i].Account = &account
-			}
-		}
-
-		// Join visit_histories
-		var visit models.VisitHistory
-		if err := r.db.Where("absence_user_id = ?", absence_users[i].ID).First(&visit).Error; err == nil {
-			absence_users[i].VisitHistory = &visit
-		}
 	}
 
 	return absence_users, total, nil

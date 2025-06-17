@@ -661,7 +661,7 @@ func (h *AbsenceUserHandler) GetAbsenceActive(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (h *AbsenceUserHandler) ExportAbsenceUsers(c *fiber.Ctx) error {
+func (h *AbsenceUserHandler) ExportRawAbsenceUsers(c *fiber.Ctx) error {
 	// Ambil user_id dari query parameter atau dari locals
 	var userID int
 	if queryUserID := c.Query("user_id"); queryUserID != "" {
@@ -710,6 +710,59 @@ func (h *AbsenceUserHandler) ExportAbsenceUsers(c *fiber.Ctx) error {
 	// Set header sebagai file response
 	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Set("Content-Disposition", "attachment; filename=absence_export.xlsx")
+
+	// Kirim stream file
+	return c.SendStream(excelFile)
+}
+
+func (h *AbsenceUserHandler) ExportResumeMonthlyAbsenceUsers(c *fiber.Ctx) error {
+	// Ambil user_id dari query parameter atau dari locals
+	var userID int
+	if queryUserID := c.Query("user_id"); queryUserID != "" {
+		parsedID, err := strconv.Atoi(queryUserID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "user_id tidak valid",
+			})
+		}
+		userID = parsedID
+	} else {
+		local := c.Locals("user_id")
+		if local == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"message": "user_id tidak ditemukan",
+			})
+		}
+		userID = local.(int)
+	}
+
+	// Ambil semua filter dari query string
+	filters := map[string]string{
+		"search":     c.Query("search", ""),
+		"order_by":   c.Query("order_by", "id"),
+		"order":      c.Query("order", "DESC"),
+		"start_date": c.Query("start_date", ""),
+		"end_date":   c.Query("end_date", ""),
+		"status":     c.Query("status", "1"),
+		"all_user":   c.Query("all_user", "0"),
+	}
+
+	// Parse tambahan parameter jika perlu
+	month, _ := strconv.Atoi(c.Query("month", "0"))
+	year, _ := strconv.Atoi(c.Query("year", "0"))
+	absenceType := c.Query("type", "")
+
+	// Panggil service untuk generate file Excel
+	excelFile, err := h.absenceUserService.GenerateAbsenceResumeExcel(userID, filters, month, year, absenceType)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Gagal membuat file Excel",
+		})
+	}
+
+	// Set header sebagai file response
+	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Set("Content-Disposition", "attachment; filename=absence_resume_export.xlsx")
 
 	// Kirim stream file
 	return c.SendStream(excelFile)
