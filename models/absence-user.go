@@ -17,8 +17,8 @@ type AbsenceUser struct {
 	EvidenceImage            *string                   `json:"evidence_image"`
 	CreatedAt                time.Time                 `json:"created_at"`
 	UpdatedAt                time.Time                 `json:"updated_at"`
-	Account                  *Account                  `gorm:"-" json:"account"`
-	VisitHistory             *VisitHistory             `gorm:"-" json:"visit_history"`
+	VisitHistory             *VisitHistory             `gorm:"foreignKey:AbsenceUserID"`
+	Account                  *Account                  `gorm:"foreignKey:SubjectID"`
 	UserName                 string                    `gorm:"->" json:"user_name"`
 	YaeCode                  *string                   `gorm:"->" json:"yae_code"`
 	AccountTypeSchoolDetails *AccountTypeSchoolDetails `json:"account_type_school_details,omitempty" gorm:"-"`

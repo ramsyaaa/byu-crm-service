@@ -37,7 +37,8 @@ func AbsenceUserRoutes(router fiber.Router, handler *AbsenceUserHandler) {
 	// Register routes
 	authRouter.Get("/", handler.GetAllAbsenceUsers)
 	authRouter.Get("/active-absence", handler.GetAbsenceActive)
-	authRouter.Get("/export", handler.ExportAbsenceUsers)
+	authRouter.Get("/export", handler.ExportRawAbsenceUsers)
+	authRouter.Get("/export-resume-monthly", handler.ExportResumeMonthlyAbsenceUsers)
 	authRouter.Post("/:id/:status", handler.HandleAbsenceApproval)
 	authRouter.Get("/:id", handler.GetAbsenceUserByID)
 	authRouter.Post("/", handler.CreateAbsenceUser)

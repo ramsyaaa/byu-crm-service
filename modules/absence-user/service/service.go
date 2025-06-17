@@ -17,4 +17,5 @@ type AbsenceUserService interface {
 	DeleteAbsenceUser(id int) error
 	UpdateFields(id uint, fields map[string]interface{}) error
 	GenerateAbsenceExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error)
+	GenerateAbsenceResumeExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error)
 }
