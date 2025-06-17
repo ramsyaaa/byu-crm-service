@@ -1,8 +1,11 @@
 package http
 
 import (
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"byu-crm-service/helper"
 	accountResponse "byu-crm-service/modules/account/response"
@@ -12,16 +15,18 @@ import (
 	"byu-crm-service/modules/user/validation"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 type UserHandler struct {
 	service        service.UserService
 	authService    authService.AuthService
 	accountService accountService.AccountService
+	redis          *redis.Client
 }
 
-func NewUserHandler(service service.UserService, authService authService.AuthService, accountService accountService.AccountService) *UserHandler {
-	return &UserHandler{service: service, authService: authService, accountService: accountService}
+func NewUserHandler(service service.UserService, authService authService.AuthService, accountService accountService.AccountService, redis *redis.Client) *UserHandler {
+	return &UserHandler{service: service, authService: authService, accountService: accountService, redis: redis}
 }
 
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
@@ -33,6 +38,21 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 			"error":   err.Error(),
 		})
 	}
+
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("userbyID:user=%d", intID)
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get User By ID (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	user, err := h.service.GetUserByID(uint(intID))
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
@@ -99,6 +119,10 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 		"accounts": accountsData,
 	}
 
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(responseData)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
+
 	response := helper.APIResponse("Get User Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
@@ -146,6 +170,25 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 
+	// Generate Redis Cache Key berdasarkan semua filter
+	cacheKey := fmt.Sprintf("users:role=%s:territory=%d:page=%d:limit=%d:paginate=%v:orderByMostAssignedPic=%v:onlyRole=%s",
+		userRole, territoryID, page, limit, paginate, orderByMostAssignedPic, strings.Join(onlyRole, ","))
+
+	for k, v := range filters {
+		cacheKey += fmt.Sprintf(":%s=%s", k, v)
+	}
+
+	// Coba ambil dari Redis
+	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
+	if err == nil {
+		// Berhasil ambil dari cache
+		var cachedData map[string]interface{}
+		json.Unmarshal([]byte(cached), &cachedData)
+
+		response := helper.APIResponse("Get Users (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
+
 	// Call service with filters
 	users, total, err := h.service.GetAllUsers(limit, paginate, page, filters, onlyRole, orderByMostAssignedPic, userRole, territoryID)
 	if err != nil {
@@ -159,6 +202,10 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 		"total": total,
 		"page":  page,
 	}
+
+	// Simpan ke Redis (misal selama 5 menit)
+	cacheBytes, _ := json.Marshal(responseData)
+	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Users Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)

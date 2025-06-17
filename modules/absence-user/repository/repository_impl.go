@@ -176,7 +176,11 @@ func (r *absenceUserRepository) GetAbsenceUserToday(
 ) (*models.AbsenceUser, string, error) {
 	var absence_user models.AbsenceUser
 
-	query := r.db.Where("user_id = ?", user_id)
+	// Always declare query and assign base query
+	query := r.db.Model(&models.AbsenceUser{})
+	if user_id != 0 {
+		query = query.Where("user_id = ?", user_id)
+	}
 
 	// Default message
 	message := "Absence user found"
@@ -197,6 +201,9 @@ func (r *absenceUserRepository) GetAbsenceUserToday(
 	case "Clock In":
 		query = query.Where("clock_in IS NOT NULL AND clock_out IS NULL")
 		message = "The user already clocked in, please clock out first"
+		if user_id == 0 {
+			message = "Terdapat user lain yang sudah clock in"
+		}
 	case "Clock Out":
 		query = query.Where("clock_out IS NULL")
 		message = "The user already clocked out, need to clock in first"
