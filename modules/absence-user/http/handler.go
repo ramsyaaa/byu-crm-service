@@ -502,25 +502,26 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 	if actionType == "Clock In" {
 		// check if other user clock in
-		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
-			false,
-			0,
-			&req.Type,
-			type_checking,
-			actionType,
-			"",
-			0,
-		)
-
-		if existingAbsenceUser != nil {
-			errors := map[string]string{
-				"message": message,
+		if req.Type == "Visit Account" {
+			existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
+				false,
+				0,
+				&req.Type,
+				type_checking,
+				actionType,
+				"",
+				0,
+			)
+			if existingAbsenceUser != nil {
+				errors := map[string]string{
+					"message": message,
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
 			}
-			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
-			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
-		existingAbsenceUser, message, _ = h.absenceUserService.GetAbsenceUserToday(
+		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
 			false,
 			userID,
 			&req.Type,
