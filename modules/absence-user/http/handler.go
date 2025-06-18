@@ -503,14 +503,17 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	if actionType == "Clock In" {
 		// check if other user clock in
 		if req.Type == "Visit Account" {
+			subjectIDStr := c.FormValue("subject_id")
+			parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
+			subjectID = parsedSubjectID
 			existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
 				false,
 				0,
 				&req.Type,
 				type_checking,
 				actionType,
-				"",
-				0,
+				"App\\Models\\Account",
+				subjectID,
 			)
 			if existingAbsenceUser != nil {
 				errors := map[string]string{
