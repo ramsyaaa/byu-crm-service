@@ -79,7 +79,7 @@ var MenuList = []Menu{
 				Icon:       "fa-solid fa-user",
 				Permission: "view user",
 				Route:      "/users",
-				Status:     false,
+				Status:     true,
 			},
 			{
 				Name:       "Setting Priority Account",
