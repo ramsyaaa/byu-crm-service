@@ -89,68 +89,58 @@ func AdditionalValidate(req *ValidateRequest, userID int) map[string]string {
 		errors["role_id"] = "Role tidak valid"
 	}
 
-	if len(errors) > 0 {
-		return errors
-	}
-
-	// except Super-Admin / HQ / Outsourcing Supervisor
+	// Jika role perlu validasi wilayah
 	if req.RoleID != "1" && req.RoleID != "2" && req.RoleID != "12" {
-		// Role Area
-		if req.RoleID == "3" {
+		switch req.RoleID {
+		case "3":
 			if req.AreaID == nil || strings.TrimSpace(*req.AreaID) == "" {
 				errors["area_id"] = "Area harus dipilih"
 			}
-		} else if req.RoleID == "4" {
+		case "4":
 			if req.RegionID == nil || strings.TrimSpace(*req.RegionID) == "" {
 				errors["region_id"] = "Region harus dipilih"
 			}
-		} else if req.RoleID == "5" || req.RoleID == "7" || req.RoleID == "9" || req.RoleID == "10" || req.RoleID == "11" {
+		case "5", "7", "9", "10", "11":
 			if req.BranchID == nil || strings.TrimSpace(*req.BranchID) == "" {
 				errors["branch_id"] = "Branch harus dipilih"
 			}
-		} else if req.RoleID == "6" || req.RoleID == "8" {
+		case "6", "8":
 			if req.ClusterID == nil || strings.TrimSpace(*req.ClusterID) == "" {
 				errors["cluster_id"] = "Cluster harus dipilih"
 			}
 		}
 	}
 
-	//  if create user
 	if userID == 0 {
-		if *req.Password == "" || *req.ConfirmPassword == "" {
+		if req.Password == nil || strings.TrimSpace(*req.Password) == "" || req.ConfirmPassword == nil || strings.TrimSpace(*req.ConfirmPassword) == "" {
 			errors["password"] = validationMessages["password.required"]
 		}
 	}
 
-	if *req.Password != "" || *req.ConfirmPassword != "" {
-		// Validasi password wajib dan minimal 8 karakter
-		if *req.Password == "" {
+	// Validasi password hanya jika create atau saat password/confirm_password diisi
+	if userID == 0 || req.Password != nil || req.ConfirmPassword != nil {
+		if req.Password == nil || strings.TrimSpace(*req.Password) == "" {
 			errors["password"] = validationMessages["password.required"]
 		} else if len(*req.Password) < 8 {
 			errors["password"] = validationMessages["password.min"]
 		}
 
-		// Validasi confirm_password wajib dan minimal 8 karakter
-		if *req.ConfirmPassword == "" {
+		if req.ConfirmPassword == nil || strings.TrimSpace(*req.ConfirmPassword) == "" {
 			errors["confirm_password"] = validationMessages["confirm_password.required"]
 		} else if len(*req.ConfirmPassword) < 8 {
 			errors["confirm_password"] = validationMessages["confirm_password.min"]
 		}
 
-		// Validasi confirm_password harus sama dengan password
-		if *req.Password != "" && *req.ConfirmPassword != "" && *req.Password != *req.ConfirmPassword {
+		if req.Password != nil && req.ConfirmPassword != nil && *req.Password != *req.ConfirmPassword {
 			errors["confirm_password"] = "Konfirmasi password harus sama dengan password baru"
 		}
 	}
 
+	// Validasi email
 	existingUser, err := UserRepo.FindByEmail(req.Email)
 	if err == nil && existingUser != nil && existingUser.Email != "" {
-		if userID == 0 {
+		if userID == 0 || int(existingUser.ID) != userID {
 			errors["email"] = "Email sudah digunakan"
-		} else {
-			if int(existingUser.ID) != userID {
-				errors["email"] = "Email sudah digunakan"
-			}
 		}
 	}
 
