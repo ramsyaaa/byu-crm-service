@@ -60,6 +60,29 @@ func (r *roleRepository) GetAllRoles(limit int, paginate bool, page int, filters
 	return roles, total, err
 }
 
+func (r *roleRepository) AssignModelHasRole(model_type string, model_id int, role_id int) error {
+	if err := r.db.
+		Table("model_has_roles").
+		Where("model_type = ? AND model_id = ?", model_type, model_id).
+		Delete(nil).Error; err != nil {
+		return err
+	}
+
+	// Buat map untuk data yang akan dimasukkan
+	data := map[string]interface{}{
+		"role_id":    role_id,
+		"model_type": model_type,
+		"model_id":   model_id,
+	}
+
+	// Masukkan ke tabel model_has_roles
+	if err := r.db.Table("model_has_roles").Create(&data).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *roleRepository) GetRoleByID(id int) (*response.RoleResponse, error) {
 	var role models.Role
 	err := r.db.First(&role, id).Error

@@ -11,4 +11,5 @@ type RoleRepository interface {
 	GetRoleByName(name string) (*response.RoleResponse, error)
 	CreateRole(role *models.Role) (*response.RoleResponse, error)
 	UpdateRole(role *models.Role, id int) (*response.RoleResponse, error)
+	AssignModelHasRole(model_type string, model_id int, role_id int) error
 }
