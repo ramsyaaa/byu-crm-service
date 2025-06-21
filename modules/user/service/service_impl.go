@@ -42,26 +42,31 @@ func (s *userService) CreateUser(requestBody map[string]interface{}) (*models.Us
 		// Role Area
 		if requestBody["role_id"] == "3" {
 			territory_type = "App\\Models\\Area"
-			if v, ok := requestBody["area_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["area_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "4" {
 			territory_type = "App\\Models\\Region"
-			if v, ok := requestBody["region_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["region_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "5" || requestBody["role_id"] == "7" || requestBody["role_id"] == "9" || requestBody["role_id"] == "10" || requestBody["role_id"] == "11" {
 			territory_type = "App\\Models\\Branch"
-			if v, ok := requestBody["branch_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["branch_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "6" || requestBody["role_id"] == "8" {
 			territory_type = "App\\Models\\Cluster"
-			if v, ok := requestBody["cluster_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["cluster_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		}
 	}
+
 	userData := map[string]string{
 		"name":              getStringValue(requestBody["name"]),
 		"email":             getStringValue(requestBody["email"]),
@@ -91,26 +96,31 @@ func (s *userService) UpdateUser(requestBody map[string]interface{}, userID int)
 		// Role Area
 		if requestBody["role_id"] == "3" {
 			territory_type = "App\\Models\\Area"
-			if v, ok := requestBody["area_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["area_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "4" {
 			territory_type = "App\\Models\\Region"
-			if v, ok := requestBody["region_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["region_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "5" || requestBody["role_id"] == "7" || requestBody["role_id"] == "9" || requestBody["role_id"] == "10" || requestBody["role_id"] == "11" {
 			territory_type = "App\\Models\\Branch"
-			if v, ok := requestBody["branch_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["branch_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		} else if requestBody["role_id"] == "6" || requestBody["role_id"] == "8" {
 			territory_type = "App\\Models\\Cluster"
-			if v, ok := requestBody["cluster_id"].(float64); ok {
-				territory_id = int(v)
+			intTerritory, err := strconv.Atoi(getStringValue(requestBody["cluster_id"]))
+			if err == nil {
+				territory_id = intTerritory
 			}
 		}
 	}
+
 	userData := map[string]string{
 		"name":              getStringValue(requestBody["name"]),
 		"email":             getStringValue(requestBody["email"]),

@@ -11,6 +11,10 @@ type UserResponse struct {
 	TerritoryID   uint     `json:"territory_id"`
 	TotalPic      *uint    `json:"total_pic"`
 	TerritoryType string   `json:"territory_type"`
+	AreaID        *uint    `json:"area_id"`
+	RegionID      *uint    `json:"region_id"`
+	BranchID      *uint    `json:"branch_id"`
+	ClusterID     *uint    `json:"cluster_id"`
 	RoleNames     []string `json:"role_names"`
 	Permissions   []string `json:"permissions"`
 }
