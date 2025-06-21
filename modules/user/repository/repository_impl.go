@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/user/response"
 	"errors"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -268,6 +269,159 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 	}
 
 	return response, nil
+}
+
+func (r *userRepository) FindByEmail(email string) (*response.UserResponse, error) {
+	var user models.User
+	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Ambil role IDs dari model_has_roles
+	var roleIDs []uint
+	if err := r.db.Table("model_has_roles").
+		Where("model_id = ? AND model_type = ?", user.ID, "App\\Models\\User").
+		Pluck("role_id", &roleIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// Ambil nama role
+	var roleNames []string
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("roles").
+			Where("id IN ?", roleIDs).
+			Pluck("name", &roleNames).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Ambil permission_id dari role_has_permissions
+	var permissionIDs []uint
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Ambil nama permission
+	var permissions []string
+	if len(permissionIDs) > 0 {
+		if err := r.db.Table("permissions").
+			Where("id IN ?", permissionIDs).
+			Pluck("name", &permissions).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Bangun response
+	response := &response.UserResponse{
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Avatar:        user.Avatar,
+		Msisdn:        user.Msisdn,
+		UserStatus:    user.UserStatus,
+		UserType:      user.UserType,
+		TerritoryID:   user.TerritoryID,
+		TerritoryType: user.TerritoryType,
+		RoleNames:     roleNames,
+		Permissions:   permissions,
+	}
+
+	return response, nil
+}
+
+func (r *userRepository) CreateUser(requestBody map[string]string) (*models.User, error) {
+	var territoryIDUint uint
+	if tid, ok := requestBody["territory_id"]; ok && tid != "" {
+		// Convert string to uint
+		var parsed uint64
+		parsed, _ = strconv.ParseUint(tid, 10, 64)
+		territoryIDUint = uint(parsed)
+	}
+	if requestBody["password"] != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(requestBody["password"]), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		requestBody["password"] = string(hashedPassword)
+	}
+
+	user := models.User{
+		Name:            requestBody["name"],
+		Email:           requestBody["email"],
+		Msisdn:          requestBody["msisdn"],
+		UserStatus:      requestBody["user_status"],
+		UserType:        requestBody["user_type"],
+		TerritoryID:     territoryIDUint,
+		TerritoryType:   requestBody["territory_type"],
+		Password:        requestBody["password"],
+		OutletIDDigipos: requestBody["outlet_id_digipos"],
+		NamiAgentID:     requestBody["nami_agent_id"],
+	}
+
+	if err := r.db.Create(&user).Error; err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *userRepository) UpdateUser(requestBody map[string]string, userID int) (*response.UserResponse, error) {
+	var user models.User
+	if err := r.db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+
+	// Konversi territory_id ke uint
+	var territoryIDUint uint
+	if tid, ok := requestBody["territory_id"]; ok && tid != "" {
+		if parsed, err := strconv.ParseUint(tid, 10, 64); err == nil {
+			territoryIDUint = uint(parsed)
+		}
+	}
+
+	// Handle password
+	var password string
+	if pw, ok := requestBody["password"]; ok && pw != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+		password = string(hashedPassword)
+	}
+
+	// Update field user
+	user.Name = requestBody["name"]
+	user.Email = requestBody["email"]
+	user.Msisdn = requestBody["msisdn"]
+	user.UserStatus = requestBody["user_status"]
+	user.UserType = requestBody["user_type"]
+	user.TerritoryType = requestBody["territory_type"]
+	user.TerritoryID = territoryIDUint
+	user.OutletIDDigipos = requestBody["outlet_id_digipos"]
+	user.NamiAgentID = requestBody["nami_agent_id"]
+
+	// Update password jika ada
+	if password != "" {
+		user.Password = password
+	}
+
+	if err := r.db.Save(&user).Error; err != nil {
+		return nil, err
+	}
+
+	updatedUser, err := r.FindByID(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedUser, nil
 }
 
 func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*response.UserResponse, error) {
