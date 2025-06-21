@@ -1,16 +1,21 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"byu-crm-service/helper"
+	"byu-crm-service/models"
 	accountResponse "byu-crm-service/modules/account/response"
 	accountService "byu-crm-service/modules/account/service"
 	authService "byu-crm-service/modules/auth/service"
+	roleService "byu-crm-service/modules/role/service"
+	"byu-crm-service/modules/user/response"
 	"byu-crm-service/modules/user/service"
 	"byu-crm-service/modules/user/validation"
 
@@ -22,11 +27,12 @@ type UserHandler struct {
 	service        service.UserService
 	authService    authService.AuthService
 	accountService accountService.AccountService
+	roleService    roleService.RoleService
 	redis          *redis.Client
 }
 
-func NewUserHandler(service service.UserService, authService authService.AuthService, accountService accountService.AccountService, redis *redis.Client) *UserHandler {
-	return &UserHandler{service: service, authService: authService, accountService: accountService, redis: redis}
+func NewUserHandler(service service.UserService, authService authService.AuthService, accountService accountService.AccountService, roleService roleService.RoleService, redis *redis.Client) *UserHandler {
+	return &UserHandler{service: service, authService: authService, accountService: accountService, roleService: roleService, redis: redis}
 }
 
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
@@ -124,6 +130,253 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get User Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic in Create User: %v", r)
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Parse request body with error handling
+	req := new(validation.ValidateRequest)
+
+	if err := c.BodyParser(req); err != nil {
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	errors := validation.AdditionalValidate(req, 0)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Create Account with context and error handling
+	reqMap := make(map[string]interface{})
+
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Call service with timeout
+	var user *models.User
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during user creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		user, serviceErr = h.service.CreateUser(reqMap)
+		if serviceErr != nil {
+			log.Printf(fmt.Sprintf("Failed to create user: %v", serviceErr))
+			response := helper.APIResponse("Failed to create user: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	var roleID int
+	switch v := reqMap["role_id"].(type) {
+	case float64:
+		roleID = int(v)
+	case int:
+		roleID = v
+	case string:
+		if parsed, err := strconv.Atoi(v); err == nil {
+			roleID = parsed
+		}
+	}
+	_ = h.roleService.AssignModelHasRole("App\\Models\\User", int(user.ID), roleID)
+
+	// Return success response
+	response := helper.APIResponse("Create User Succsesfully", fiber.StatusOK, "success", user)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic in Update User: %v", r)
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get and validate user ID
+	userIDStr := c.Params("id")
+	if userIDStr == "" {
+		response := helper.APIResponse("User ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid User ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Parse request body with error handling
+	req := new(validation.ValidateRequest)
+
+	if err := c.BodyParser(req); err != nil {
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateCreate(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	errors := validation.AdditionalValidate(req, userID)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// Create User with context and error handling
+	reqMap := make(map[string]interface{})
+
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Call service with timeout
+	var user *response.UserResponse
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during user creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		user, serviceErr = h.service.UpdateUser(reqMap, userID)
+		if serviceErr != nil {
+			log.Printf(fmt.Sprintf("Failed to update user: %v", serviceErr))
+			response := helper.APIResponse("Failed to update user: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	var roleID int
+	switch v := reqMap["role_id"].(type) {
+	case float64:
+		roleID = int(v)
+	case int:
+		roleID = v
+	case string:
+		if parsed, err := strconv.Atoi(v); err == nil {
+			roleID = parsed
+		}
+	}
+	_ = h.roleService.AssignModelHasRole("App\\Models\\User", int(user.ID), roleID)
+
+	// Return success response
+	response := helper.APIResponse("Update User Succsesfully", fiber.StatusOK, "success", user)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
@@ -283,7 +536,7 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 	}
 
 	// Request Validation
-	errors := validation.ValidateUpdate(req)
+	errors := validation.ValidateProfile(req)
 	if errors != nil {
 		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 		return c.Status(fiber.StatusBadRequest).JSON(response)

@@ -26,6 +26,10 @@ func (s *roleService) GetRoleByName(name string) (*response.RoleResponse, error)
 	return s.repo.GetRoleByName(name)
 }
 
+func (s *roleService) AssignModelHasRole(model_type string, model_id int, role_id int) error {
+	return s.repo.AssignModelHasRole(model_type, model_id, role_id)
+}
+
 func (s *roleService) CreateRole(name *string) (*response.RoleResponse, error) {
 	role := &models.Role{Name: *name, GuardName: "web"}
 	return s.repo.CreateRole(role)
