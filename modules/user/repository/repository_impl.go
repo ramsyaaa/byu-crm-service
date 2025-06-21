@@ -188,6 +188,19 @@ func (r *userRepository) GetAllUsers(
 			u := uint(v)
 			totalPic = &u
 		}
+
+		var area_id, region_id, branch_id, cluster_id uint
+
+		if user.TerritoryType == "App\\Models\\Area" {
+			area_id = user.TerritoryID
+		} else if user.TerritoryType == "App\\Models\\Region" {
+			region_id = user.TerritoryID
+		} else if user.TerritoryType == "App\\Models\\Branch" {
+			branch_id = user.TerritoryID
+		} else if user.TerritoryType == "App\\Models\\Cluster" {
+			cluster_id = user.TerritoryID
+		}
+
 		responses = append(responses, response.UserResponse{
 			ID:            user.ID,
 			Name:          user.Name,
@@ -200,6 +213,10 @@ func (r *userRepository) GetAllUsers(
 			TerritoryType: user.TerritoryType,
 			TotalPic:      totalPic,
 			RoleNames:     roleMap[user.ID],
+			AreaID:        &area_id,
+			RegionID:      &region_id,
+			BranchID:      &branch_id,
+			ClusterID:     &cluster_id,
 		})
 	}
 
@@ -253,6 +270,18 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		}
 	}
 
+	var area_id, region_id, branch_id, cluster_id uint
+
+	if user.TerritoryType == "App\\Models\\Area" {
+		area_id = user.TerritoryID
+	} else if user.TerritoryType == "App\\Models\\Region" {
+		region_id = user.TerritoryID
+	} else if user.TerritoryType == "App\\Models\\Branch" {
+		branch_id = user.TerritoryID
+	} else if user.TerritoryType == "App\\Models\\Cluster" {
+		cluster_id = user.TerritoryID
+	}
+
 	// Bangun response
 	response := &response.UserResponse{
 		ID:            user.ID,
@@ -266,6 +295,10 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		TerritoryType: user.TerritoryType,
 		RoleNames:     roleNames,
 		Permissions:   permissions,
+		AreaID:        &area_id,
+		RegionID:      &region_id,
+		BranchID:      &branch_id,
+		ClusterID:     &cluster_id,
 	}
 
 	return response, nil
