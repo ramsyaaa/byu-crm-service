@@ -18,7 +18,7 @@ type AbsenceUser struct {
 	CreatedAt                time.Time                 `json:"created_at"`
 	UpdatedAt                time.Time                 `json:"updated_at"`
 	VisitHistory             *VisitHistory             `gorm:"foreignKey:AbsenceUserID"`
-	Account                  *Account                  `gorm:"foreignKey:SubjectID"`
+	Account                  *Account                  `json:"account" gorm:"foreignKey:SubjectID"`
 	UserName                 string                    `gorm:"->" json:"user_name"`
 	YaeCode                  *string                   `gorm:"->" json:"yae_code"`
 	AccountTypeSchoolDetails *AccountTypeSchoolDetails `json:"account_type_school_details,omitempty" gorm:"-"`
