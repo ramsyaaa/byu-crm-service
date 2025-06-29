@@ -13,6 +13,8 @@ import (
 	"byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
+	approvalLocationAccountRepo "byu-crm-service/modules/approval-location-account/repository"
+	approvalLocationAccountService "byu-crm-service/modules/approval-location-account/service"
 	areaRepo "byu-crm-service/modules/area/repository"
 	branchRepo "byu-crm-service/modules/branch/repository"
 	cityRepo "byu-crm-service/modules/city/repository"
@@ -64,6 +66,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	absenceUserRepo := absenceUserRepo.NewAbsenceUserRepository(db)
 	userRepo := userRepo.NewUserRepository(db)
 	territoryRepo := territoryRepo.NewTerritoryRepository(db)
+	approvalLocationAccountRepo := approvalLocationAccountRepo.NewApprovalLocationAccountRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -80,8 +83,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
 	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo, territoryRepo)
 	userService := userService.NewUserService(userRepo)
+	approvalLocationAccountService := approvalLocationAccountService.NewApprovalLocationAccountService(approvalLocationAccountRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, redisClient.(*redis.Client))
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, redisClient.(*redis.Client))
 
 	http.AccountRoutes(router, accountHandler)
 

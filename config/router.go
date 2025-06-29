@@ -156,6 +156,7 @@ func Route(db *gorm.DB) {
 	routes.PermissionRouter(api, db, RedisClient)
 	routes.ConstantDataRouter(api, db)
 	routes.MenuRouter(api, db)
+	routes.ApprovalLocationAccountRouter(api, db)
 
 	app.Mount("/api/v1", api)
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))

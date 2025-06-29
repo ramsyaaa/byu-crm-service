@@ -47,7 +47,8 @@ func (r *userRepository) GetAllUsers(
 	if search, exists := filters["search"]; exists && search != "" {
 		tokens := strings.Fields(search)
 		for _, token := range tokens {
-			baseQuery = baseQuery.Where("users.name LIKE ?", "%"+token+"%")
+			baseQuery = baseQuery.Where("users.name LIKE ?", "%"+token+"%").
+				Or("users.yae_code LIKE ?", "%"+token+"%")
 		}
 	}
 
