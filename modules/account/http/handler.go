@@ -28,6 +28,7 @@ import (
 	accountTypeCampusDetailService "byu-crm-service/modules/account-type-campus-detail/service"
 	accountTypeCommunityDetailService "byu-crm-service/modules/account-type-community-detail/service"
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
+	approvalLocationAccountService "byu-crm-service/modules/approval-location-account/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
 	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
@@ -49,6 +50,7 @@ type AccountHandler struct {
 	productService                    productService.ProductService
 	absenceUserService                absenceUserService.AbsenceUserService
 	userService                       userService.UserService
+	approvalLocationAccountService    approvalLocationAccountService.ApprovalLocationAccountService
 	redis                             *redis.Client
 }
 
@@ -65,6 +67,7 @@ func NewAccountHandler(
 	productService productService.ProductService,
 	absenceUserService absenceUserService.AbsenceUserService,
 	userService userService.UserService,
+	approvalLocationAccountService approvalLocationAccountService.ApprovalLocationAccountService,
 	redis *redis.Client) *AccountHandler {
 
 	return &AccountHandler{
@@ -80,6 +83,7 @@ func NewAccountHandler(
 		productService:                    productService,
 		absenceUserService:                absenceUserService,
 		userService:                       userService,
+		approvalLocationAccountService:    approvalLocationAccountService,
 		redis:                             redis}
 }
 
@@ -933,6 +937,126 @@ func (h *AccountHandler) UpdatePic(c *fiber.Ctx) error {
 	// Return success response
 	response := helper.APIResponse("PIC Account successfully updated", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf(fmt.Sprintf("Panic in Update Location Account: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	userRole := c.Locals("user_role").(string)
+	userID := c.Locals("user_id").(int)
+	// Ambil Account ID dari URL
+	accountIDStr := c.Params("id")
+	if accountIDStr == "" {
+		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	successMessage := "Location Account successfully updated"
+
+	// Parse request body with error handling
+	req := new(validation.ValidateLocationRequest)
+
+	if err := c.BodyParser(req); err != nil {
+		// Check for specific EOF error
+		if err.Error() == "unexpected EOF" {
+			response := helper.APIResponse("Invalid request: Unexpected end of JSON input", fiber.StatusBadRequest, "error", nil)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
+		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	// Request Validation with context
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during validation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		errors := validation.ValidateLocation(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	}
+
+	// Create Account with context and error handling
+	reqMap := make(map[string]interface{})
+
+	// Marshal request to JSON with timeout
+	var reqBytes []byte
+	var marshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during marshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		reqBytes, marshalErr = json.Marshal(req)
+		if marshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to marshal request: %v", marshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Unmarshal JSON to map with timeout
+	var unmarshalErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during unmarshaling", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
+		if unmarshalErr != nil {
+			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
+			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Convert Account ID to integer
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	requestBody := map[string]interface{}{
+		"longitude": reqMap["longitude"],
+		"latitude":  reqMap["latitude"],
+	}
+
+	if userRole == "Buddies" || userRole == "DS" || userRole == "YAE" {
+		requestLocation, err := h.approvalLocationAccountService.CreateApprovalRequest(reqMap, userID, accountID)
+		if err != nil {
+			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+		// Return success response
+		response := helper.APIResponse(successMessage, fiber.StatusOK, "success", requestLocation)
+		return c.Status(fiber.StatusOK).JSON(response)
+	} else {
+		err := h.service.UpdateFields(uint(accountID), requestBody)
+		if err != nil {
+			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+		// Return success response
+		response := helper.APIResponse(successMessage, fiber.StatusOK, "success", nil)
+		return c.Status(fiber.StatusOK).JSON(response)
+	}
 }
 
 func (h *AccountHandler) UpdatePicMultipleAccounts(c *fiber.Ctx) error {

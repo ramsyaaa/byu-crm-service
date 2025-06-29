@@ -115,6 +115,10 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
+
+	var successCode int = fiber.StatusOK
+	var successMessage string = "Absence user created successfully"
+
 	req := new(validation.CreateAbsenceUserRequest)
 	if err := c.BodyParser(req); err != nil {
 		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
@@ -243,6 +247,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 					response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 					return c.Status(fiber.StatusBadRequest).JSON(response)
 				}
+
+				successCode = fiber.StatusCreated
+				successMessage = "Absence user created successfully with image evidence"
 			} else {
 				if userRole != "Super-Admin" {
 					if getAccount.Latitude != nil && getAccount.Longitude != nil &&
@@ -276,17 +283,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusUnprocessableEntity).JSON(response)
 						}
 					} else {
-						requestBody := map[string]interface{}{
-							"longitude": req.Longitude,
-							"latitude":  req.Latitude,
-						}
-						err := h.accountService.UpdateFields(uint(parsedSubjectID), requestBody)
-						// _, err := h.accountService.UpdateAccount(requestBody, parsedSubjectID, userRole, territoryID, userID)
-
-						if err != nil {
-							response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
-							return c.Status(fiber.StatusInternalServerError).JSON(response)
-						}
+						successMessage = "Absence user created successfully, but location data is not available for this account"
+						successCode = fiber.StatusCreated
 					}
 				}
 			}
@@ -305,6 +303,16 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			}
 
 			errors := make(map[string]string)
+			var statusSkulid string
+
+			if getAccount.IsSkulid == nil || *getAccount.IsSkulid != 1 {
+				statusSkulid = c.FormValue("status_skulid")
+				if statusSkulid == "" {
+					errors["status_skulid"] = "status SkulID harus diisi"
+				} else if statusSkulid != "Ya" && statusSkulid != "Belum" && statusSkulid != "Sedang Tahap Penawaran" {
+					errors["status_skulid"] = "Harus memilih status hanya boleh bernilai 'Ya', 'Belum', atau 'Sedang Tahap Penawaran'"
+				}
+			}
 
 			for _, item := range getVisitList {
 				formKey := item.Key
@@ -314,7 +322,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 				if formKey == "skul_id" {
 					if getAccount.IsSkulid == nil || *getAccount.IsSkulid == 0 {
-						continue
+						if statusSkulid != "Ya" {
+							continue
+						}
 					}
 				}
 
@@ -451,8 +461,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 						detailVisit[formKey+"_reason"] = dealingReason
 					}
 				}
-
-				if getAccount.IsSkulid != nil && *getAccount.IsSkulid == 1 {
+				if (getAccount.IsSkulid != nil && *getAccount.IsSkulid == 1) || (statusSkulid != "" && statusSkulid == "Ya") {
 					if formKey == "skul_id" {
 						if valueStr == "1" {
 							skulidDescription := c.FormValue("skulid_description")
@@ -578,8 +587,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
 
-		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
-		return c.Status(fiber.StatusOK).JSON(response)
+		response := helper.APIResponse(successMessage, successCode, "success", AbsenceUser)
+		return c.Status(successCode).JSON(response)
 
 	} else if actionType == "Clock Out" {
 		existingAbsenceUser, message, _ := h.absenceUserService.GetAbsenceUserToday(
@@ -626,6 +635,35 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 
 		if req.Type == "Visit Account" {
+			subjectIDStr := c.FormValue("subject_id")
+			parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
+			getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
+			if err != nil {
+				response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			if getAccount.IsSkulid == nil || *getAccount.IsSkulid != 1 {
+				isSkulid := c.FormValue("status_skulid")
+				statusSkulid := 0
+
+				if isSkulid == "Ya" {
+					statusSkulid = 1
+				} else if isSkulid == "Belum" {
+					statusSkulid = 0
+				} else if isSkulid == "Sedang Tahap Penawaran" {
+					statusSkulid = 2
+				}
+				requestBody := map[string]interface{}{
+					"is_skulid": statusSkulid,
+				}
+				err := h.accountService.UpdateFields(uint(parsedSubjectID), requestBody)
+				if err != nil {
+					response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+					return c.Status(fiber.StatusInternalServerError).JSON(response)
+				}
+			}
+
 			VisitHistory, err := h.visitHistoryService.CreateVisitHistory(userID, subjectTypeStr, subjectID, int(AbsenceUser.ID), kpiYae, &description, detailVisit)
 			if err != nil {
 				response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", VisitHistory)
@@ -633,8 +671,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			}
 		}
 
-		response := helper.APIResponse("Absence user created successful", fiber.StatusOK, "success", AbsenceUser)
-		return c.Status(fiber.StatusOK).JSON(response)
+		response := helper.APIResponse(successMessage, successCode, "success", AbsenceUser)
+		return c.Status(successCode).JSON(response)
 	}
 
 	// Response
