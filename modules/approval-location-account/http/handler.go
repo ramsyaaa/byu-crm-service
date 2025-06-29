@@ -73,13 +73,13 @@ func (h *ApprovalLocationAccountHandler) GetById(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	account, err := h.service.FindByID(uint(id))
-	if err != nil || account == nil {
-		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
+	approvalRequest, err := h.service.FindByID(uint(id))
+	if err != nil || approvalRequest == nil {
+		response := helper.APIResponse("Approval request not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
 
-	response := helper.APIResponse("Success get account", fiber.StatusOK, "success", account)
+	response := helper.APIResponse("Success get approval request", fiber.StatusOK, "success", approvalRequest)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 

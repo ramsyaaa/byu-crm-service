@@ -18,10 +18,14 @@ func NewApprovalLocationAccountRepository(db *gorm.DB) ApprovalLocationAccountRe
 }
 
 func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int) ([]response.ApprovalLocationAccountResponse, int64, error) {
-	var approval_location_accounts []response.ApprovalLocationAccountResponse
+	var dataModel []models.ApprovalLocationAccount
+	var responseData []response.ApprovalLocationAccountResponse
 	var total int64
 
-	query := r.db.Model(&models.ApprovalLocationAccount{}).Where("approval_location_accounts.status = ?", 0)
+	query := r.db.Model(&models.ApprovalLocationAccount{}).
+		Preload("User").
+		Preload("Account").
+		Where("approval_location_accounts.status = ?", 0)
 
 	// Filter by date range
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
@@ -37,7 +41,9 @@ func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, pag
 	// Apply ordering
 	orderBy := filters["order_by"]
 	order := filters["order"]
-	query = query.Order(orderBy + " " + order)
+	if orderBy != "" && order != "" {
+		query = query.Order(orderBy + " " + order)
+	}
 
 	// Pagination
 	if paginate {
@@ -47,11 +53,45 @@ func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, pag
 		query = query.Limit(limit)
 	}
 
-	err := query.Find(&approval_location_accounts).Error
+	// Ambil data
+	err := query.Find(&dataModel).Error
 	if err != nil {
-		return approval_location_accounts, total, err
+		return nil, total, err
 	}
-	return approval_location_accounts, total, nil
+
+	// Mapping ke response
+	for _, d := range dataModel {
+		item := response.ApprovalLocationAccountResponse{
+			ID:        d.ID,
+			UserID:    d.UserID,
+			AccountID: d.AccountID,
+			Longitude: d.Longitude,
+			Latitude:  d.Latitude,
+			Status:    d.Status,
+			CreatedAt: d.CreatedAt,
+			UpdatedAt: d.UpdatedAt,
+		}
+
+		// Map relasi user jika ada
+		if d.User != nil {
+			// item.User = d.User
+			if d.User.Name != "" {
+				item.UserName = &d.User.Name
+			}
+		}
+
+		// Map relasi account jika ada
+		if d.Account != nil {
+			// item.Account = d.Account
+			if d.Account.AccountName != nil && *d.Account.AccountName != "" {
+				item.AccountName = d.Account.AccountName
+			}
+		}
+
+		responseData = append(responseData, item)
+	}
+
+	return responseData, total, nil
 }
 
 func (r *approvalLocationAccountRepository) CreateApprovalRequest(requestBody map[string]string) (*models.ApprovalLocationAccount, error) {
@@ -106,14 +146,15 @@ func (r *approvalLocationAccountRepository) CreateApprovalRequest(requestBody ma
 }
 
 func (r *approvalLocationAccountRepository) FindByID(id uint) (*response.ApprovalLocationAccountResponse, error) {
-	var approvalLocationAccount response.ApprovalLocationAccountResponse
+	var modelData models.ApprovalLocationAccount
 
-	query := r.db.
-		Model(&models.ApprovalLocationAccount{}).
+	err := r.db.
+		Preload("User").
+		Preload("Account").
 		Where("approval_location_accounts.id = ?", id).
-		Where("approval_location_accounts.status = ?", 0)
+		Where("approval_location_accounts.status = ?", 0).
+		First(&modelData).Error
 
-	err := query.First(&approvalLocationAccount).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -121,7 +162,35 @@ func (r *approvalLocationAccountRepository) FindByID(id uint) (*response.Approva
 		return nil, err
 	}
 
-	return &approvalLocationAccount, nil
+	// Mapping ke response
+	result := &response.ApprovalLocationAccountResponse{
+		ID:        modelData.ID,
+		UserID:    modelData.UserID,
+		AccountID: modelData.AccountID,
+		Longitude: modelData.Longitude,
+		Latitude:  modelData.Latitude,
+		Status:    modelData.Status,
+		CreatedAt: modelData.CreatedAt,
+		UpdatedAt: modelData.UpdatedAt,
+	}
+
+	// Map User jika ada
+	if modelData.User != nil {
+		result.User = modelData.User
+		if modelData.User.Name != "" {
+			result.UserName = &modelData.User.Name
+		}
+	}
+
+	// Map Account jika ada
+	if modelData.Account != nil {
+		result.Account = modelData.Account
+		if modelData.Account.AccountName != nil && *modelData.Account.AccountName != "" {
+			result.AccountName = modelData.Account.AccountName
+		}
+	}
+
+	return result, nil
 }
 
 func (r *approvalLocationAccountRepository) UpdateFields(id uint, fields map[string]interface{}) error {
