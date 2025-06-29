@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type ApprovalLocationAccount struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -11,4 +13,7 @@ type ApprovalLocationAccount struct {
 	Status    *uint     `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	User    *User    `gorm:"foreignKey:UserID"`    // Relasi user
+	Account *Account `gorm:"foreignKey:AccountID"` // Relasi account
 }

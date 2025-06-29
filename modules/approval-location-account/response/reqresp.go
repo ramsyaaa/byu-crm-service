@@ -1,6 +1,7 @@
 package response
 
 import (
+	"byu-crm-service/models"
 	"time"
 )
 
@@ -13,4 +14,10 @@ type ApprovalLocationAccountResponse struct {
 	Status    *uint     `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	AccountName *string `json:"account_name"` // Nama akun untuk ditampilkan
+	UserName    *string `json:"user_name"`    // Nama pengguna untuk ditampilkan
+
+	User    *models.User    `json:"user"`   // Relasi user
+	Account *models.Account `jaon:"acount"` // Relasi account
 }
