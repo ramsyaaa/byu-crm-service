@@ -306,7 +306,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			var statusSkulid string
 
 			if getAccount.IsSkulid == nil || *getAccount.IsSkulid != 1 {
-				statusSkulid = c.FormValue("status_skulid")
+				// statusSkulid = c.FormValue("status_skulid")
+				statusSkulid = "Belum"
 				if statusSkulid == "" {
 					errors["status_skulid"] = "status SkulID harus diisi"
 				} else if statusSkulid != "Ya" && statusSkulid != "Belum" && statusSkulid != "Sedang Tahap Penawaran" {
@@ -644,7 +645,8 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			}
 
 			if getAccount.IsSkulid == nil || *getAccount.IsSkulid != 1 {
-				isSkulid := c.FormValue("status_skulid")
+				// isSkulid := c.FormValue("status_skulid")
+				isSkulid := "Belum"
 				statusSkulid := 0
 
 				if isSkulid == "Ya" {
