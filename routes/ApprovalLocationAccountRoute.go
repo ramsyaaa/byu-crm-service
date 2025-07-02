@@ -17,7 +17,7 @@ func ApprovalLocationAccountRouter(router fiber.Router, db *gorm.DB) {
 	accountRepo := accountRepo.NewAccountRepository(db)
 	cityRepo := cityRepo.NewCityRepository(db)
 
-	approvalService := service.NewApprovalLocationAccountService(approvalRepo)
+	approvalService := service.NewApprovalLocationAccountService(approvalRepo, accountRepo)
 	accountService := accountService.NewAccountService(accountRepo, cityRepo)
 
 	approvalHandler := http.NewApprovalLocationAccountHandler(approvalService, accountService)
