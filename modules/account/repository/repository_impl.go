@@ -231,20 +231,29 @@ func (r *accountRepository) GetAllAccounts(
 
 		if err1 == nil && err2 == nil {
 			for i, acc := range accounts {
-				newDistance := "not defined"
+				newDistance := "-"
 				accounts[i].Distance = &newDistance
+
 				if acc.Latitude != nil && acc.Longitude != nil {
 					lat, err1 := strconv.ParseFloat(*acc.Latitude, 64)
 					lon, err2 := strconv.ParseFloat(*acc.Longitude, 64)
 					if err1 == nil && err2 == nil {
 						distance := haversine(userLat, userLon, lat, lon)
-						distanceStr := fmt.Sprintf("%.2f", distance)
-						accounts[i].Distance = &distanceStr // dalam meter
+
+						var distanceStr string
+						if distance < 1000 {
+							distanceStr = fmt.Sprintf("%.2f m", distance)
+						} else {
+							distanceStr = fmt.Sprintf("%.2f km", distance/1000)
+						}
+
+						accounts[i].Distance = &distanceStr
 					}
 				}
 			}
 		}
 	}
+
 	return accounts, total, nil
 }
 
