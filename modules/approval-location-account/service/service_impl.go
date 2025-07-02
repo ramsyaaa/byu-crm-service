@@ -2,17 +2,19 @@ package service
 
 import (
 	"byu-crm-service/models"
+	accountRepo "byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/approval-location-account/repository"
 	"byu-crm-service/modules/approval-location-account/response"
 	"fmt"
 )
 
 type approvalLocationAccountService struct {
-	repo repository.ApprovalLocationAccountRepository
+	repo        repository.ApprovalLocationAccountRepository
+	accountRepo accountRepo.AccountRepository
 }
 
-func NewApprovalLocationAccountService(repo repository.ApprovalLocationAccountRepository) ApprovalLocationAccountService {
-	return &approvalLocationAccountService{repo: repo}
+func NewApprovalLocationAccountService(repo repository.ApprovalLocationAccountRepository, accountRepo accountRepo.AccountRepository) ApprovalLocationAccountService {
+	return &approvalLocationAccountService{repo: repo, accountRepo: accountRepo}
 }
 
 func (s *approvalLocationAccountService) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int) ([]response.ApprovalLocationAccountResponse, int64, error) {
@@ -41,6 +43,20 @@ func (s *approvalLocationAccountService) FindByID(id uint) (*response.ApprovalLo
 	approvalRequest, err := s.repo.FindByID(uint(id))
 	if err != nil {
 		return nil, err
+	}
+
+	account, err := s.accountRepo.FindByAccountID(*approvalRequest.AccountID, "Super-Admin", 0, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if account.Latitude != nil && account.Longitude != nil {
+		approvalRequest.LatestLatitude = account.Latitude
+		approvalRequest.LatestLongitude = account.Longitude
+	} else {
+		approvalRequest.Latitude = nil
+		approvalRequest.Longitude = nil
 	}
 
 	return approvalRequest, nil
