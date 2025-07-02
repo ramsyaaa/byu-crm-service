@@ -68,6 +68,13 @@ var MenuList = []Menu{
 				Route:      "/visits",
 				Status:     true,
 			},
+			{
+				Name:       "Approval Location Account",
+				Icon:       "fa-solid fa-location-pin",
+				Permission: "approve location",
+				Route:      "/accounts-location",
+				Status:     true,
+			},
 		},
 	},
 	{

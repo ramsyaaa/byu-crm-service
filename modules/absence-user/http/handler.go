@@ -248,8 +248,10 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 					return c.Status(fiber.StatusBadRequest).JSON(response)
 				}
 
-				successCode = fiber.StatusCreated
-				successMessage = "Absence user created successfully with image evidence"
+				// successCode = fiber.StatusCreated
+				// successMessage = "Absence user created successfully with image evidence"
+				successCode = fiber.StatusOK
+				successMessage = "Absence user created successfully"
 			} else {
 				if userRole != "Super-Admin" {
 					if getAccount.Latitude != nil && getAccount.Longitude != nil &&
@@ -283,8 +285,10 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 							return c.Status(fiber.StatusUnprocessableEntity).JSON(response)
 						}
 					} else {
-						successMessage = "Absence user created successfully, but location data is not available for this account"
-						successCode = fiber.StatusCreated
+						// successMessage = "Absence user created successfully, but location data is not available for this account"
+						// successCode = fiber.StatusCreated
+						successCode = fiber.StatusOK
+						successMessage = "Absence user created successfully"
 					}
 				}
 			}
