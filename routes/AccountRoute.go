@@ -83,7 +83,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	productService := productService.NewProductService(productRepo, accountRepo, eligibilityRepo, areaRepo, regionRepo, branchRepo, clusterRepo, cityRepo)
 	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo, territoryRepo)
 	userService := userService.NewUserService(userRepo)
-	approvalLocationAccountService := approvalLocationAccountService.NewApprovalLocationAccountService(approvalLocationAccountRepo)
+	approvalLocationAccountService := approvalLocationAccountService.NewApprovalLocationAccountService(approvalLocationAccountRepo, accountRepo)
 
 	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, redisClient.(*redis.Client))
 
