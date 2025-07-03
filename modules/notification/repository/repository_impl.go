@@ -23,6 +23,10 @@ func (r *notificationRepository) GetAllNotifications(filters map[string]string, 
 
 	query := r.db.Model(&models.UserNotification{})
 
+	if userID > 0 {
+		query = query.Where("user_notifications.user_id = ?", userID)
+	}
+
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
 		searchTokens := strings.Fields(search)
