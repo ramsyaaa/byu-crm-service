@@ -3,6 +3,7 @@ package repository
 import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/notification/response"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -65,7 +66,25 @@ func (r *notificationRepository) GetAllNotifications(filters map[string]string, 
 	}
 
 	err := query.Find(&user_notifications).Error
-	return user_notifications, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Modifikasi CallbackUrl
+	for i := range user_notifications {
+		if user_notifications[i].CallbackUrl != nil {
+			parsedURL := *user_notifications[i].CallbackUrl
+			separator := "?"
+			if strings.Contains(parsedURL, "?") {
+				separator = "&"
+			}
+			newURL := fmt.Sprintf("%s%snotification_id=%d", parsedURL, separator, user_notifications[i].ID)
+			user_notifications[i].CallbackUrl = &newURL
+		}
+	}
+
+	return user_notifications, total, nil
+
 }
 
 func (r *notificationRepository) CreateNotification(requestBody map[string]string, userIDs []int) error {
