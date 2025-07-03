@@ -19,7 +19,7 @@ func (s *notificationService) GetAllNotifications(filters map[string]string, lim
 	return s.repo.GetAllNotifications(filters, limit, userID)
 }
 
-func (s *notificationService) CreateNotification(requestBody map[string]string, rolesName []string, territoryType string, territoryID int, userID int) error {
+func (s *notificationService) CreateNotification(requestBody map[string]string, rolesName []string, userRole string, territoryID int, userID int) error {
 	if userID != 0 {
 		userIDs := []int{userID}
 		return s.repo.CreateNotification(requestBody, userIDs)
@@ -31,7 +31,7 @@ func (s *notificationService) CreateNotification(requestBody map[string]string, 
 			"start_date": "",
 			"end_date":   "",
 		}
-		users, _, err := s.userRepo.GetAllUsers(0, false, 1, filters, rolesName, false, territoryType, territoryID)
+		users, _, err := s.userRepo.GetAllUsers(0, false, 1, filters, rolesName, false, userRole, territoryID)
 
 		if err != nil {
 			return err
