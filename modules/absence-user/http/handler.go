@@ -5,6 +5,8 @@ import (
 	"byu-crm-service/modules/absence-user/validation"
 	accountService "byu-crm-service/modules/account/service"
 	kpiYaeRange "byu-crm-service/modules/kpi-yae-range/service"
+	notificationService "byu-crm-service/modules/notification/service"
+	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
@@ -22,6 +24,8 @@ type AbsenceUserHandler struct {
 	accountService        accountService.AccountService
 	KpiYaeRangeService    kpiYaeRange.KpiYaeRangeService
 	visitChecklistService visitChecklistService.VisitChecklistService
+	notificationService   notificationService.NotificationService
+	smsSenderService      smsSenderService.SmsSenderService
 }
 
 func NewAbsenceUserHandler(
@@ -29,13 +33,17 @@ func NewAbsenceUserHandler(
 	visitHistoryService visitHistoryService.VisitHistoryService,
 	accountService accountService.AccountService,
 	kpiYaeRange kpiYaeRange.KpiYaeRangeService,
-	visitChecklistService visitChecklistService.VisitChecklistService) *AbsenceUserHandler {
+	visitChecklistService visitChecklistService.VisitChecklistService,
+	notificationService notificationService.NotificationService,
+	smsSender smsSenderService.SmsSenderService) *AbsenceUserHandler {
 	return &AbsenceUserHandler{
 		absenceUserService:    absenceUserService,
 		visitHistoryService:   visitHistoryService,
 		accountService:        accountService,
 		KpiYaeRangeService:    kpiYaeRange,
 		visitChecklistService: visitChecklistService,
+		notificationService:   notificationService,
+		smsSenderService:      smsSender,
 	}
 }
 
@@ -115,6 +123,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	territoryID := c.Locals("territory_id").(int)
 	userRole := c.Locals("user_role").(string)
+	notifyUser := false
 
 	var successCode int = fiber.StatusOK
 	var successMessage string = "Absence user created successfully"
@@ -553,6 +562,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 
 		if typeClockIn == "image" {
 			status = 0
+			notifyUser = true
 			typeClockIn := c.FormValue("evidence_image", "")
 			if typeClockIn == "" {
 				errors := map[string]string{
@@ -589,6 +599,23 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		if err != nil {
 			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		if notifyUser {
+			requestBody := map[string]string{
+				"title":        "Approval Absensi Visit",
+				"description":  "Absensi Visit Account Silakan cek di halaman approval.",
+				"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
+				"subject_type": "App\\Models\\AbsenceUser",
+				"subject_id":   fmt.Sprintf("%d", AbsenceUser.ID),
+			}
+			_ = h.notificationService.CreateNotification(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+
+			// requestBody = map[string]string{
+			// 	"message":      "Absensi Visit Account Silakan cek di halaman approval.",
+			// 	"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
+			// }
+			// _ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
 		}
 
 		response := helper.APIResponse(successMessage, successCode, "success", AbsenceUser)
