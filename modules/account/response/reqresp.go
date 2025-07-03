@@ -37,6 +37,7 @@ type AccountResponse struct {
 	PicInternal             *string   `json:"pic_internal"`
 	IsSkulid                *uint     `json:"is_skulid"`
 	Distance                *string   `json:"distance,omitempty"`
+	Priority                *string   `json:"priority"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
@@ -78,6 +79,7 @@ type SingleAccountResponse struct {
 	Pic                     *string   `json:"pic"`
 	PicInternal             *string   `json:"pic_internal"`
 	IsSkulid                *uint     `json:"is_skulid"`
+	Priority                *string   `json:"priority"`
 	CreatedAt               time.Time `json:"created_at"`
 	UpdatedAt               time.Time `json:"updated_at"`
 
