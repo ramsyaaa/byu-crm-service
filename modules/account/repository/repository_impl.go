@@ -162,8 +162,9 @@ func (r *accountRepository) GetAllAccounts(
 
 	if isPriority, exists := filters["is_priority"]; exists && isPriority == "1" {
 
-		if priority, exists := filters["priority"]; exists {
-			query = query.Where("accounts.priority = ?", priority)
+		if priorityStr, exists := filters["priority"]; exists && priorityStr != "" {
+			priorities := strings.Split(priorityStr, ",")
+			query = query.Where("accounts.priority IN ?", priorities)
 		}
 
 		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
