@@ -611,11 +611,11 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			}
 			_ = h.notificationService.CreateNotification(requestBody, []string{"Branch"}, userRole, territoryID, 0)
 
-			// requestBody = map[string]string{
-			// 	"message":      "Absensi Visit Account Silakan cek di halaman approval.",
-			// 	"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
-			// }
-			// _ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+			requestBody = map[string]string{
+				"message":      "Absensi Visit Account Silakan cek di halaman approval.",
+				"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
+			}
+			_ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
 		}
 
 		response := helper.APIResponse(successMessage, successCode, "success", AbsenceUser)
