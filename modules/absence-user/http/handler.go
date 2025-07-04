@@ -7,6 +7,7 @@ import (
 	kpiYaeRange "byu-crm-service/modules/kpi-yae-range/service"
 	notificationService "byu-crm-service/modules/notification/service"
 	smsSenderService "byu-crm-service/modules/sms-sender/service"
+	userService "byu-crm-service/modules/user/service"
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"fmt"
@@ -26,6 +27,7 @@ type AbsenceUserHandler struct {
 	visitChecklistService visitChecklistService.VisitChecklistService
 	notificationService   notificationService.NotificationService
 	smsSenderService      smsSenderService.SmsSenderService
+	userService           userService.UserService
 }
 
 func NewAbsenceUserHandler(
@@ -35,7 +37,8 @@ func NewAbsenceUserHandler(
 	kpiYaeRange kpiYaeRange.KpiYaeRangeService,
 	visitChecklistService visitChecklistService.VisitChecklistService,
 	notificationService notificationService.NotificationService,
-	smsSender smsSenderService.SmsSenderService) *AbsenceUserHandler {
+	smsSender smsSenderService.SmsSenderService,
+	userService userService.UserService) *AbsenceUserHandler {
 	return &AbsenceUserHandler{
 		absenceUserService:    absenceUserService,
 		visitHistoryService:   visitHistoryService,
@@ -44,6 +47,7 @@ func NewAbsenceUserHandler(
 		visitChecklistService: visitChecklistService,
 		notificationService:   notificationService,
 		smsSenderService:      smsSender,
+		userService:           userService,
 	}
 }
 
@@ -602,9 +606,23 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 		}
 
 		if notifyUser {
+			subjectIDStr := c.FormValue("subject_id")
+			parsedSubjectID, _ := strconv.Atoi(subjectIDStr)
+			getAccount, err := h.accountService.FindByAccountID(uint(parsedSubjectID), userRole, uint(territoryID), uint(userID))
+			if err != nil {
+				response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			getUser, err := h.userService.GetUserByID(uint(userID))
+			if err != nil {
+				response := helper.APIResponse("Failed to fetch user", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
 			requestBody := map[string]string{
 				"title":        "Approval Absensi Visit",
-				"description":  "Absensi Visit Account Silakan cek di halaman approval.",
+				"description":  fmt.Sprintf("Permintaan approval absensi visit account %s dari %s.", *getAccount.AccountName, getUser.Name),
 				"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
 				"subject_type": "App\\Models\\AbsenceUser",
 				"subject_id":   fmt.Sprintf("%d", AbsenceUser.ID),
@@ -612,7 +630,7 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 			_ = h.notificationService.CreateNotification(requestBody, []string{"Branch"}, userRole, territoryID, 0)
 
 			requestBody = map[string]string{
-				"message":      "Absensi Visit Account Silakan cek di halaman approval.",
+				"message":      fmt.Sprintf("Permintaan approval absensi visit account %s dari %s.", *getAccount.AccountName, getUser.Name),
 				"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
 			}
 			_ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
@@ -841,6 +859,9 @@ func (h *AbsenceUserHandler) ExportResumeMonthlyAbsenceUsers(c *fiber.Ctx) error
 }
 
 func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+	userID := c.Locals("user_id").(int)
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
@@ -888,6 +909,28 @@ func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
 		}
 		var statusInt uint = 1
 		AbsenceUser.Status = &statusInt
+
+		getAccount, err := h.accountService.FindByAccountID(uint(*AbsenceUser.SubjectID), userRole, uint(territoryID), uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		requestBody := map[string]string{
+			"title":        "Pengajuan Visit Diterima",
+			"description":  fmt.Sprintf("Permintaan approval absensi visit account %s anda diterima.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/my-task/%d", *AbsenceUser.SubjectID),
+			"subject_type": "App\\Models\\AbsenceUser",
+			"subject_id":   fmt.Sprintf("%d", AbsenceUser.ID),
+		}
+		_ = h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryID, int(*AbsenceUser.UserID))
+
+		requestBody = map[string]string{
+			"message":      fmt.Sprintf("Permintaan approval absensi visit account %s anda diterima.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/my-task/%d", *AbsenceUser.SubjectID),
+		}
+		_ = h.smsSenderService.CreateSms(requestBody, []string{}, userRole, territoryID, int(*AbsenceUser.UserID))
+
 	} else if status == "reject" {
 		err = h.absenceUserService.DeleteAbsenceUser(intID)
 		if err != nil {
@@ -902,6 +945,27 @@ func (h *AbsenceUserHandler) HandleAbsenceApproval(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusOK).JSON(response)
 			}
 		}
+
+		getAccount, err := h.accountService.FindByAccountID(uint(*AbsenceUser.SubjectID), userRole, uint(territoryID), uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		requestBody := map[string]string{
+			"title":        "Pengajuan Visit Ditolak",
+			"description":  fmt.Sprintf("Permintaan approval absensi visit account %s anda ditolak. Silahkan ajukan ulang.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/my-task/%d", *AbsenceUser.SubjectID),
+			"subject_type": "App\\Models\\AbsenceUser",
+			"subject_id":   fmt.Sprintf("%d", AbsenceUser.ID),
+		}
+		_ = h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryID, userID)
+
+		requestBody = map[string]string{
+			"message":      fmt.Sprintf("Permintaan approval absensi visit account %s anda ditolak. Silahkan ajukan ulang.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/my-task/%d", *AbsenceUser.SubjectID),
+		}
+		_ = h.smsSenderService.CreateSms(requestBody, []string{}, userRole, territoryID, userID)
 	}
 
 	// Return response

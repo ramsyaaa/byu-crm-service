@@ -7,21 +7,29 @@ import (
 	"byu-crm-service/helper"
 	accountService "byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/approval-location-account/service"
+	notificationService "byu-crm-service/modules/notification/service"
+	smsSenderService "byu-crm-service/modules/sms-sender/service"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type ApprovalLocationAccountHandler struct {
-	service        service.ApprovalLocationAccountService
-	accountService accountService.AccountService
+	service             service.ApprovalLocationAccountService
+	accountService      accountService.AccountService
+	notificationService notificationService.NotificationService
+	smsSenderService    smsSenderService.SmsSenderService
 }
 
 func NewApprovalLocationAccountHandler(
-	service service.ApprovalLocationAccountService, accountService accountService.AccountService) *ApprovalLocationAccountHandler {
+	service service.ApprovalLocationAccountService, accountService accountService.AccountService,
+	notificationService notificationService.NotificationService, smsSenderService smsSenderService.SmsSenderService) *ApprovalLocationAccountHandler {
 
 	return &ApprovalLocationAccountHandler{
-		service:        service,
-		accountService: accountService}
+		service:             service,
+		accountService:      accountService,
+		notificationService: notificationService,
+		smsSenderService:    smsSenderService,
+	}
 }
 
 func (h *ApprovalLocationAccountHandler) GetAllApprovalRequest(c *fiber.Ctx) error {
@@ -84,6 +92,9 @@ func (h *ApprovalLocationAccountHandler) GetById(c *fiber.Ctx) error {
 }
 
 func (h *ApprovalLocationAccountHandler) HandleLocationApproval(c *fiber.Ctx) error {
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+	userID := c.Locals("user_id").(int)
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
@@ -122,8 +133,7 @@ func (h *ApprovalLocationAccountHandler) HandleLocationApproval(c *fiber.Ctx) er
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
 		}
-		fmt.Println("RequestLocation.Longitude", &RequestLocation.Longitude)
-		fmt.Println("RequestLocation.Latitude", &RequestLocation.Latitude)
+
 		updatedLocationAccount := map[string]interface{}{
 			"longitude": &RequestLocation.Longitude,
 			"latitude":  &RequestLocation.Latitude,
@@ -134,6 +144,28 @@ func (h *ApprovalLocationAccountHandler) HandleLocationApproval(c *fiber.Ctx) er
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
 		}
+
+		getAccount, err := h.accountService.FindByAccountID(uint(*RequestLocation.AccountID), userRole, uint(territoryID), uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		requestBody := map[string]string{
+			"title":        "Pengajuan Perubahan Lokasi Diterima",
+			"description":  fmt.Sprintf("Permintaan perubahan data lokasi account %s anda diterima.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/accounts?type=list"),
+			"subject_type": "App\\Models\\ApprovalLocationAccount",
+			"subject_id":   fmt.Sprintf("%d", RequestLocation.ID),
+		}
+		_ = h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryID, int(*RequestLocation.UserID))
+
+		requestBody = map[string]string{
+			"message":      fmt.Sprintf("Permintaan perubahan data lokasi account %s anda diterima.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/accounts?type=list"),
+		}
+		_ = h.smsSenderService.CreateSms(requestBody, []string{}, userRole, territoryID, int(*RequestLocation.UserID))
+
 	} else if status == "reject" {
 		updateData := map[string]interface{}{
 			"status": 2,
@@ -144,6 +176,27 @@ func (h *ApprovalLocationAccountHandler) HandleLocationApproval(c *fiber.Ctx) er
 			response := helper.APIResponse(err.Error(), fiber.StatusUnauthorized, "error", nil)
 			return c.Status(fiber.StatusUnauthorized).JSON(response)
 		}
+
+		getAccount, err := h.accountService.FindByAccountID(uint(*RequestLocation.AccountID), userRole, uint(territoryID), uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		requestBody := map[string]string{
+			"title":        "Pengajuan Perubahan Lokasi Ditolak",
+			"description":  fmt.Sprintf("Permintaan perubahan data lokasi account %s anda ditolak.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/accounts?type=list"),
+			"subject_type": "App\\Models\\ApprovalLocationAccount",
+			"subject_id":   fmt.Sprintf("%d", RequestLocation.ID),
+		}
+		_ = h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryID, int(*RequestLocation.UserID))
+
+		requestBody = map[string]string{
+			"message":      fmt.Sprintf("Permintaan perubahan data lokasi account %s anda ditolak.", *getAccount.AccountName),
+			"callback_url": fmt.Sprintf("/accounts?type=list"),
+		}
+		_ = h.smsSenderService.CreateSms(requestBody, []string{}, userRole, territoryID, int(*RequestLocation.UserID))
 	}
 
 	response := helper.APIResponse("Approval Location Account Successfully", fiber.StatusOK, "success", nil)
