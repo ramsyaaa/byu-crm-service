@@ -633,7 +633,9 @@ func (h *AbsenceUserHandler) CreateAbsenceUser(c *fiber.Ctx) error {
 				"message":      fmt.Sprintf("Permintaan approval absensi visit account %s dari %s.", *getAccount.AccountName, getUser.Name),
 				"callback_url": fmt.Sprintf("/visits?type=detail&id=%d", AbsenceUser.ID),
 			}
-			_ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+			err = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+
+			fmt.Println("err", err)
 		}
 
 		response := helper.APIResponse(successMessage, successCode, "success", AbsenceUser)

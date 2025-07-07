@@ -51,6 +51,7 @@ type ValidateRequest struct {
 // UpdateProfileRequest struct for creating a faculty
 type UpdateProfileRequest struct {
 	Name            string `json:"name" validate:"required"`
+	Msisdn          string `json:"msisdn" validate:"required"`
 	OldPassword     string `json:"old_password"`
 	NewPassword     string `json:"new_password"`
 	ConfirmPassword string `json:"confirm_password"`
@@ -67,6 +68,7 @@ var validationMessages = map[string]string{
 	"new_password.min":          "Password baru minimal 8 karakter",
 	"confirm_password.required": "Konfirmasi password harus diisi",
 	"confirm_password.min":      "Konfirmasi password minimal 8 karakter",
+	"msisdn.required":           "MSISDN harus diisi",
 }
 
 func ValidateCreate(req *ValidateRequest) map[string]string {
@@ -156,6 +158,17 @@ func ValidateProfile(req *UpdateProfileRequest) map[string]string {
 
 	// Validasi basic dari struct (hanya validasi 'name')
 	if err := validate.StructPartial(req, "Name"); err != nil {
+		for _, err := range err.(validator.ValidationErrors) {
+			key := fmt.Sprintf("%s.%s", err.Field(), err.Tag())
+			if msg, ok := validationMessages[strings.ToLower(key)]; ok {
+				errorsMap[err.Field()] = msg
+			} else {
+				errorsMap[err.Field()] = err.Error()
+			}
+		}
+	}
+
+	if err := validate.StructPartial(req, "Msisdn"); err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			key := fmt.Sprintf("%s.%s", err.Field(), err.Tag())
 			if msg, ok := validationMessages[strings.ToLower(key)]; ok {

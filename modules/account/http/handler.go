@@ -402,29 +402,11 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Generate Redis Cache Key berdasarkan semua filter
-	cacheKey := fmt.Sprintf("accountByID:role=%s:territory=%d:userID=%d:accountID=%d", userRole, territoryID, userID, id)
-
-	// Coba ambil dari Redis
-	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
-	if err == nil {
-		// Berhasil ambil dari cache
-		var cachedData map[string]interface{}
-		json.Unmarshal([]byte(cached), &cachedData)
-
-		response := helper.APIResponse("Get Account By ID (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
-		return c.Status(fiber.StatusOK).JSON(response)
-	}
-
 	account, err := h.service.FindByAccountID(uint(id), userRole, uint(territoryID), uint(userID))
 	if err != nil {
 		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
-
-	// Simpan ke Redis (misal selama 5 menit)
-	cacheBytes, _ := json.Marshal(account)
-	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Success get account", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)

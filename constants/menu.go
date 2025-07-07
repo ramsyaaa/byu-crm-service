@@ -138,10 +138,10 @@ var MenuList = []Menu{
 				Status:     true,
 			},
 			{
-				Name:       "Ubah Password",
+				Name:       "Edit Profile",
 				Icon:       "fa-solid fa-key",
 				Permission: "change password",
-				Route:      "/user/change-password",
+				Route:      "/user/edit-profile",
 				Status:     true,
 			},
 		},
