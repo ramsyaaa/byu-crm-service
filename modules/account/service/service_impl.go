@@ -242,6 +242,7 @@ func (s *accountService) FindByAccountID(id uint, userRole string, territoryID u
 	accountResponse.Longitude = account.Longitude
 	accountResponse.Ownership = account.Ownership
 	accountResponse.Pic = account.Pic
+	accountResponse.Priority = account.Priority
 	accountResponse.PicInternal = account.PicInternal
 	accountResponse.SocialMedias = account.SocialMedias
 	accountResponse.Contacts = account.Contacts

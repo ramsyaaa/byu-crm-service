@@ -20,6 +20,10 @@ func (s *userService) GetUserByID(id uint) (*response.UserResponse, error) {
 	return s.repo.FindByID(id)
 }
 
+func (s *userService) GetUserByMsisdn(msisdn string) (*response.UserResponse, error) {
+	return s.repo.FindByMsisdn(msisdn)
+}
+
 func (s *userService) GetAllUsers(limit int, paginate bool, page int, filters map[string]string, only_role []string, orderByMostAssignedPic bool, userRole string, territoryID interface{}) ([]*response.UserResponse, int64, error) {
 	users, total, err := s.repo.GetAllUsers(limit, paginate, page, filters, only_role, orderByMostAssignedPic, userRole, territoryID)
 	if err != nil {

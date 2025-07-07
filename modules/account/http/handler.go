@@ -30,7 +30,9 @@ import (
 	accountTypeSchoolDetailService "byu-crm-service/modules/account-type-school-detail/service"
 	approvalLocationAccountService "byu-crm-service/modules/approval-location-account/service"
 	contactAccountService "byu-crm-service/modules/contact-account/service"
+	notificationService "byu-crm-service/modules/notification/service"
 	productService "byu-crm-service/modules/product/service"
+	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 	userService "byu-crm-service/modules/user/service"
 
@@ -51,6 +53,8 @@ type AccountHandler struct {
 	absenceUserService                absenceUserService.AbsenceUserService
 	userService                       userService.UserService
 	approvalLocationAccountService    approvalLocationAccountService.ApprovalLocationAccountService
+	notificationService               notificationService.NotificationService
+	smsSenderService                  smsSenderService.SmsSenderService
 	redis                             *redis.Client
 }
 
@@ -68,6 +72,8 @@ func NewAccountHandler(
 	absenceUserService absenceUserService.AbsenceUserService,
 	userService userService.UserService,
 	approvalLocationAccountService approvalLocationAccountService.ApprovalLocationAccountService,
+	notificationService notificationService.NotificationService,
+	smsSenderService smsSenderService.SmsSenderService,
 	redis *redis.Client) *AccountHandler {
 
 	return &AccountHandler{
@@ -84,6 +90,8 @@ func NewAccountHandler(
 		absenceUserService:                absenceUserService,
 		userService:                       userService,
 		approvalLocationAccountService:    approvalLocationAccountService,
+		notificationService:               notificationService,
+		smsSenderService:                  smsSenderService,
 		redis:                             redis}
 }
 
@@ -394,29 +402,11 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Generate Redis Cache Key berdasarkan semua filter
-	cacheKey := fmt.Sprintf("accountByID:role=%s:territory=%d:userID=%d:accountID=%d", userRole, territoryID, userID, id)
-
-	// Coba ambil dari Redis
-	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
-	if err == nil {
-		// Berhasil ambil dari cache
-		var cachedData map[string]interface{}
-		json.Unmarshal([]byte(cached), &cachedData)
-
-		response := helper.APIResponse("Get Account By ID (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
-		return c.Status(fiber.StatusOK).JSON(response)
-	}
-
 	account, err := h.service.FindByAccountID(uint(id), userRole, uint(territoryID), uint(userID))
 	if err != nil {
 		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
-
-	// Simpan ke Redis (misal selama 5 menit)
-	cacheBytes, _ := json.Marshal(account)
-	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Success get account", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -955,6 +945,7 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 
 	userRole := c.Locals("user_role").(string)
 	userID := c.Locals("user_id").(int)
+	territoryID := c.Locals("territory_id").(int)
 	// Ambil Account ID dari URL
 	accountIDStr := c.Params("id")
 	if accountIDStr == "" {
@@ -1044,6 +1035,33 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 			response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
+
+		getAccount, err := h.service.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		getUser, err := h.userService.GetUserByID(uint(userID))
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch user", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		requestBody := map[string]string{
+			"title":        "Approval Perubahan Lokasi Account",
+			"description":  fmt.Sprintf("Permintaan perubahan data lokasi account %s dari %s.", *getAccount.AccountName, getUser.Name),
+			"callback_url": fmt.Sprintf("/accounts-location?type=detail&id=%d", requestLocation.ID),
+			"subject_type": "App\\Models\\ApprovalLocationAccount",
+			"subject_id":   fmt.Sprintf("%d", requestLocation.ID),
+		}
+		_ = h.notificationService.CreateNotification(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+
+		requestBody = map[string]string{
+			"message":      fmt.Sprintf("Permintaan perubahan data lokasi account %s dari %s.", *getAccount.AccountName, getUser.Name),
+			"callback_url": fmt.Sprintf("/accounts-location?type=detail&id=%d", requestLocation.ID),
+		}
+		_ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
 		// Return success response
 		response := helper.APIResponse(successMessage, fiber.StatusOK, "success", requestLocation)
 		return c.Status(fiber.StatusOK).JSON(response)
