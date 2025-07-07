@@ -14,6 +14,7 @@ import (
 	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	territoryRepo "byu-crm-service/modules/territory/repository"
 	userRepo "byu-crm-service/modules/user/repository"
+	userService "byu-crm-service/modules/user/service"
 	visitChecklistRepo "byu-crm-service/modules/visit-checklist/repository"
 	visitChecklistService "byu-crm-service/modules/visit-checklist/service"
 	visitHistoryRepo "byu-crm-service/modules/visit-history/repository"
@@ -40,8 +41,9 @@ func AbsenceUserRouter(router fiber.Router, db *gorm.DB) {
 	kpiYaeRangeService := kpiYaeRangeService.NewKpiYaeRangeService(kpiYaeRangeRepo)
 	visitChecklistService := visitChecklistService.NewVisitChecklistService(visitChecklistRepo)
 	notificationService := notificationService.NewNotificationService(notificationRepo, userRepo)
+	userService := userService.NewUserService(userRepo)
 
-	absenceUserHandler := http.NewAbsenceUserHandler(absenceUserService, visitHistoryService, accountService, kpiYaeRangeService, visitChecklistService, notificationService, smsSenderService.NewSmsSenderService(userRepo))
+	absenceUserHandler := http.NewAbsenceUserHandler(absenceUserService, visitHistoryService, accountService, kpiYaeRangeService, visitChecklistService, notificationService, smsSenderService.NewSmsSenderService(userRepo), userService)
 
 	http.AbsenceUserRoutes(router, absenceUserHandler)
 

@@ -21,8 +21,11 @@ import (
 	clusterRepo "byu-crm-service/modules/cluster/repository"
 	contactAccountRepo "byu-crm-service/modules/contact-account/repository"
 	eligibilityRepo "byu-crm-service/modules/eligibility/repository"
+	notificationRepo "byu-crm-service/modules/notification/repository"
+	notificationService "byu-crm-service/modules/notification/service"
 	productRepo "byu-crm-service/modules/product/repository"
 	regionRepo "byu-crm-service/modules/region/repository"
+	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
 	territoryRepo "byu-crm-service/modules/territory/repository"
 	userRepo "byu-crm-service/modules/user/repository"
@@ -85,7 +88,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	userService := userService.NewUserService(userRepo)
 	approvalLocationAccountService := approvalLocationAccountService.NewApprovalLocationAccountService(approvalLocationAccountRepo, accountRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, redisClient.(*redis.Client))
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, notificationService.NewNotificationService(notificationRepo.NewNotificationRepository(db), userRepo), smsSenderService.NewSmsSenderService(userRepo), redisClient.(*redis.Client))
 
 	http.AccountRoutes(router, accountHandler)
 

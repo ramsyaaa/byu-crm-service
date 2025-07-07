@@ -552,6 +552,7 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 
 	dataUpdate := make(map[string]interface{})
 	dataUpdate["name"] = req.Name
+	dataUpdate["msisdn"] = NormalizeMsisdn(req.Msisdn)
 
 	if req.OldPassword != "" || req.NewPassword != "" || req.ConfirmPassword != "" {
 		getUser, _ := h.authService.GetUserByKey("email", user.Email)
@@ -577,6 +578,24 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 		dataUpdate["password"] = req.NewPassword
 	}
 
+	userByMsisdn, err := h.service.GetUserByMsisdn(dataUpdate["msisdn"].(string))
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch user by msisdn", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	if userByMsisdn != nil {
+		if userByMsisdn.ID != user.ID {
+			if userByMsisdn.Msisdn == dataUpdate["msisdn"] {
+				errors := map[string]string{
+					"msisdn": "MSISDN sudah digunakan oleh pengguna lain",
+				}
+				response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+		}
+	}
+
 	if err := c.BodyParser(user); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"message": "Invalid request body",
@@ -599,4 +618,20 @@ func (h *UserHandler) UpdateUserProfile(c *fiber.Ctx) error {
 
 	response := helper.APIResponse("Update User Profile Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func NormalizeMsisdn(msisdn string) string {
+	msisdn = strings.TrimSpace(msisdn)
+
+	if strings.HasPrefix(msisdn, "+62") {
+		return msisdn
+	} else if strings.HasPrefix(msisdn, "62") {
+		return "+" + msisdn
+	} else if strings.HasPrefix(msisdn, "0") {
+		return "+62" + msisdn[1:]
+	} else if strings.HasPrefix(msisdn, "8") {
+		return "+62" + msisdn
+	}
+
+	return msisdn
 }
