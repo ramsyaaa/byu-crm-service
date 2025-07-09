@@ -155,25 +155,6 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 	onlyUserPic, _ := strconv.ParseBool(c.Query("only_user_pic", "0"))
 	excludeVisited, _ := strconv.ParseBool(c.Query("exclude_visited", "false"))
 
-	// Generate Redis Cache Key berdasarkan semua filter
-	cacheKey := fmt.Sprintf("accounts:user=%d:role=%s:territory=%d:page=%d:limit=%d:paginate=%v:onlyUserPic=%v:excludeVisited=%v",
-		userID, userRole, territoryID, page, limit, paginate, onlyUserPic, excludeVisited)
-
-	for k, v := range filters {
-		cacheKey += fmt.Sprintf(":%s=%s", k, v)
-	}
-
-	// Coba ambil dari Redis
-	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
-	if err == nil {
-		// Berhasil ambil dari cache
-		var cachedData map[string]interface{}
-		json.Unmarshal([]byte(cached), &cachedData)
-
-		response := helper.APIResponse("Get Accounts (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
-		return c.Status(fiber.StatusOK).JSON(response)
-	}
-
 	// Call service with filters
 	accounts, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 	if err != nil {
@@ -189,10 +170,6 @@ func (h *AccountHandler) GetAllAccounts(c *fiber.Ctx) error {
 		"total":    total,
 		"page":     page,
 	}
-
-	// Simpan ke Redis (misal selama 5 menit)
-	cacheBytes, _ := json.Marshal(responseData)
-	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
