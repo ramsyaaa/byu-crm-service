@@ -88,6 +88,7 @@ func (r *accountRepository) GetAllAccounts(
 		case "Regional":
 			query = query.Where("regions.id = ?", territoryID)
 		case "Branch", "Buddies", "DS", "Organic", "YAE":
+			fmt.Println("branch id", territoryID)
 			query = query.Where("branches.id = ?", territoryID)
 		case "Admin-Tap", "Cluster":
 			query = query.Where("clusters.id = ?", territoryID)
@@ -167,22 +168,20 @@ func (r *accountRepository) GetAllAccounts(
 			query = query.Where("accounts.priority IN ?", priorities)
 		}
 
-		if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
-			if territoryID == 84 {
-				var cityIDs []int
-				// Ambil semua ID kota yang termasuk dalam cluster_id = 243
-				err := r.db.Model(&models.City{}).
-					Where("cluster_id = ?", 243).
-					Pluck("id", &cityIDs).Error
+		// if userRole == "Buddies" || userRole == "DS" || userRole == "Organic" || userRole == "YAE" {
+		// 	if territoryID == 84 {
+		// 		var cityIDs []int
+		// 		// Ambil semua ID kota yang termasuk dalam cluster_id = 243
+		// 		err := r.db.Model(&models.City{}).
+		// 			Where("cluster_id = ?", 243).
+		// 			Pluck("id", &cityIDs).Error
 
-				fmt.Println(&cityIDs)
-
-				if err == nil && len(cityIDs) > 0 {
-					// Tambahkan pengecualian OR untuk city id tersebut
-					query = query.Or("accounts.City IN ?", cityIDs)
-				}
-			}
-		}
+		// 		if err == nil && len(cityIDs) > 0 {
+		// 			// Tambahkan pengecualian OR untuk city id tersebut
+		// 			query = query.Or("accounts.City IN ?", cityIDs)
+		// 		}
+		// 	}
+		// }
 	}
 
 	// Count total before pagination
