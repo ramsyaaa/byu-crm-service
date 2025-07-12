@@ -79,9 +79,28 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 	month, _ := strconv.Atoi(c.Query("month", "0"))
 	year, _ := strconv.Atoi(c.Query("year", "0"))
 	absence_type := c.Query("type", "")
+	userRole := c.Locals("user_role").(string)
+	territory_id := c.Locals("territory_id").(int)
+
+	userIDs := []int{}
+
+	if filters["status"] == "0" {
+		getUsers, _, err := h.userService.GetAllUsers(0, false, 1, map[string]string{"search": filters["search"]}, []string{}, false, userRole, territory_id)
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch users", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+
+		for _, user := range getUsers {
+			if user.ID == 356 {
+				fmt.Println("Skipping user with ID 356")
+			}
+			userIDs = append(userIDs, int(user.ID))
+		}
+	}
 
 	// Call service with filters
-	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type)
+	absences, total, err := h.absenceUserService.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type, userRole, territory_id, userIDs)
 	if err != nil {
 		response := helper.APIResponse("Failed to fetch absences", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
@@ -791,8 +810,9 @@ func (h *AbsenceUserHandler) ExportRawAbsenceUsers(c *fiber.Ctx) error {
 	absenceType := c.Query("type", "")
 
 	// Panggil service untuk generate file Excel
-	fmt.Println("Generating Excel for user ID:", userID, "with filters:", filters, "month:", month, "year:", year, "absenceType:", absenceType)
-	excelFile, err := h.absenceUserService.GenerateAbsenceExcel(userID, filters, month, year, absenceType)
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+	excelFile, err := h.absenceUserService.GenerateAbsenceExcel(userID, filters, month, year, absenceType, userRole, territoryID, []int{})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Gagal membuat file Excel",
@@ -843,9 +863,11 @@ func (h *AbsenceUserHandler) ExportResumeMonthlyAbsenceUsers(c *fiber.Ctx) error
 	month, _ := strconv.Atoi(c.Query("month", "0"))
 	year, _ := strconv.Atoi(c.Query("year", "0"))
 	absenceType := c.Query("type", "")
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
 
 	// Panggil service untuk generate file Excel
-	excelFile, err := h.absenceUserService.GenerateAbsenceResumeExcel(userID, filters, month, year, absenceType)
+	excelFile, err := h.absenceUserService.GenerateAbsenceResumeExcel(userID, filters, month, year, absenceType, userRole, territoryID, []int{})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Gagal membuat file Excel",

@@ -402,11 +402,12 @@ func (h *UserHandler) GetUserProfile(c *fiber.Ctx) error {
 func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	// Default query params
 	filters := map[string]string{
-		"search":     c.Query("search", ""),
-		"order_by":   c.Query("order_by", "id"),
-		"order":      c.Query("order", "DESC"),
-		"start_date": c.Query("start_date", ""),
-		"end_date":   c.Query("end_date", ""),
+		"search":      c.Query("search", ""),
+		"order_by":    c.Query("order_by", "id"),
+		"order":       c.Query("order", "DESC"),
+		"start_date":  c.Query("start_date", ""),
+		"end_date":    c.Query("end_date", ""),
+		"user_status": c.Query("user_status", "active"),
 	}
 
 	// Parse integer and boolean values
@@ -423,25 +424,6 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 
-	// Generate Redis Cache Key berdasarkan semua filter
-	cacheKey := fmt.Sprintf("users:role=%s:territory=%d:page=%d:limit=%d:paginate=%v:orderByMostAssignedPic=%v:onlyRole=%s",
-		userRole, territoryID, page, limit, paginate, orderByMostAssignedPic, strings.Join(onlyRole, ","))
-
-	for k, v := range filters {
-		cacheKey += fmt.Sprintf(":%s=%s", k, v)
-	}
-
-	// Coba ambil dari Redis
-	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
-	if err == nil {
-		// Berhasil ambil dari cache
-		var cachedData map[string]interface{}
-		json.Unmarshal([]byte(cached), &cachedData)
-
-		response := helper.APIResponse("Get Users (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
-		return c.Status(fiber.StatusOK).JSON(response)
-	}
-
 	// Call service with filters
 	users, total, err := h.service.GetAllUsers(limit, paginate, page, filters, onlyRole, orderByMostAssignedPic, userRole, territoryID)
 	if err != nil {
@@ -455,11 +437,6 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 		"total": total,
 		"page":  page,
 	}
-
-	// Simpan ke Redis (misal selama 5 menit)
-	cacheBytes, _ := json.Marshal(responseData)
-	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
-
 	response := helper.APIResponse("Get Users Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
