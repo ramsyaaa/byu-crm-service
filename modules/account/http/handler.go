@@ -930,6 +930,22 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	checkAlreadyUpdate, err := h.approvalLocationAccountService.FindByUserIDAndAccountID(uint(userID), accountID, 0)
+	if err != nil {
+		response := helper.APIResponse("Failed to check existing update request", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	if checkAlreadyUpdate != nil {
+		response := helper.APIResponse("Kamu sudah mengajukan perubahan data di account ini, silahkan menunggu persetujuan.", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
 	successMessage := "Location Account successfully updated"
 
 	// Parse request body with error handling
@@ -988,17 +1004,9 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 	default:
 		unmarshalErr = json.Unmarshal(reqBytes, &reqMap)
 		if unmarshalErr != nil {
-			log.Printf(fmt.Sprintf("Failed to unmarshal request: %v", unmarshalErr))
 			response := helper.APIResponse("Failed to process request data", fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
-	}
-
-	// Convert Account ID to integer
-	accountID, err := strconv.Atoi(accountIDStr)
-	if err != nil {
-		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
-		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
 	requestBody := map[string]interface{}{

@@ -17,7 +17,7 @@ func NewApprovalLocationAccountRepository(db *gorm.DB) ApprovalLocationAccountRe
 	return &approvalLocationAccountRepository{db: db}
 }
 
-func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int) ([]response.ApprovalLocationAccountResponse, int64, error) {
+func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userIDs []int) ([]response.ApprovalLocationAccountResponse, int64, error) {
 	var dataModel []models.ApprovalLocationAccount
 	var responseData []response.ApprovalLocationAccountResponse
 	var total int64
@@ -33,6 +33,15 @@ func (r *approvalLocationAccountRepository) GetAllApprovalRequest(limit int, pag
 	}
 	if endDate, exists := filters["end_date"]; exists && endDate != "" {
 		query = query.Where("approval_location_accounts.created_at <= ?", endDate)
+	}
+
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		if len(userIDs) > 0 {
+			query = query.Where("approval_location_accounts.user_id IN ?", userIDs)
+		} else {
+			// Jika kosong, untuk menghindari hasil kosong tak disengaja
+			query = query.Where("1 = 0")
+		}
 	}
 
 	// Count total before pagination
@@ -191,6 +200,22 @@ func (r *approvalLocationAccountRepository) FindByID(id uint) (*response.Approva
 	}
 
 	return result, nil
+}
+
+func (r *approvalLocationAccountRepository) FindByUserIDAndAccountID(userID uint, accountID int, status int) (*models.ApprovalLocationAccount, error) {
+	var approvalLocationAccount models.ApprovalLocationAccount
+
+	err := r.db.Where("user_id = ? AND account_id = ? AND status = ?", userID, accountID, status).
+		First(&approvalLocationAccount).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &approvalLocationAccount, nil
 }
 
 func (r *approvalLocationAccountRepository) UpdateFields(id uint, fields map[string]interface{}) error {
