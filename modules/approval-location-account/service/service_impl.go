@@ -17,8 +17,12 @@ func NewApprovalLocationAccountService(repo repository.ApprovalLocationAccountRe
 	return &approvalLocationAccountService{repo: repo, accountRepo: accountRepo}
 }
 
-func (s *approvalLocationAccountService) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userID int) ([]response.ApprovalLocationAccountResponse, int64, error) {
-	return s.repo.GetAllApprovalRequest(limit, paginate, page, filters, userRole, territoryID, userID)
+func (s *approvalLocationAccountService) GetAllApprovalRequest(limit int, paginate bool, page int, filters map[string]string, userRole string, territoryID int, userIDs []int) ([]response.ApprovalLocationAccountResponse, int64, error) {
+	return s.repo.GetAllApprovalRequest(limit, paginate, page, filters, userRole, territoryID, userIDs)
+}
+
+func (s *approvalLocationAccountService) FindByUserIDAndAccountID(userID uint, accountID int, status int) (*models.ApprovalLocationAccount, error) {
+	return s.repo.FindByUserIDAndAccountID(userID, accountID, status)
 }
 
 func (s *approvalLocationAccountService) CreateApprovalRequest(requestBody map[string]interface{}, userID int, accountID int) (*models.ApprovalLocationAccount, error) {

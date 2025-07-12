@@ -11,6 +11,7 @@ import (
 	notificationService "byu-crm-service/modules/notification/service"
 	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	userRepo "byu-crm-service/modules/user/repository"
+	userService "byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -27,8 +28,9 @@ func ApprovalLocationAccountRouter(router fiber.Router, db *gorm.DB) {
 	accountService := accountService.NewAccountService(accountRepo, cityRepo)
 	notificationService := notificationService.NewNotificationService(notificationRepo, userRepo)
 	smsSenderService := smsSenderService.NewSmsSenderService(userRepo)
+	userService := userService.NewUserService(userRepo)
 
-	approvalHandler := http.NewApprovalLocationAccountHandler(approvalService, accountService, notificationService, smsSenderService)
+	approvalHandler := http.NewApprovalLocationAccountHandler(approvalService, accountService, notificationService, smsSenderService, userService)
 
 	http.ApprovalLocationAccountRoutes(router, approvalHandler)
 

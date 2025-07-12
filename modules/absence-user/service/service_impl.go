@@ -26,8 +26,8 @@ func NewAbsenceUserService(repo repository.AbsenceUserRepository, territoryRepo 
 	return &absenceUserService{repo: repo, territoryRepo: territoryRepo}
 }
 
-func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int, absence_type string) ([]models.AbsenceUser, int64, error) {
-	absences, total, err := s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type)
+func (s *absenceUserService) GetAllAbsences(limit int, paginate bool, page int, filters map[string]string, user_id int, month int, year int, absence_type string, userRole string, territory_id int, userIDs []int) ([]models.AbsenceUser, int64, error) {
+	absences, total, err := s.repo.GetAllAbsences(limit, paginate, page, filters, user_id, month, year, absence_type, userRole, territory_id, userIDs)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -186,9 +186,9 @@ func (s *absenceUserService) DeleteAbsenceUser(id int) error {
 	return s.repo.DeleteAbsenceUser(id)
 }
 
-func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error) {
+func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string]string, month, year int, absenceType string, userRole string, territoryID int, userIDs []int) (io.Reader, error) {
 	// Ambil data
-	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType)
+	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType, userRole, territoryID, userIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -481,9 +481,9 @@ func (s *absenceUserService) GenerateAbsenceExcel(userID int, filters map[string
 	return &buf, nil
 }
 
-func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[string]string, month, year int, absenceType string) (io.Reader, error) {
+func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[string]string, month, year int, absenceType string, userRole string, territoryID int, userIDs []int) (io.Reader, error) {
 	// Ambil data
-	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType)
+	absences, _, err := s.repo.GetAllAbsences(0, false, 1, filters, userID, month, year, absenceType, userRole, territoryID, userIDs)
 	if err != nil {
 		return nil, err
 	}

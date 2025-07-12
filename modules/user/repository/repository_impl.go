@@ -52,6 +52,15 @@ func (r *userRepository) GetAllUsers(
 		}
 	}
 
+	userStatus, exists := filters["user_status"]
+	if exists {
+		if userStatus != "all" {
+			baseQuery = baseQuery.Where("users.user_status = ?", userStatus)
+		}
+	} else {
+		baseQuery = baseQuery.Where("users.user_status = ?", "active")
+	}
+
 	// Date filter
 	if startDate, exists := filters["start_date"]; exists && startDate != "" {
 		baseQuery = baseQuery.Where("users.created_at >= ?", startDate)

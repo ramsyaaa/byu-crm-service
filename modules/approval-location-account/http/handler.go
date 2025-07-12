@@ -9,6 +9,7 @@ import (
 	"byu-crm-service/modules/approval-location-account/service"
 	notificationService "byu-crm-service/modules/notification/service"
 	smsSenderService "byu-crm-service/modules/sms-sender/service"
+	userService "byu-crm-service/modules/user/service"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,17 +19,20 @@ type ApprovalLocationAccountHandler struct {
 	accountService      accountService.AccountService
 	notificationService notificationService.NotificationService
 	smsSenderService    smsSenderService.SmsSenderService
+	userService         userService.UserService
 }
 
 func NewApprovalLocationAccountHandler(
 	service service.ApprovalLocationAccountService, accountService accountService.AccountService,
-	notificationService notificationService.NotificationService, smsSenderService smsSenderService.SmsSenderService) *ApprovalLocationAccountHandler {
+	notificationService notificationService.NotificationService, smsSenderService smsSenderService.SmsSenderService,
+	userService userService.UserService) *ApprovalLocationAccountHandler {
 
 	return &ApprovalLocationAccountHandler{
 		service:             service,
 		accountService:      accountService,
 		notificationService: notificationService,
 		smsSenderService:    smsSenderService,
+		userService:         userService,
 	}
 }
 
@@ -49,15 +53,31 @@ func (h *ApprovalLocationAccountHandler) GetAllApprovalRequest(c *fiber.Ctx) err
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 
-	userID := c.Locals("user_id").(int)
+	filter_users := map[string]string{
+		"search":     c.Query("search", ""),
+		"order_by":   c.Query("order_by", "id"),
+		"order":      c.Query("order", "DESC"),
+		"start_date": c.Query("start_date", ""),
+		"end_date":   c.Query("end_date", ""),
+	}
+
+	getUser, total, err := h.userService.GetAllUsers(0, false, 1, filter_users, []string{}, false, userRole, territoryID)
+
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch users", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	var userIDs []int
+	for _, u := range getUser {
+		userIDs = append(userIDs, int(u.ID))
+	}
 
 	// Call service with filters
-	approval_request, total, err := h.service.GetAllApprovalRequest(limit, paginate, page, filters, userRole, territoryID, userID)
+	approval_request, total, err := h.service.GetAllApprovalRequest(limit, paginate, page, filters, userRole, territoryID, userIDs)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"message": "Failed to fetch approval location accounts",
-			"error":   err.Error(),
-		})
+		response := helper.APIResponse("Failed to fetch approval location accounts", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
 	// Return response
