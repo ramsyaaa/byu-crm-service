@@ -83,6 +83,37 @@ func Route(db *gorm.DB) {
 		return c.SendFile("./static/admin-dashboard.html")
 	})
 
+	// Admin profile endpoint for authentication verification
+	adminProtected.Get("/profile", func(c *fiber.Ctx) error {
+		// Get user info from context (set by AdminJWTMiddleware)
+		email := c.Locals("admin_user_email")
+		userRole := c.Locals("admin_user_role")
+
+		if email == nil || userRole == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"meta": fiber.Map{
+					"status":  "error",
+					"message": "Unauthorized: admin authentication required",
+					"code":    fiber.StatusUnauthorized,
+				},
+				"data": nil,
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"meta": fiber.Map{
+				"status":  "success",
+				"message": "Admin profile retrieved successfully",
+				"code":    fiber.StatusOK,
+			},
+			"data": fiber.Map{
+				"email":     email,
+				"user_role": userRole,
+				"user_type": "Administrator", // For compatibility with frontend
+			},
+		})
+	})
+
 	// Redirect /admin to /admin/dashboard
 	adminGroup.Get("/", func(c *fiber.Ctx) error {
 		return c.Redirect("/admin/dashboard")

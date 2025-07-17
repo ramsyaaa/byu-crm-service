@@ -3,6 +3,7 @@ package middleware
 import (
 	"byu-crm-service/helper"
 	"os"
+	"strings"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -188,8 +189,13 @@ func AdminJWTMiddleware() fiber.Handler {
 
 // handleAdminAuthError handles authentication errors for admin routes
 func handleAdminAuthError(c *fiber.Ctx, message string) error {
-	// For API requests, return JSON error
-	if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
+	path := c.Path()
+
+	// For API requests or admin profile endpoint, return JSON error
+	if c.Get("Accept") == "application/json" ||
+		path == "/admin/profile" ||
+		path == "/api-logs" ||
+		strings.HasPrefix(path, "/api-logs/") {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"meta": fiber.Map{
 				"status":  "error",
@@ -199,8 +205,21 @@ func handleAdminAuthError(c *fiber.Ctx, message string) error {
 			"data": nil,
 		})
 	}
-	// For browser requests to dashboard, redirect to login
-	return c.Redirect("/admin/login")
+
+	// For browser requests to dashboard, redirect to login (but avoid infinite loops)
+	if path != "/admin/login" {
+		return c.Redirect("/admin/login")
+	}
+
+	// If we're already on login page, return JSON error to avoid loops
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"meta": fiber.Map{
+			"status":  "error",
+			"message": message,
+			"code":    fiber.StatusUnauthorized,
+		},
+		"data": nil,
+	})
 }
 
 // AdminAuthMiddleware checks if user is authenticated and has Super-Admin user_role

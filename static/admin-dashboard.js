@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
   // Authentication check
   const token = localStorage.getItem("admin_token");
+  console.log("Dashboard: checking token...", token ? "found" : "not found");
   if (!token) {
+    console.log("Dashboard: no token, redirecting to login");
     window.location.href = "/admin/login";
     return;
   }
@@ -46,27 +48,36 @@ document.addEventListener("DOMContentLoaded", function () {
   // Authentication verification
   async function verifyAuth() {
     try {
-      const response = await fetch("/api/v1/users/profile", {
+      console.log("Dashboard: verifying authentication...");
+      const response = await fetch("/admin/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      console.log("Dashboard: profile response status:", response.status);
       const data = await response.json();
+      console.log("Dashboard: profile response data:", data);
 
       // Handle the correct API response format with meta object
       if (data.meta && data.meta.status === "success") {
         userInfo = data.data;
         userEmail.textContent = userInfo.email;
+        console.log(
+          "Dashboard: authentication successful for user:",
+          userInfo.email
+        );
 
         // Check if user has Super-Admin role
         if (userInfo.user_role !== "Super-Admin") {
           throw new Error("Access denied. Super-Admin privileges required.");
         }
       } else {
+        console.log("Dashboard: authentication failed, response:", data);
         throw new Error("Authentication failed");
       }
     } catch (error) {
+      console.log("Dashboard: authentication error:", error);
       throw error;
     }
   }
@@ -197,6 +208,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function logout() {
+    console.log("Dashboard: logging out...");
     localStorage.removeItem("admin_token");
     window.location.href = "/admin/login";
   }
