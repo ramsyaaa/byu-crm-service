@@ -1,12 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Authentication check
+  // Authentication check - temporarily disabled
   const token = localStorage.getItem("admin_token");
-  console.log("Dashboard: checking token...", token ? "found" : "not found");
-  if (!token) {
-    console.log("Dashboard: no token, redirecting to login");
-    window.location.href = "/admin/login";
-    return;
-  }
+  console.log(
+    "Dashboard: authentication temporarily disabled, loading dashboard directly"
+  );
+  // Skip token validation and redirect - allow direct access
 
   // DOM Elements
   const mauTab = document.getElementById("mauTab");
@@ -45,37 +43,25 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Authentication verification
+  // Authentication verification - temporarily disabled
   async function verifyAuth() {
     try {
-      console.log("Dashboard: verifying authentication...");
-      const response = await fetch("/admin/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      console.log(
+        "Dashboard: authentication verification temporarily disabled"
+      );
 
-      console.log("Dashboard: profile response status:", response.status);
-      const data = await response.json();
-      console.log("Dashboard: profile response data:", data);
+      // Mock user info for frontend compatibility
+      userInfo = {
+        email: "admin@example.com",
+        user_role: "Super-Admin",
+        user_type: "Administrator",
+      };
 
-      // Handle the correct API response format with meta object
-      if (data.meta && data.meta.status === "success") {
-        userInfo = data.data;
-        userEmail.textContent = userInfo.email;
-        console.log(
-          "Dashboard: authentication successful for user:",
-          userInfo.email
-        );
+      userEmail.textContent = userInfo.email;
+      console.log("Dashboard: using mock user data:", userInfo.email);
 
-        // Check if user has Super-Admin role
-        if (userInfo.user_role !== "Super-Admin") {
-          throw new Error("Access denied. Super-Admin privileges required.");
-        }
-      } else {
-        console.log("Dashboard: authentication failed, response:", data);
-        throw new Error("Authentication failed");
-      }
+      // Skip actual authentication - always succeed
+      return;
     } catch (error) {
       console.log("Dashboard: authentication error:", error);
       throw error;

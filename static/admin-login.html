@@ -264,41 +264,11 @@
           window.location.href = "/api/v1/google/login";
         });
 
-        // Check if already logged in
-        const token = localStorage.getItem("admin_token");
-        if (token) {
-          console.log("Found existing token, verifying...");
-          // Verify token is still valid using admin profile endpoint
-          fetch("/admin/profile", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
-            .then((response) => {
-              console.log("Profile response status:", response.status);
-              return response.json();
-            })
-            .then((data) => {
-              console.log("Profile response data:", data);
-              // Handle the correct API response format with meta object
-              if (data.meta && data.meta.status === "success") {
-                // Token is valid, redirect to dashboard
-                console.log("Token valid, redirecting to dashboard");
-                window.location.href = "/admin/dashboard";
-              } else {
-                // Token is invalid, remove it
-                console.log("Token invalid, removing from storage");
-                localStorage.removeItem("admin_token");
-              }
-            })
-            .catch((error) => {
-              // Error checking token, remove it
-              console.log("Error checking token:", error);
-              localStorage.removeItem("admin_token");
-            });
-        } else {
-          console.log("No token found in localStorage");
-        }
+        // Authentication temporarily disabled - redirect directly to dashboard
+        console.log(
+          "Login: authentication temporarily disabled, redirecting to dashboard"
+        );
+        window.location.href = "/admin/dashboard";
       });
     </script>
   </body>

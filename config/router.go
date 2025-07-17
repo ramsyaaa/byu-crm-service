@@ -75,31 +75,15 @@ func Route(db *gorm.DB) {
 		return c.SendFile("./static/admin-login.html")
 	})
 
-	// Protected admin routes - using dedicated admin JWT middleware
-	adminProtected := adminGroup.Group("", middleware.AdminJWTMiddleware())
+	// Admin routes - temporarily made public (no authentication required)
 
 	// Admin dashboard (default landing page)
-	adminProtected.Get("/dashboard", func(c *fiber.Ctx) error {
+	adminGroup.Get("/dashboard", func(c *fiber.Ctx) error {
 		return c.SendFile("./static/admin-dashboard.html")
 	})
 
-	// Admin profile endpoint for authentication verification
-	adminProtected.Get("/profile", func(c *fiber.Ctx) error {
-		// Get user info from context (set by AdminJWTMiddleware)
-		email := c.Locals("admin_user_email")
-		userRole := c.Locals("admin_user_role")
-
-		if email == nil || userRole == nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"meta": fiber.Map{
-					"status":  "error",
-					"message": "Unauthorized: admin authentication required",
-					"code":    fiber.StatusUnauthorized,
-				},
-				"data": nil,
-			})
-		}
-
+	// Admin profile endpoint - returns mock data without authentication
+	adminGroup.Get("/profile", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"meta": fiber.Map{
 				"status":  "success",
@@ -107,8 +91,8 @@ func Route(db *gorm.DB) {
 				"code":    fiber.StatusOK,
 			},
 			"data": fiber.Map{
-				"email":     email,
-				"user_role": userRole,
+				"email":     "admin@example.com",
+				"user_role": "Super-Admin",
 				"user_type": "Administrator", // For compatibility with frontend
 			},
 		})
@@ -124,25 +108,24 @@ func Route(db *gorm.DB) {
 		return c.Redirect("/admin/dashboard")
 	})
 
-	// Database log viewer endpoints (protected by dedicated admin authentication)
+	// Database log viewer endpoints (temporarily made public - no authentication required)
 	logHandler := helper.NewLogViewerHandler(db)
-	apiLogsGroup := app.Group("/api-logs", middleware.AdminJWTMiddleware())
 
-	apiLogsGroup.Get("/", logHandler.GetApiLogs)
-	apiLogsGroup.Get("/stats", logHandler.GetLogStats)
-	apiLogsGroup.Get("/errors", logHandler.GetErrorLogs)
-	apiLogsGroup.Get("/slow", logHandler.GetSlowRequests)
-	apiLogsGroup.Get("/:id", logHandler.GetLogById)
-	apiLogsGroup.Post("/cleanup", logHandler.CleanupLogs)
+	app.Get("/api-logs", logHandler.GetApiLogs)
+	app.Get("/api-logs/stats", logHandler.GetLogStats)
+	app.Get("/api-logs/errors", logHandler.GetErrorLogs)
+	app.Get("/api-logs/slow", logHandler.GetSlowRequests)
+	app.Get("/api-logs/:id", logHandler.GetLogById)
+	app.Post("/api-logs/cleanup", logHandler.CleanupLogs)
 
 	// Chart data endpoints
-	apiLogsGroup.Get("/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
-	apiLogsGroup.Get("/chart-data/status-distribution", logHandler.GetStatusDistribution)
+	app.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
+	app.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
 
 	// MAU (Monthly Active Users) endpoints
-	apiLogsGroup.Get("/mau", logHandler.GetMAUData)
-	apiLogsGroup.Get("/users", logHandler.GetUsersList)
-	apiLogsGroup.Get("/user-activity", logHandler.GetUserActivityTimeline)
+	app.Get("/api-logs/mau", logHandler.GetMAUData)
+	app.Get("/api-logs/users", logHandler.GetUsersList)
+	app.Get("/api-logs/user-activity", logHandler.GetUserActivityTimeline)
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
