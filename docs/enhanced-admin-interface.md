@@ -4,9 +4,38 @@
 
 The Enhanced Admin Interface provides a comprehensive dashboard for administrators to monitor Monthly Active Users (MAU) and view API logs. The interface includes authentication, role-based access control, and two main modules with advanced analytics capabilities.
 
+## Recent Updates & Bug Fixes
+
+### 🔧 **Critical Bug Fixes**
+
+- **Login Authentication Fix**: Fixed JavaScript response handling to properly parse API response format with `meta` object structure
+- **Root URL Redirect**: Added proper redirect from `/` to `/admin/login` instead of showing error message
+- **API Response Format**: Updated all frontend code to handle the correct API response structure:
+  ```json
+  {
+    "meta": {
+      "message": "Login successful",
+      "code": 200,
+      "status": "success"
+    },
+    "data": {
+      "token": "jwt_token_here"
+    }
+  }
+  ```
+
+### 🎨 **Branding & Theme Updates**
+
+- **Company Logo Integration**: Added `/static/logo.svg` to login page and admin dashboard header
+- **Brand Color Scheme**: Updated entire interface to use company colors:
+  - Primary: `#00B2E5` (bright blue)
+  - Secondary: `#10C0F3` (lighter blue)
+- **Consistent Styling**: Applied new color scheme across all components, gradients, and charts
+
 ## Features
 
 ### 🔐 **Authentication & Security**
+
 - **Admin-only Access**: Restricted to users with `user_type = 'Administrator'`
 - **JWT Authentication**: Secure token-based authentication
 - **Google OAuth Support**: Alternative login method
@@ -14,6 +43,7 @@ The Enhanced Admin Interface provides a comprehensive dashboard for administrato
 - **Redirect Protection**: Unauthorized users redirected to login
 
 ### 📊 **MAU Dashboard (Module 1)**
+
 - **Monthly Active User Tracking**: Real-time MAU calculations
 - **Advanced Filtering**: Date range and user selection filters
 - **Interactive Charts**: Daily activity trends and top user visualizations
@@ -22,6 +52,7 @@ The Enhanced Admin Interface provides a comprehensive dashboard for administrato
 - **User Analytics**: Individual user activity timelines
 
 ### 📋 **Log Viewer (Module 2)**
+
 - **Enhanced Log Monitoring**: Improved version of existing log viewer
 - **Smart Filters**: Advanced filtering capabilities
 - **Real-time Analytics**: Live performance metrics
@@ -29,6 +60,7 @@ The Enhanced Admin Interface provides a comprehensive dashboard for administrato
 - **Export Functionality**: Excel export of filtered logs
 
 ### 🎨 **UI/UX Enhancements**
+
 - **Responsive Design**: Mobile-friendly interface
 - **Modern Styling**: Gradient backgrounds and smooth animations
 - **Intuitive Navigation**: Tab-based module switching
@@ -38,6 +70,7 @@ The Enhanced Admin Interface provides a comprehensive dashboard for administrato
 ## Architecture
 
 ### File Structure
+
 ```
 static/
 ├── admin-login.html          # Login page
@@ -52,16 +85,19 @@ static/
 ### API Endpoints
 
 #### Authentication
+
 - `POST /api/v1/login` - Regular login
 - `GET /api/v1/google/login` - Google OAuth login
 - `GET /api/v1/users/profile` - Get user profile (authentication check)
 
 #### MAU Analytics
+
 - `GET /api-logs/mau` - Get MAU data with filters
 - `GET /api-logs/users` - Get users list for dropdown
 - `GET /api-logs/user-activity` - Get user activity timeline
 
 #### Log Analytics (Existing)
+
 - `GET /api-logs` - Get paginated logs with filters
 - `GET /api-logs/stats` - Get log statistics
 - `GET /api-logs/chart-data/requests-over-time` - Chart data
@@ -70,6 +106,7 @@ static/
 ### Routes
 
 #### Admin Routes
+
 - `GET /admin/login` - Login page (public)
 - `GET /admin/dashboard` - Main dashboard (protected)
 - `GET /admin/` - Redirects to dashboard
@@ -78,6 +115,7 @@ static/
 ## Authentication Flow
 
 ### 1. Login Process
+
 1. User accesses `/admin/dashboard`
 2. Middleware checks for valid JWT token
 3. If no token or invalid, redirect to `/admin/login`
@@ -87,6 +125,7 @@ static/
 7. Redirect to `/admin/dashboard`
 
 ### 2. Authorization Check
+
 ```go
 // AdminAuthMiddleware checks user_type = 'Administrator'
 func AdminAuthMiddleware() fiber.Handler {
@@ -102,6 +141,7 @@ func AdminAuthMiddleware() fiber.Handler {
 ## MAU Calculations
 
 ### Data Source
+
 - **Table**: `api_logs`
 - **Key Fields**: `auth_user_email`, `accessed_at`, `endpoint`
 - **Filter**: Only API endpoints (`endpoint LIKE '/api/%'`)
@@ -109,29 +149,32 @@ func AdminAuthMiddleware() fiber.Handler {
 ### Metrics Calculated
 
 #### 1. Active Users Count
+
 ```sql
-SELECT COUNT(DISTINCT auth_user_email) 
-FROM api_logs 
-WHERE endpoint LIKE '/api/%' 
-AND auth_user_email IS NOT NULL 
+SELECT COUNT(DISTINCT auth_user_email)
+FROM api_logs
+WHERE endpoint LIKE '/api/%'
+AND auth_user_email IS NOT NULL
 AND accessed_at BETWEEN start_date AND end_date
 ```
 
 #### 2. Daily Active Users
+
 ```sql
 SELECT DATE(accessed_at) as date, COUNT(DISTINCT auth_user_email) as count
-FROM api_logs 
-WHERE endpoint LIKE '/api/%' 
+FROM api_logs
+WHERE endpoint LIKE '/api/%'
 AND auth_user_email IS NOT NULL
 GROUP BY DATE(accessed_at)
 ORDER BY date
 ```
 
 #### 3. Top Active Users
+
 ```sql
 SELECT auth_user_email, COUNT(*) as request_count, MAX(accessed_at) as last_active
-FROM api_logs 
-WHERE endpoint LIKE '/api/%' 
+FROM api_logs
+WHERE endpoint LIKE '/api/%'
 AND auth_user_email IS NOT NULL
 GROUP BY auth_user_email
 ORDER BY request_count DESC
@@ -143,11 +186,13 @@ LIMIT 10
 ### Accessing the Admin Interface
 
 1. **Navigate to Admin Dashboard**
+
    ```
    https://your-domain.com/admin/dashboard
    ```
 
 2. **Login with Administrator Account**
+
    - Use email/password or Google OAuth
    - Only users with `user_type = 'Administrator'` can access
 
@@ -158,20 +203,24 @@ LIMIT 10
 ### Using MAU Dashboard
 
 1. **Set Date Range**
+
    - Use date pickers or quick filter buttons
    - Default: Current month
 
 2. **Filter by User**
+
    - Select specific user from dropdown
    - Leave empty for all users
 
 3. **View Metrics**
+
    - Active Users: Unique users in period
    - Total Requests: API calls made
    - Average per User: Requests divided by users
    - Peak Day: Day with highest activity
 
 4. **Analyze Charts**
+
    - Daily Active Users: Trend over time
    - Top Users: Most active users bar chart
 
@@ -182,6 +231,7 @@ LIMIT 10
 ### Using Log Viewer
 
 1. **Apply Filters**
+
    - Search: Global text search
    - Method: HTTP method filter
    - Status: Response status codes
@@ -190,11 +240,13 @@ LIMIT 10
    - Response Time: Performance filters
 
 2. **Quick Filters**
+
    - Errors Only: Show only failed requests
    - Slow Requests: Show high response times
    - Today Only: Current day only
 
 3. **View Analytics**
+
    - Real-time metrics cards
    - Interactive charts
    - Detailed log table
@@ -205,6 +257,7 @@ LIMIT 10
 ## Configuration
 
 ### Environment Variables
+
 ```env
 # JWT Configuration
 JWT_SECRET=your-jwt-secret
@@ -219,6 +272,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 ### Database Requirements
+
 - Existing `api_logs` table with proper indexes
 - User table with `user_type` field
 - Proper foreign key relationships
@@ -226,16 +280,19 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 ## Security Considerations
 
 ### 1. Authentication
+
 - JWT tokens with expiration
 - Secure token storage in localStorage
 - Automatic token validation
 
 ### 2. Authorization
+
 - Role-based access control
 - Administrator-only access
 - API endpoint protection
 
 ### 3. Data Protection
+
 - Sensitive data filtering
 - Secure API endpoints
 - Input validation and sanitization
@@ -245,16 +302,19 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 ### Common Issues
 
 1. **Access Denied**
+
    - Verify user has `user_type = 'Administrator'`
    - Check JWT token validity
    - Ensure proper role mapping
 
 2. **MAU Data Not Loading**
+
    - Check `api_logs` table has data
    - Verify date range filters
    - Check database connectivity
 
 3. **Charts Not Displaying**
+
    - Ensure Chart.js library loaded
    - Check browser console for errors
    - Verify data format from API
@@ -265,11 +325,13 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
    - Test Google OAuth setup (if used)
 
 ### Debug Mode
+
 Enable debug logging by checking browser console for detailed error messages and API response data.
 
 ## Future Enhancements
 
 ### Planned Features
+
 - Real-time notifications
 - Advanced user segmentation
 - Custom dashboard widgets
@@ -278,6 +340,7 @@ Enable debug logging by checking browser console for detailed error messages and
 - Automated reporting
 
 ### Performance Optimizations
+
 - Data caching strategies
 - Pagination improvements
 - Chart rendering optimization

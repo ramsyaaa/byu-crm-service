@@ -59,9 +59,9 @@ document.addEventListener("DOMContentLoaded", function () {
         userInfo = data.data;
         userEmail.textContent = userInfo.email;
 
-        // Check if user is administrator
-        if (userInfo.user_type !== "Administrator") {
-          throw new Error("Access denied. Administrator privileges required.");
+        // Check if user has Super-Admin role
+        if (userInfo.user_role !== "Super-Admin") {
+          throw new Error("Access denied. Super-Admin privileges required.");
         }
       } else {
         throw new Error("Authentication failed");
