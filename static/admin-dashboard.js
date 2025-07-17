@@ -1,26 +1,26 @@
 document.addEventListener("DOMContentLoaded", function () {
   // Authentication check
-  const token = localStorage.getItem('admin_token');
+  const token = localStorage.getItem("admin_token");
   if (!token) {
-    window.location.href = '/admin/login';
+    window.location.href = "/admin/login";
     return;
   }
 
   // DOM Elements
-  const mauTab = document.getElementById('mauTab');
-  const logTab = document.getElementById('logTab');
-  const mauTabMobile = document.getElementById('mauTabMobile');
-  const logTabMobile = document.getElementById('logTabMobile');
-  const mauModule = document.getElementById('mauModule');
-  const logModule = document.getElementById('logModule');
-  const userEmail = document.getElementById('userEmail');
-  const userMenuBtn = document.getElementById('userMenuBtn');
-  const userDropdown = document.getElementById('userDropdown');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const loadingOverlay = document.getElementById('loadingOverlay');
+  const mauTab = document.getElementById("mauTab");
+  const logTab = document.getElementById("logTab");
+  const mauTabMobile = document.getElementById("mauTabMobile");
+  const logTabMobile = document.getElementById("logTabMobile");
+  const mauModule = document.getElementById("mauModule");
+  const logModule = document.getElementById("logModule");
+  const userEmail = document.getElementById("userEmail");
+  const userMenuBtn = document.getElementById("userMenuBtn");
+  const userDropdown = document.getElementById("userDropdown");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const loadingOverlay = document.getElementById("loadingOverlay");
 
   // State
-  let currentModule = 'mau';
+  let currentModule = "mau";
   let userInfo = null;
 
   // Initialize
@@ -29,15 +29,14 @@ document.addEventListener("DOMContentLoaded", function () {
   async function init() {
     try {
       showLoading(true);
-      
+
       // Verify authentication and get user info
       await verifyAuth();
-      
+
       // Load initial module (MAU Dashboard)
-      await loadModule('mau');
-      
+      await loadModule("mau");
     } catch (error) {
-      console.error('Initialization error:', error);
+      console.error("Initialization error:", error);
       logout();
     } finally {
       showLoading(false);
@@ -47,24 +46,25 @@ document.addEventListener("DOMContentLoaded", function () {
   // Authentication verification
   async function verifyAuth() {
     try {
-      const response = await fetch('/api/v1/users/profile', {
+      const response = await fetch("/api/v1/users/profile", {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();
 
-      if (data.status === 'success') {
+      // Handle the correct API response format with meta object
+      if (data.meta && data.meta.status === "success") {
         userInfo = data.data;
         userEmail.textContent = userInfo.email;
-        
+
         // Check if user is administrator
-        if (userInfo.user_type !== 'Administrator') {
-          throw new Error('Access denied. Administrator privileges required.');
+        if (userInfo.user_type !== "Administrator") {
+          throw new Error("Access denied. Administrator privileges required.");
         }
       } else {
-        throw new Error('Authentication failed');
+        throw new Error("Authentication failed");
       }
     } catch (error) {
       throw error;
@@ -76,26 +76,26 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentModule === module) return;
 
     currentModule = module;
-    
+
     // Update tab states
     updateTabStates(module);
-    
+
     // Show/hide modules with animation
-    if (module === 'mau') {
-      mauModule.classList.remove('hidden');
-      logModule.classList.add('hidden');
-      
+    if (module === "mau") {
+      mauModule.classList.remove("hidden");
+      logModule.classList.add("hidden");
+
       setTimeout(() => {
-        mauModule.classList.add('active');
-        logModule.classList.remove('active');
+        mauModule.classList.add("active");
+        logModule.classList.remove("active");
       }, 50);
     } else {
-      logModule.classList.remove('hidden');
-      mauModule.classList.add('hidden');
-      
+      logModule.classList.remove("hidden");
+      mauModule.classList.add("hidden");
+
       setTimeout(() => {
-        logModule.classList.add('active');
-        mauModule.classList.remove('active');
+        logModule.classList.add("active");
+        mauModule.classList.remove("active");
       }, 50);
     }
 
@@ -105,24 +105,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateTabStates(activeModule) {
     const tabs = [mauTab, mauTabMobile, logTab, logTabMobile];
-    
-    tabs.forEach(tab => {
-      tab.classList.remove('active');
+
+    tabs.forEach((tab) => {
+      tab.classList.remove("active");
     });
 
-    if (activeModule === 'mau') {
-      mauTab.classList.add('active');
-      mauTabMobile.classList.add('active');
+    if (activeModule === "mau") {
+      mauTab.classList.add("active");
+      mauTabMobile.classList.add("active");
     } else {
-      logTab.classList.add('active');
-      logTabMobile.classList.add('active');
+      logTab.classList.add("active");
+      logTabMobile.classList.add("active");
     }
   }
 
   // Load module content
   async function loadModule(module) {
     try {
-      if (module === 'mau') {
+      if (module === "mau") {
         await loadMAUDashboard();
       } else {
         await loadLogViewer();
@@ -136,16 +136,16 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load MAU Dashboard
   async function loadMAUDashboard() {
     try {
-      const response = await fetch('/static/mau-dashboard.html');
+      const response = await fetch("/static/mau-dashboard.html");
       const html = await response.text();
-      document.getElementById('mauDashboardContent').innerHTML = html;
-      
+      document.getElementById("mauDashboardContent").innerHTML = html;
+
       // Initialize MAU dashboard functionality
       if (window.initMAUDashboard) {
         window.initMAUDashboard(token);
       }
     } catch (error) {
-      document.getElementById('mauDashboardContent').innerHTML = `
+      document.getElementById("mauDashboardContent").innerHTML = `
         <div class="text-center py-12">
           <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
           <p class="text-red-600">Failed to load MAU Dashboard</p>
@@ -160,16 +160,16 @@ document.addEventListener("DOMContentLoaded", function () {
   // Load Log Viewer
   async function loadLogViewer() {
     try {
-      const response = await fetch('/static/log-viewer-content.html');
+      const response = await fetch("/static/log-viewer-content.html");
       const html = await response.text();
-      document.getElementById('logViewerContent').innerHTML = html;
-      
+      document.getElementById("logViewerContent").innerHTML = html;
+
       // Initialize log viewer functionality
       if (window.initLogViewer) {
         window.initLogViewer(token);
       }
     } catch (error) {
-      document.getElementById('logViewerContent').innerHTML = `
+      document.getElementById("logViewerContent").innerHTML = `
         <div class="text-center py-12">
           <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
           <p class="text-red-600">Failed to load Log Viewer</p>
@@ -184,9 +184,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Utility functions
   function showLoading(show) {
     if (show) {
-      loadingOverlay.classList.remove('hidden');
+      loadingOverlay.classList.remove("hidden");
     } else {
-      loadingOverlay.classList.add('hidden');
+      loadingOverlay.classList.add("hidden");
     }
   }
 
@@ -197,29 +197,29 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function logout() {
-    localStorage.removeItem('admin_token');
-    window.location.href = '/admin/login';
+    localStorage.removeItem("admin_token");
+    window.location.href = "/admin/login";
   }
 
   // Event listeners
-  mauTab.addEventListener('click', () => switchModule('mau'));
-  logTab.addEventListener('click', () => switchModule('log'));
-  mauTabMobile.addEventListener('click', () => switchModule('mau'));
-  logTabMobile.addEventListener('click', () => switchModule('log'));
+  mauTab.addEventListener("click", () => switchModule("mau"));
+  logTab.addEventListener("click", () => switchModule("log"));
+  mauTabMobile.addEventListener("click", () => switchModule("mau"));
+  logTabMobile.addEventListener("click", () => switchModule("log"));
 
   // User menu toggle
-  userMenuBtn.addEventListener('click', function(e) {
+  userMenuBtn.addEventListener("click", function (e) {
     e.stopPropagation();
-    userDropdown.classList.toggle('hidden');
+    userDropdown.classList.toggle("hidden");
   });
 
   // Close dropdown when clicking outside
-  document.addEventListener('click', function() {
-    userDropdown.classList.add('hidden');
+  document.addEventListener("click", function () {
+    userDropdown.classList.add("hidden");
   });
 
   // Logout
-  logoutBtn.addEventListener('click', logout);
+  logoutBtn.addEventListener("click", logout);
 
   // Expose functions globally for module scripts
   window.adminDashboard = {
@@ -227,6 +227,6 @@ document.addEventListener("DOMContentLoaded", function () {
     showError,
     token,
     userInfo: () => userInfo,
-    loadModule
+    loadModule,
   };
 });
