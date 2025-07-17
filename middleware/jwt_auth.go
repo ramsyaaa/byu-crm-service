@@ -110,73 +110,59 @@ func PermissionMiddleware(requiredPermission string) fiber.Handler {
 	}
 }
 
-// AdminAuthMiddleware checks if user is authenticated and has Super-Admin user_role
-func AdminAuthMiddleware() fiber.Handler {
+// AdminJWTMiddleware handles JWT authentication specifically for admin routes
+func AdminJWTMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// First check if user is authenticated via JWT
-		user := c.Locals("jwt")
-		token, ok := user.(*jwt.Token)
-		if !ok || token == nil {
-			// For API requests, return JSON error instead of redirect
-			if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"meta": fiber.Map{
-						"status":  "error",
-						"message": "Unauthorized: missing or malformed JWT",
-						"code":    fiber.StatusUnauthorized,
-					},
-					"data": nil,
-				})
-			}
-			// Redirect to login page for admin interface
-			return c.Redirect("/admin/login")
+		// Get token from Authorization header
+		authHeader := c.Get("Authorization")
+		if authHeader == "" {
+			return handleAdminAuthError(c, "Unauthorized: missing authorization header")
 		}
 
+		// Check if it starts with "Bearer "
+		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+			return handleAdminAuthError(c, "Unauthorized: invalid authorization format")
+		}
+
+		// Extract token
+		tokenString := authHeader[7:]
+		if tokenString == "" {
+			return handleAdminAuthError(c, "Unauthorized: missing JWT token")
+		}
+
+		// Parse and validate token
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Validate signing method
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fiber.NewError(fiber.StatusUnauthorized, "Invalid signing method")
+			}
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+
+		if err != nil {
+			return handleAdminAuthError(c, "Unauthorized: invalid JWT token - "+err.Error())
+		}
+
+		if !token.Valid {
+			return handleAdminAuthError(c, "Unauthorized: invalid JWT token")
+		}
+
+		// Extract claims
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"meta": fiber.Map{
-						"status":  "error",
-						"message": "Unauthorized: invalid token claims",
-						"code":    fiber.StatusUnauthorized,
-					},
-					"data": nil,
-				})
-			}
-			return c.Redirect("/admin/login")
+			return handleAdminAuthError(c, "Unauthorized: invalid token claims")
 		}
 
 		// Extract user email
 		email, ok := claims["email"].(string)
 		if !ok {
-			if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"meta": fiber.Map{
-						"status":  "error",
-						"message": "Unauthorized: email not found in token",
-						"code":    fiber.StatusUnauthorized,
-					},
-					"data": nil,
-				})
-			}
-			return c.Redirect("/admin/login")
+			return handleAdminAuthError(c, "Unauthorized: email not found in token")
 		}
 
 		// Check user_role from JWT token
 		userRole, ok := claims["user_role"].(string)
 		if !ok {
-			if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"meta": fiber.Map{
-						"status":  "error",
-						"message": "Unauthorized: user role not found in token",
-						"code":    fiber.StatusUnauthorized,
-					},
-					"data": nil,
-				})
-			}
-			return c.Redirect("/admin/login")
+			return handleAdminAuthError(c, "Unauthorized: user role not found in token")
 		}
 
 		// Check if user has Super-Admin privileges
@@ -194,6 +180,52 @@ func AdminAuthMiddleware() fiber.Handler {
 		// Store user info in context for use in handlers
 		c.Locals("admin_user_email", email)
 		c.Locals("admin_user_role", userRole)
+		c.Locals("jwt", token) // Store token for compatibility
+
+		return c.Next()
+	}
+}
+
+// handleAdminAuthError handles authentication errors for admin routes
+func handleAdminAuthError(c *fiber.Ctx, message string) error {
+	// For API requests, return JSON error
+	if c.Get("Accept") == "application/json" || c.Path() != "/admin/dashboard" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"meta": fiber.Map{
+				"status":  "error",
+				"message": message,
+				"code":    fiber.StatusUnauthorized,
+			},
+			"data": nil,
+		})
+	}
+	// For browser requests to dashboard, redirect to login
+	return c.Redirect("/admin/login")
+}
+
+// AdminAuthMiddleware checks if user is authenticated and has Super-Admin user_role
+// This is now a secondary middleware that assumes JWT is already validated by AdminJWTMiddleware
+func AdminAuthMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Check if user info is already set by AdminJWTMiddleware
+		email := c.Locals("admin_user_email")
+		userRole := c.Locals("admin_user_role")
+
+		if email == nil || userRole == nil {
+			return handleAdminAuthError(c, "Unauthorized: admin authentication required")
+		}
+
+		// Additional role validation (redundant but safe)
+		if userRole != "Super-Admin" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"meta": fiber.Map{
+					"status":  "error",
+					"message": "Access denied. Super-Admin privileges required.",
+					"code":    fiber.StatusForbidden,
+				},
+				"data": nil,
+			})
+		}
 
 		return c.Next()
 	}

@@ -8,7 +8,7 @@ import (
 
 func TypeRoutes(router fiber.Router, handler *TypeHandler) {
 	authRouter := router.Group("/types",
-		middleware.JWTMiddleware,
+		middleware.JWTMiddlewareHandler(),
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllTypes)

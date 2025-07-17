@@ -75,8 +75,8 @@ func Route(db *gorm.DB) {
 		return c.SendFile("./static/admin-login.html")
 	})
 
-	// Protected admin routes
-	adminProtected := adminGroup.Group("", middleware.JWTMiddlewareHandler(), middleware.AdminAuthMiddleware())
+	// Protected admin routes - using dedicated admin JWT middleware
+	adminProtected := adminGroup.Group("", middleware.AdminJWTMiddleware())
 
 	// Admin dashboard (default landing page)
 	adminProtected.Get("/dashboard", func(c *fiber.Ctx) error {
@@ -93,9 +93,9 @@ func Route(db *gorm.DB) {
 		return c.Redirect("/admin/dashboard")
 	})
 
-	// Database log viewer endpoints (protected by admin authentication)
+	// Database log viewer endpoints (protected by dedicated admin authentication)
 	logHandler := helper.NewLogViewerHandler(db)
-	apiLogsGroup := app.Group("/api-logs", middleware.JWTMiddlewareHandler(), middleware.AdminAuthMiddleware())
+	apiLogsGroup := app.Group("/api-logs", middleware.AdminJWTMiddleware())
 
 	apiLogsGroup.Get("/", logHandler.GetApiLogs)
 	apiLogsGroup.Get("/stats", logHandler.GetLogStats)
