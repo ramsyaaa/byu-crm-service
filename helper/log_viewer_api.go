@@ -353,6 +353,225 @@ func (h *LogViewerHandler) GetRequestsOverTime(c *fiber.Ctx) error {
 	})
 }
 
+// GetMAUData returns Monthly Active User data
+func (h *LogViewerHandler) GetMAUData(c *fiber.Ctx) error {
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	userEmail := c.Query("user_email")
+
+	// Default to current month if no dates provided
+	if startDate == "" || endDate == "" {
+		now := time.Now()
+		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
+		endDate = now.Format("2006-01-02")
+	}
+
+	// Build query for MAU calculation
+	query := h.db.Model(&models.ApiLog{}).
+		Where("endpoint LIKE '/api/%'").
+		Where("auth_user_email IS NOT NULL")
+
+	// Apply date filters
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("accessed_at >= ?", start)
+		}
+	}
+
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			endDateTime := end.Add(24 * time.Hour)
+			query = query.Where("accessed_at < ?", endDateTime)
+		}
+	}
+
+	// Apply user filter if specified
+	if userEmail != "" {
+		query = query.Where("auth_user_email = ?", userEmail)
+	}
+
+	// Get unique active users count
+	var activeUsersCount int64
+	err := query.Distinct("auth_user_email").Count(&activeUsersCount).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch MAU data",
+			"error":   err.Error(),
+		})
+	}
+
+	// Get daily active users for the period
+	var dailyActiveUsers []struct {
+		Date  string `json:"date"`
+		Count int64  `json:"count"`
+	}
+
+	err = query.Select("DATE(accessed_at) as date, COUNT(DISTINCT auth_user_email) as count").
+		Group("DATE(accessed_at)").
+		Order("date").
+		Scan(&dailyActiveUsers).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch daily active users",
+			"error":   err.Error(),
+		})
+	}
+
+	// Get top active users
+	var topUsers []struct {
+		UserEmail    string `json:"user_email"`
+		RequestCount int64  `json:"request_count"`
+		LastActive   string `json:"last_active"`
+	}
+
+	err = query.Select("auth_user_email as user_email, COUNT(*) as request_count, MAX(accessed_at) as last_active").
+		Group("auth_user_email").
+		Order("request_count DESC").
+		Limit(10).
+		Scan(&topUsers).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch top users",
+			"error":   err.Error(),
+		})
+	}
+
+	// Get total API requests in the period
+	var totalRequests int64
+	query.Count(&totalRequests)
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data": fiber.Map{
+			"active_users_count": activeUsersCount,
+			"total_requests":     totalRequests,
+			"daily_active_users": dailyActiveUsers,
+			"top_users":          topUsers,
+			"period": fiber.Map{
+				"start_date": startDate,
+				"end_date":   endDate,
+			},
+		},
+	})
+}
+
+// GetUsersList returns list of users for dropdown filter
+func (h *LogViewerHandler) GetUsersList(c *fiber.Ctx) error {
+	var users []struct {
+		UserEmail string `json:"user_email"`
+		LastSeen  string `json:"last_seen"`
+	}
+
+	// Get unique users from api logs with their last activity
+	err := h.db.Model(&models.ApiLog{}).
+		Select("auth_user_email as user_email, MAX(accessed_at) as last_seen").
+		Where("auth_user_email IS NOT NULL").
+		Where("endpoint LIKE '/api/%'").
+		Group("auth_user_email").
+		Order("last_seen DESC").
+		Limit(100). // Limit to recent 100 users
+		Scan(&users).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch users list",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data":   users,
+	})
+}
+
+// GetUserActivityTimeline returns user activity timeline
+func (h *LogViewerHandler) GetUserActivityTimeline(c *fiber.Ctx) error {
+	userEmail := c.Query("user_email")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	if userEmail == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "user_email parameter is required",
+		})
+	}
+
+	// Build query
+	query := h.db.Model(&models.ApiLog{}).
+		Where("auth_user_email = ?", userEmail).
+		Where("endpoint LIKE '/api/%'")
+
+	// Apply date filters
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("accessed_at >= ?", start)
+		}
+	}
+
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			endDateTime := end.Add(24 * time.Hour)
+			query = query.Where("accessed_at < ?", endDateTime)
+		}
+	}
+
+	// Get hourly activity
+	var hourlyActivity []struct {
+		Hour  string `json:"hour"`
+		Count int64  `json:"count"`
+	}
+
+	err := query.Select("DATE_FORMAT(accessed_at, '%Y-%m-%d %H:00:00') as hour, COUNT(*) as count").
+		Group("DATE_FORMAT(accessed_at, '%Y-%m-%d %H:00:00')").
+		Order("hour").
+		Scan(&hourlyActivity).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch user activity timeline",
+			"error":   err.Error(),
+		})
+	}
+
+	// Get endpoint usage
+	var endpointUsage []struct {
+		Endpoint string `json:"endpoint"`
+		Count    int64  `json:"count"`
+	}
+
+	err = query.Select("endpoint, COUNT(*) as count").
+		Group("endpoint").
+		Order("count DESC").
+		Limit(10).
+		Scan(&endpointUsage).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch endpoint usage",
+			"error":   err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "success",
+		"data": fiber.Map{
+			"user_email":      userEmail,
+			"hourly_activity": hourlyActivity,
+			"endpoint_usage":  endpointUsage,
+		},
+	})
+}
+
 // GetStatusDistribution returns data for status code distribution chart
 func (h *LogViewerHandler) GetStatusDistribution(c *fiber.Ctx) error {
 	apiOnly := c.Query("api_only")

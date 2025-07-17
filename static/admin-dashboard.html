@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - CRM Analytics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include Select2 CSS -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css"
+      rel="stylesheet"
+    />
+    <!-- SheetJS Library for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Date picker -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      /* Custom responsive styles */
+      @media (max-width: 640px) {
+        .grid-responsive {
+          grid-template-columns: 1fr;
+        }
+        .select2-container {
+          width: 100% !important;
+        }
+        .select2-selection {
+          min-height: 48px !important;
+          padding: 8px 12px !important;
+        }
+        .table-responsive {
+          font-size: 0.875rem;
+        }
+        .table-responsive th,
+        .table-responsive td {
+          padding: 0.75rem 0.5rem;
+        }
+      }
+
+      @media (min-width: 641px) and (max-width: 1024px) {
+        .select2-container {
+          width: 100% !important;
+        }
+      }
+
+      /* Ensure select2 dropdowns are responsive */
+      .select2-container--default .select2-selection--single {
+        height: 48px !important;
+        padding: 8px 12px !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 0.75rem !important;
+      }
+
+      .select2-container--default
+        .select2-selection--single
+        .select2-selection__rendered {
+        line-height: 32px !important;
+        padding-left: 32px !important;
+      }
+
+      .select2-container--default
+        .select2-selection--single
+        .select2-selection__arrow {
+        height: 46px !important;
+        right: 12px !important;
+      }
+
+      /* Hide default select arrow when using select2 */
+      .select2-container + .fas.fa-chevron-down {
+        display: none;
+      }
+
+      /* Chart container fixes */
+      .chart-container {
+        position: relative;
+        height: 256px; /* h-64 equivalent */
+        width: 100%;
+      }
+
+      .chart-container canvas {
+        position: absolute !important;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      /* Prevent chart overflow */
+      #chartsContainer .bg-white {
+        overflow: hidden;
+      }
+
+      /* Navigation styles */
+      .nav-tab {
+        transition: all 0.3s ease;
+      }
+
+      .nav-tab.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .nav-tab:not(.active):hover {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        transform: translateY(-1px);
+      }
+
+      /* Module content animation */
+      .module-content {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+      }
+
+      .module-content.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Loading animations */
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      /* Gradient backgrounds */
+      .gradient-bg-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .gradient-bg-secondary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      /* Card hover effects */
+      .card-hover {
+        transition: all 0.3s ease;
+      }
+
+      .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+
+      /* Smooth scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <!-- Logo and Title -->
+          <div class="flex items-center space-x-4">
+            <div
+              class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center"
+            >
+              <i class="fas fa-chart-line text-white text-lg"></i>
+            </div>
+            <div>
+              <h1 class="text-xl font-bold text-gray-800">Admin Dashboard</h1>
+              <p class="text-sm text-gray-600">CRM Analytics & Management</p>
+            </div>
+          </div>
+
+          <!-- Navigation Tabs -->
+          <div class="hidden md:flex space-x-2">
+            <button
+              id="mauTab"
+              class="nav-tab active px-6 py-3 rounded-lg font-medium text-sm flex items-center space-x-2"
+            >
+              <i class="fas fa-users"></i>
+              <span>MAU Dashboard</span>
+            </button>
+            <button
+              id="logTab"
+              class="nav-tab px-6 py-3 rounded-lg font-medium text-sm flex items-center space-x-2"
+            >
+              <i class="fas fa-list-alt"></i>
+              <span>Log Viewer</span>
+            </button>
+          </div>
+
+          <!-- User Menu -->
+          <div class="flex items-center space-x-4">
+            <div class="text-right hidden sm:block">
+              <p class="text-sm font-medium text-gray-700" id="userEmail">
+                Loading...
+              </p>
+              <p class="text-xs text-gray-500">Administrator</p>
+            </div>
+            <div class="relative">
+              <button
+                id="userMenuBtn"
+                class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white hover:shadow-lg transition-all duration-200"
+              >
+                <i class="fas fa-user"></i>
+              </button>
+              <!-- Dropdown Menu -->
+              <div
+                id="userDropdown"
+                class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+              >
+                <div class="py-2">
+                  <button
+                    id="logoutBtn"
+                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                  >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div class="md:hidden mt-4 flex space-x-2">
+          <button
+            id="mauTabMobile"
+            class="nav-tab active flex-1 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center space-x-2"
+          >
+            <i class="fas fa-users"></i>
+            <span>MAU</span>
+          </button>
+          <button
+            id="logTabMobile"
+            class="nav-tab flex-1 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center space-x-2"
+          >
+            <i class="fas fa-list-alt"></i>
+            <span>Logs</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="container mx-auto px-6 py-8">
+      <!-- MAU Dashboard Module -->
+      <div id="mauModule" class="module-content active">
+        <div id="mauDashboardContent">
+          <!-- MAU Dashboard content will be loaded here -->
+          <div class="text-center py-12">
+            <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+            <p class="text-gray-600">Loading MAU Dashboard...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Log Viewer Module -->
+      <div id="logModule" class="module-content hidden">
+        <div id="logViewerContent">
+          <!-- Log Viewer content will be loaded here -->
+          <div class="text-center py-12">
+            <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+            <p class="text-gray-600">Loading Log Viewer...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div
+      id="loadingOverlay"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+        <i class="fas fa-spinner fa-spin text-2xl text-indigo-600"></i>
+        <span class="text-lg font-medium">Loading...</span>
+      </div>
+    </div>
+
+    <!-- Include jQuery first -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Include Select2 JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <!-- Include our dashboard script -->
+    <script src="/static/admin-dashboard.js"></script>
+  </body>
+</html>

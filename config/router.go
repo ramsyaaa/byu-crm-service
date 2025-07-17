@@ -62,9 +62,30 @@ func Route(db *gorm.DB) {
 	app.Static("/static", "./static")
 	app.Static("/public", "./public")
 
-	// Serve the HTML dashboard on the root path
+	// Admin routes with authentication
+	adminGroup := app.Group("/admin")
+
+	// Admin login page (no authentication required)
+	adminGroup.Get("/login", func(c *fiber.Ctx) error {
+		return c.SendFile("./static/admin-login.html")
+	})
+
+	// Protected admin routes
+	adminProtected := adminGroup.Group("", middleware.JWTMiddleware, middleware.AdminAuthMiddleware())
+
+	// Admin dashboard (default landing page)
+	adminProtected.Get("/dashboard", func(c *fiber.Ctx) error {
+		return c.SendFile("./static/admin-dashboard.html")
+	})
+
+	// Redirect /admin to /admin/dashboard
+	adminGroup.Get("/", func(c *fiber.Ctx) error {
+		return c.Redirect("/admin/dashboard")
+	})
+
+	// Legacy log viewer route (redirect to admin dashboard)
 	app.Get("/log-viewer", func(c *fiber.Ctx) error {
-		return c.SendFile("./static/index.html")
+		return c.Redirect("/admin/dashboard")
 	})
 
 	// Database log viewer endpoints
@@ -79,6 +100,11 @@ func Route(db *gorm.DB) {
 	// Chart data endpoints
 	app.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
 	app.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
+
+	// MAU (Monthly Active Users) endpoints
+	app.Get("/api-logs/mau", logHandler.GetMAUData)
+	app.Get("/api-logs/users", logHandler.GetUsersList)
+	app.Get("/api-logs/user-activity", logHandler.GetUserActivityTimeline)
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB

@@ -1,0 +1,510 @@
+<!-- Log Viewer Content -->
+<div class="space-y-8">
+  <!-- API Logs Header -->
+  <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-2xl font-bold mb-2">
+          <i class="fas fa-server mr-3"></i>API Logs Dashboard
+        </h2>
+        <p class="text-blue-100">
+          Real-time monitoring and analytics for your API endpoints
+        </p>
+      </div>
+      <div class="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+        <button
+          id="refreshBtn"
+          class="px-6 py-3 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-all duration-200 backdrop-blur-sm border border-white border-opacity-20"
+        >
+          <i class="fas fa-sync-alt mr-2"></i>Refresh
+        </button>
+        <button
+          id="exportButton"
+          class="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg transition-all duration-200 shadow-lg"
+        >
+          <i class="fas fa-download mr-2"></i>Export Excel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced Filters Section -->
+  <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 px-6 py-4 border-b border-gray-100">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 class="text-xl font-bold text-gray-800">
+          <i class="fas fa-filter mr-2 text-indigo-600"></i>Smart Filters
+        </h2>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button
+            id="applyFilters"
+            class="px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-medium relative"
+          >
+            <i class="fas fa-search mr-2"></i>Apply Filters
+            <span
+              id="filterIndicator"
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full hidden animate-pulse"
+            ></span>
+          </button>
+          <button
+            id="clearFilters"
+            class="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+          >
+            <i class="fas fa-times mr-2"></i>Clear All
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+        <!-- Search -->
+        <div class="group">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-search mr-2 text-blue-500"></i>Global Search
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="searchFilter"
+              class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+              placeholder="Search endpoints, IPs, users..."
+            />
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+          </div>
+        </div>
+
+        <!-- Method Filter -->
+        <div class="group">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-code mr-2 text-green-500"></i>HTTP Method
+          </label>
+          <div class="relative">
+            <select
+              id="methodFilter"
+              class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 hover:border-green-300 appearance-none bg-white"
+            >
+              <option value="">All Methods</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="PATCH">PATCH</option>
+              <option value="OPTIONS">OPTIONS</option>
+            </select>
+            <i class="fas fa-code absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-green-500 transition-colors"></i>
+            <i class="fas fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- Status Code Filter -->
+        <div class="group">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-traffic-light mr-2 text-yellow-500"></i>Status Code
+          </label>
+          <div class="relative">
+            <select
+              id="statusFilter"
+              class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 hover:border-yellow-300 appearance-none bg-white"
+            >
+              <option value="">All Status Codes</option>
+              <optgroup label="✅ Success (2xx)">
+                <option value="200">200 - OK</option>
+                <option value="201">201 - Created</option>
+                <option value="204">204 - No Content</option>
+              </optgroup>
+              <optgroup label="⚠️ Client Error (4xx)">
+                <option value="400">400 - Bad Request</option>
+                <option value="401">401 - Unauthorized</option>
+                <option value="403">403 - Forbidden</option>
+                <option value="404">404 - Not Found</option>
+                <option value="422">422 - Unprocessable Entity</option>
+              </optgroup>
+              <optgroup label="❌ Server Error (5xx)">
+                <option value="500">500 - Internal Server Error</option>
+                <option value="502">502 - Bad Gateway</option>
+                <option value="503">503 - Service Unavailable</option>
+              </optgroup>
+            </select>
+            <i class="fas fa-traffic-light absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-yellow-500 transition-colors"></i>
+            <i class="fas fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- User Email Filter -->
+        <div class="group" id="userEmailContainer">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-user mr-2 text-purple-500"></i>User Email
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="userEmailFilter"
+              class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-purple-300"
+              placeholder="Filter by user email"
+            />
+            <i class="fas fa-user absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-purple-500 transition-colors"></i>
+          </div>
+        </div>
+
+        <!-- Date Range -->
+        <div id="dateRangeContainer" class="sm:col-span-2 group">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-calendar mr-2 text-indigo-500"></i>Date Range
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="relative">
+              <input
+                type="text"
+                id="startDate"
+                class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300"
+                placeholder="Start date"
+              />
+              <i class="fas fa-calendar-alt absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+            </div>
+            <div class="relative">
+              <input
+                type="text"
+                id="endDate"
+                class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300"
+                placeholder="End date"
+              />
+              <i class="fas fa-calendar-alt absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-indigo-500 transition-colors"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Response Time Filter -->
+        <div id="responseTimeContainer" class="group">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-clock mr-2 text-orange-500"></i>Response Time (ms)
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="relative">
+              <input
+                type="number"
+                id="minResponseTime"
+                class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 hover:border-orange-300"
+                placeholder="Min"
+              />
+              <i class="fas fa-stopwatch absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors"></i>
+            </div>
+            <div class="relative">
+              <input
+                type="number"
+                id="maxResponseTime"
+                class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 hover:border-orange-300"
+                placeholder="Max"
+              />
+              <i class="fas fa-stopwatch absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-orange-500 transition-colors"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Filters -->
+        <div class="sm:col-span-2 lg:col-span-1">
+          <label class="block text-sm font-bold text-gray-700 mb-3">
+            <i class="fas fa-bolt mr-2 text-pink-500"></i>Quick Filters
+          </label>
+          <div class="flex flex-wrap gap-3">
+            <button
+              id="errorsOnlyBtn"
+              class="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <i class="fas fa-exclamation-triangle mr-1"></i>Errors Only
+            </button>
+            <button
+              id="slowRequestsBtn"
+              class="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl text-sm font-medium hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <i class="fas fa-stopwatch mr-1"></i>Slow Requests
+            </button>
+            <button
+              id="todayOnlyBtn"
+              class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <i class="fas fa-calendar-day mr-1"></i>Today Only
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Dashboard -->
+  <div id="analyticsContainer" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+    <!-- Total Requests Card -->
+    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-blue-100 text-sm font-medium mb-1">Total Requests</p>
+          <p id="totalRequests" class="text-3xl font-bold">-</p>
+          <p class="text-blue-200 text-xs mt-1">Today's API calls</p>
+        </div>
+        <div class="p-3 bg-white bg-opacity-20 rounded-xl">
+          <i class="fas fa-chart-bar text-2xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Rate Card -->
+    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-green-100 text-sm font-medium mb-1">Success Rate</p>
+          <p id="successRate" class="text-3xl font-bold">-</p>
+          <p class="text-green-200 text-xs mt-1">2xx responses</p>
+        </div>
+        <div class="p-3 bg-white bg-opacity-20 rounded-xl">
+          <i class="fas fa-check-circle text-2xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Average Response Time Card -->
+    <div class="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-yellow-100 text-sm font-medium mb-1">Avg Response</p>
+          <p id="avgResponse" class="text-3xl font-bold">-</p>
+          <p class="text-yellow-200 text-xs mt-1">Response time</p>
+        </div>
+        <div class="p-3 bg-white bg-opacity-20 rounded-xl">
+          <i class="fas fa-stopwatch text-2xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Rate Card -->
+    <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-red-100 text-sm font-medium mb-1">Error Rate</p>
+          <p id="errorRate" class="text-3xl font-bold">-</p>
+          <p class="text-red-200 text-xs mt-1">5xx responses</p>
+        </div>
+        <div class="p-3 bg-white bg-opacity-20 rounded-xl">
+          <i class="fas fa-exclamation-triangle text-2xl"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div id="chartsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">
+        <i class="fas fa-chart-line mr-2"></i>Requests Over Time
+      </h3>
+      <div class="chart-container">
+        <canvas id="requestsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">
+        <i class="fas fa-chart-pie mr-2"></i>Status Code Distribution
+      </h3>
+      <div class="chart-container">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions Bar -->
+  <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-info-circle text-blue-500"></i>
+          <span id="resultsCount" class="text-sm font-medium text-gray-700">Loading...</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-medium text-gray-600">
+            <i class="fas fa-list mr-1"></i>Show:
+          </label>
+          <select
+            id="limitSelect"
+            class="px-4 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+          >
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <span class="text-sm font-medium text-gray-600">per page</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-gray-500">
+          <i class="fas fa-clock mr-1"></i>
+          <span id="lastUpdated">Just now</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Log Table -->
+  <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+    <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-bold text-gray-800">
+        <i class="fas fa-table mr-2 text-indigo-600"></i>API Request Logs
+      </h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table id="logTable" class="min-w-full table-responsive">
+        <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
+          <tr class="text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <th class="px-6 py-4 cursor-pointer hover:bg-indigo-100 transition-colors duration-200" data-sort="timestamp">
+              <div class="flex items-center">
+                <i class="fas fa-clock mr-2 text-indigo-600"></i>Timestamp
+                <i class="fas fa-sort ml-2 text-gray-400"></i>
+              </div>
+            </th>
+            <th class="px-6 py-4 cursor-pointer hover:bg-indigo-100 transition-colors duration-200" data-sort="status">
+              <div class="flex items-center">
+                <i class="fas fa-traffic-light mr-2 text-yellow-600"></i>Status
+                <i class="fas fa-sort ml-2 text-gray-400"></i>
+              </div>
+            </th>
+            <th class="px-6 py-4 cursor-pointer hover:bg-indigo-100 transition-colors duration-200" data-sort="method">
+              <div class="flex items-center">
+                <i class="fas fa-code mr-2 text-green-600"></i>Method
+                <i class="fas fa-sort ml-2 text-gray-400"></i>
+              </div>
+            </th>
+            <th class="px-6 py-4 cursor-pointer hover:bg-indigo-100 transition-colors duration-200" data-sort="endpoint">
+              <div class="flex items-center">
+                <i class="fas fa-link mr-2 text-blue-600"></i>Endpoint
+                <i class="fas fa-sort ml-2 text-gray-400"></i>
+              </div>
+            </th>
+            <th class="px-6 py-4 cursor-pointer hover:bg-indigo-100 transition-colors duration-200" data-sort="response_time">
+              <div class="flex items-center">
+                <i class="fas fa-stopwatch mr-2 text-orange-600"></i>Response Time
+                <i class="fas fa-sort ml-2 text-gray-400"></i>
+              </div>
+            </th>
+            <th class="px-6 py-4" id="userColumn">
+              <div class="flex items-center">
+                <i class="fas fa-user mr-2 text-purple-600"></i>User
+              </div>
+            </th>
+            <th class="px-6 py-4">
+              <div class="flex items-center">
+                <i class="fas fa-globe mr-2 text-teal-600"></i>IP Address
+              </div>
+            </th>
+            <th class="px-6 py-4">
+              <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i>Error Message
+              </div>
+            </th>
+            <th class="px-6 py-4">
+              <div class="flex items-center">
+                <i class="fas fa-cog mr-2 text-gray-600"></i>Actions
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="logList" class="bg-white divide-y divide-gray-100">
+          <!-- Logs will be dynamically loaded here -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center py-8 hidden">
+      <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-2"></i>
+      <p class="text-gray-600">Loading logs...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="text-center py-8 hidden">
+      <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
+      <p class="text-gray-600">No logs found matching your criteria</p>
+    </div>
+  </div>
+
+  <!-- Enhanced Pagination -->
+  <div class="bg-white rounded-lg shadow-md p-4">
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="text-sm text-gray-600">
+        Showing <span id="showingStart">0</span> to
+        <span id="showingEnd">0</span> of
+        <span id="totalItems">0</span> results
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="firstPage"
+          class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          <i class="fas fa-angle-double-left"></i>
+        </button>
+        <button
+          id="prevPage"
+          class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          <i class="fas fa-angle-left mr-1"></i>Previous
+        </button>
+
+        <div id="pageNumbers" class="flex gap-1">
+          <!-- Page numbers will be generated here -->
+        </div>
+
+        <button
+          id="nextPage"
+          class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next<i class="fas fa-angle-right ml-1"></i>
+        </button>
+        <button
+          id="lastPage"
+          class="px-3 py-2 text-sm bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="fas fa-angle-double-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Log Detail Modal -->
+<div id="logModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">
+            <i class="fas fa-info-circle mr-2"></i>Log Details
+          </h3>
+          <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div id="modalContent">
+          <!-- Modal content will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Initialize Log Viewer when loaded
+  window.initLogViewer = function(token) {
+    console.log('Log Viewer initialized with token:', token ? 'present' : 'missing');
+    
+    // Load the existing log viewer script
+    const script = document.createElement('script');
+    script.src = '/static/script.js';
+    script.onload = function() {
+      console.log('Log viewer script loaded successfully');
+    };
+    document.head.appendChild(script);
+  };
+</script>

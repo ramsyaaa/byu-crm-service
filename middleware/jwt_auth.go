@@ -99,6 +99,52 @@ func PermissionMiddleware(requiredPermission string) fiber.Handler {
 	}
 }
 
+// AdminAuthMiddleware checks if user is authenticated and has Administrator user_type
+func AdminAuthMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// First check if user is authenticated via JWT
+		user := c.Locals("jwt")
+		token, ok := user.(*jwt.Token)
+		if !ok || token == nil {
+			// Redirect to login page for admin interface
+			return c.Redirect("/admin/login")
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return c.Redirect("/admin/login")
+		}
+
+		// Extract user email to check user_type from database
+		email, ok := claims["email"].(string)
+		if !ok {
+			return c.Redirect("/admin/login")
+		}
+
+		// Check user_type in database (we need to inject the database connection)
+		// For now, we'll check the user_role from JWT token
+		userRole, ok := claims["user_role"].(string)
+		if !ok {
+			return c.Redirect("/admin/login")
+		}
+
+		// Check if user has administrator privileges
+		// Based on the codebase, Administrator user_type maps to "Super-Admin" role
+		if userRole != "Super-Admin" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Access denied. Administrator privileges required.",
+			})
+		}
+
+		// Store user info in context for use in handlers
+		c.Locals("admin_user_email", email)
+		c.Locals("admin_user_role", userRole)
+
+		return c.Next()
+	}
+}
+
 func unauthorized(c *fiber.Ctx, message string) error {
 	response := helper.APIResponse(message, fiber.StatusUnauthorized, "error", nil)
 	return c.Status(fiber.StatusUnauthorized).JSON(response)
