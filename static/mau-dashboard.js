@@ -1,6 +1,5 @@
 // MAU Dashboard JavaScript
 window.MAUDashboard = (function () {
-  let token = null;
   let charts = {
     dailyActiveUsers: null,
     topUsers: null,
@@ -14,8 +13,8 @@ window.MAUDashboard = (function () {
   // DOM Elements
   let elements = {};
 
-  function init(authToken) {
-    token = authToken;
+  function init() {
+    // No authentication required
     initializeElements();
     initializeDatePickers();
     initializeEventListeners();
@@ -144,11 +143,7 @@ window.MAUDashboard = (function () {
 
   async function loadUsersList() {
     try {
-      const response = await fetch("/api-logs/users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch("/api-logs/users");
 
       const data = await response.json();
 
@@ -184,11 +179,7 @@ window.MAUDashboard = (function () {
       if (currentFilters.userEmail)
         params.append("user_email", currentFilters.userEmail);
 
-      const response = await fetch(`/api-logs/mau?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`/api-logs/mau?${params}`);
 
       const data = await response.json();
 
@@ -412,11 +403,7 @@ window.MAUDashboard = (function () {
       if (currentFilters.userEmail)
         params.append("user_email", currentFilters.userEmail);
 
-      const response = await fetch(`/api-logs/mau?${params}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`/api-logs/mau?${params}`);
 
       const data = await response.json();
 

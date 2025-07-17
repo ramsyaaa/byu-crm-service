@@ -62,9 +62,9 @@ func Route(db *gorm.DB) {
 	app.Static("/static", "./static")
 	app.Static("/public", "./public")
 
-	// Root URL redirect to admin login
+	// Root URL redirect to admin dashboard
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Redirect("/admin/login")
+		return c.Redirect("/admin/dashboard")
 	})
 
 	// Admin routes - public access (no authentication required)

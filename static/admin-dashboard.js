@@ -6,9 +6,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const logTabMobile = document.getElementById("logTabMobile");
   const mauModule = document.getElementById("mauModule");
   const logModule = document.getElementById("logModule");
-  const userEmail = document.getElementById("userEmail");
-  const userMenuBtn = document.getElementById("userMenuBtn");
-  const userDropdown = document.getElementById("userDropdown");
   const loadingOverlay = document.getElementById("loadingOverlay");
 
   // State
@@ -26,7 +23,6 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       showLoading(true);
       setupEventListeners();
-      setupUserInfo();
       await loadModule("mau");
     } catch (error) {
       console.error("Initialization error:", error);
@@ -35,10 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Setup user info display
-  function setupUserInfo() {
-    userEmail.textContent = userInfo.email;
-  }
+  // Setup user info display - removed since no user elements exist
 
   // Setup event listeners
   function setupEventListeners() {
@@ -47,17 +40,6 @@ document.addEventListener("DOMContentLoaded", function () {
     logTab.addEventListener("click", () => switchModule("log"));
     mauTabMobile.addEventListener("click", () => switchModule("mau"));
     logTabMobile.addEventListener("click", () => switchModule("log"));
-
-    // User menu toggle
-    userMenuBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      userDropdown.classList.toggle("hidden");
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener("click", function () {
-      userDropdown.classList.add("hidden");
-    });
   }
 
   // Module switching
@@ -131,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Initialize MAU dashboard functionality
       if (window.initMAUDashboard) {
-        window.initMAUDashboard(token);
+        window.initMAUDashboard();
       }
     } catch (error) {
       document.getElementById("mauDashboardContent").innerHTML = `
@@ -155,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Initialize log viewer functionality
       if (window.initLogViewer) {
-        window.initLogViewer(token);
+        window.initLogViewer();
       }
     } catch (error) {
       document.getElementById("logViewerContent").innerHTML = `
@@ -193,7 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
   window.adminDashboard = {
     showLoading,
     showError,
-    token,
     userInfo: () => userInfo,
     loadModule,
   };
