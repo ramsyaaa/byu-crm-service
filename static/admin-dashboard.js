@@ -1,11 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Authentication check - temporarily disabled
-  const token = localStorage.getItem("admin_token");
-  console.log(
-    "Dashboard: authentication temporarily disabled, loading dashboard directly"
-  );
-  // Skip token validation and redirect - allow direct access
-
   // DOM Elements
   const mauTab = document.getElementById("mauTab");
   const logTab = document.getElementById("logTab");
@@ -16,12 +9,15 @@ document.addEventListener("DOMContentLoaded", function () {
   const userEmail = document.getElementById("userEmail");
   const userMenuBtn = document.getElementById("userMenuBtn");
   const userDropdown = document.getElementById("userDropdown");
-  const logoutBtn = document.getElementById("logoutBtn");
   const loadingOverlay = document.getElementById("loadingOverlay");
 
   // State
   let currentModule = "mau";
-  let userInfo = null;
+  let userInfo = {
+    email: "admin@example.com",
+    user_role: "Super-Admin",
+    user_type: "Administrator",
+  };
 
   // Initialize
   init();
@@ -29,43 +25,39 @@ document.addEventListener("DOMContentLoaded", function () {
   async function init() {
     try {
       showLoading(true);
-
-      // Verify authentication and get user info
-      await verifyAuth();
-
-      // Load initial module (MAU Dashboard)
+      setupEventListeners();
+      setupUserInfo();
       await loadModule("mau");
     } catch (error) {
       console.error("Initialization error:", error);
-      logout();
     } finally {
       showLoading(false);
     }
   }
 
-  // Authentication verification - temporarily disabled
-  async function verifyAuth() {
-    try {
-      console.log(
-        "Dashboard: authentication verification temporarily disabled"
-      );
+  // Setup user info display
+  function setupUserInfo() {
+    userEmail.textContent = userInfo.email;
+  }
 
-      // Mock user info for frontend compatibility
-      userInfo = {
-        email: "admin@example.com",
-        user_role: "Super-Admin",
-        user_type: "Administrator",
-      };
+  // Setup event listeners
+  function setupEventListeners() {
+    // Tab switching
+    mauTab.addEventListener("click", () => switchModule("mau"));
+    logTab.addEventListener("click", () => switchModule("log"));
+    mauTabMobile.addEventListener("click", () => switchModule("mau"));
+    logTabMobile.addEventListener("click", () => switchModule("log"));
 
-      userEmail.textContent = userInfo.email;
-      console.log("Dashboard: using mock user data:", userInfo.email);
+    // User menu toggle
+    userMenuBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      userDropdown.classList.toggle("hidden");
+    });
 
-      // Skip actual authentication - always succeed
-      return;
-    } catch (error) {
-      console.log("Dashboard: authentication error:", error);
-      throw error;
-    }
+    // Close dropdown when clicking outside
+    document.addEventListener("click", function () {
+      userDropdown.classList.add("hidden");
+    });
   }
 
   // Module switching
@@ -193,31 +185,9 @@ document.addEventListener("DOMContentLoaded", function () {
     alert(message); // Simple fallback
   }
 
-  function logout() {
-    console.log("Dashboard: logging out...");
-    localStorage.removeItem("admin_token");
-    window.location.href = "/admin/login";
-  }
+  // Logout functionality removed - no authentication required
 
-  // Event listeners
-  mauTab.addEventListener("click", () => switchModule("mau"));
-  logTab.addEventListener("click", () => switchModule("log"));
-  mauTabMobile.addEventListener("click", () => switchModule("mau"));
-  logTabMobile.addEventListener("click", () => switchModule("log"));
-
-  // User menu toggle
-  userMenuBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    userDropdown.classList.toggle("hidden");
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener("click", function () {
-    userDropdown.classList.add("hidden");
-  });
-
-  // Logout
-  logoutBtn.addEventListener("click", logout);
+  // Event listeners are now set up in setupEventListeners() function
 
   // Expose functions globally for module scripts
   window.adminDashboard = {

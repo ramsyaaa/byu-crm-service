@@ -67,22 +67,15 @@ func Route(db *gorm.DB) {
 		return c.Redirect("/admin/login")
 	})
 
-	// Admin routes with authentication
+	// Admin routes - public access (no authentication required)
 	adminGroup := app.Group("/admin")
 
-	// Admin login page (no authentication required)
-	adminGroup.Get("/login", func(c *fiber.Ctx) error {
-		return c.SendFile("./static/admin-login.html")
-	})
-
-	// Admin routes - temporarily made public (no authentication required)
-
-	// Admin dashboard (default landing page)
+	// Admin dashboard (primary entry point)
 	adminGroup.Get("/dashboard", func(c *fiber.Ctx) error {
 		return c.SendFile("./static/admin-dashboard.html")
 	})
 
-	// Admin profile endpoint - returns mock data without authentication
+	// Admin profile endpoint - returns mock data for frontend compatibility
 	adminGroup.Get("/profile", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"meta": fiber.Map{
@@ -93,12 +86,12 @@ func Route(db *gorm.DB) {
 			"data": fiber.Map{
 				"email":     "admin@example.com",
 				"user_role": "Super-Admin",
-				"user_type": "Administrator", // For compatibility with frontend
+				"user_type": "Administrator",
 			},
 		})
 	})
 
-	// Redirect /admin to /admin/dashboard
+	// Redirect /admin to /admin/dashboard (primary entry point)
 	adminGroup.Get("/", func(c *fiber.Ctx) error {
 		return c.Redirect("/admin/dashboard")
 	})
