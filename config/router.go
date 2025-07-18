@@ -62,63 +62,44 @@ func Route(db *gorm.DB) {
 	app.Static("/static", "./static")
 	app.Static("/public", "./public")
 
-	// Root URL redirect to admin dashboard
+	// Redirect root to admin login
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Redirect("/admin/dashboard")
+		return c.Redirect("/admin/login")
 	})
 
-	// Admin routes - public access (no authentication required)
-	adminGroup := app.Group("/admin")
+	// Admin routes
+	adminHandler := helper.NewAdminHandler(db)
 
-	// Admin dashboard (primary entry point)
-	adminGroup.Get("/dashboard", func(c *fiber.Ctx) error {
-		return c.SendFile("./static/admin-dashboard.html")
+	// Public admin routes (no auth required)
+	app.Get("/admin/login", adminHandler.ShowLogin)
+	app.Post("/admin/login", adminHandler.HandleLogin)
+	app.Get("/admin/logout", adminHandler.HandleLogout)
+
+	// Protected admin routes
+	adminGroup := app.Group("/admin", helper.AdminAuthMiddleware())
+	adminGroup.Get("/dashboard", adminHandler.ShowDashboard)
+	adminGroup.Get("/logs", func(c *fiber.Ctx) error {
+		return c.SendFile("./static/index.html")
 	})
 
-	// Admin profile endpoint - returns mock data for frontend compatibility
-	adminGroup.Get("/profile", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"meta": fiber.Map{
-				"status":  "success",
-				"message": "Admin profile retrieved successfully",
-				"code":    fiber.StatusOK,
-			},
-			"data": fiber.Map{
-				"email":     "admin@example.com",
-				"user_role": "Super-Admin",
-				"user_type": "Administrator",
-			},
-		})
-	})
+	// Database log viewer endpoints (protected under admin)
+	logHandler := helper.NewLogViewerHandlerWithRedis(db, RedisClient)
+	adminGroup.Get("/api-logs", logHandler.GetApiLogs)
+	adminGroup.Get("/api-logs/stats", logHandler.GetLogStats)
+	adminGroup.Get("/api-logs/errors", logHandler.GetErrorLogs)
+	adminGroup.Get("/api-logs/slow", logHandler.GetSlowRequests)
+	adminGroup.Get("/api-logs/:id", logHandler.GetLogById)
+	adminGroup.Post("/api-logs/cleanup", logHandler.CleanupLogs)
 
-	// Redirect /admin to /admin/dashboard (primary entry point)
-	adminGroup.Get("/", func(c *fiber.Ctx) error {
-		return c.Redirect("/admin/dashboard")
-	})
+	// Chart data endpoints (protected under admin)
+	adminGroup.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
+	adminGroup.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
 
-	// Legacy log viewer route (redirect to admin dashboard)
-	app.Get("/log-viewer", func(c *fiber.Ctx) error {
-		return c.Redirect("/admin/dashboard")
-	})
-
-	// Database log viewer endpoints (temporarily made public - no authentication required)
-	logHandler := helper.NewLogViewerHandler(db)
-
-	app.Get("/api-logs", logHandler.GetApiLogs)
-	app.Get("/api-logs/stats", logHandler.GetLogStats)
-	app.Get("/api-logs/errors", logHandler.GetErrorLogs)
-	app.Get("/api-logs/slow", logHandler.GetSlowRequests)
-	app.Get("/api-logs/:id", logHandler.GetLogById)
-	app.Post("/api-logs/cleanup", logHandler.CleanupLogs)
-
-	// Chart data endpoints
-	app.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
-	app.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
-
-	// MAU (Monthly Active Users) endpoints
-	app.Get("/api-logs/mau", logHandler.GetMAUData)
-	app.Get("/api-logs/users", logHandler.GetUsersList)
-	app.Get("/api-logs/user-activity", logHandler.GetUserActivityTimeline)
+	// MAU Dashboard API endpoints
+	adminGroup.Get("/api/mau/stats", logHandler.GetMAUStats)
+	adminGroup.Get("/api/mau/users", logHandler.GetActiveUsersList)
+	adminGroup.Get("/api/mau/activity", logHandler.GetUserActivityData)
+	adminGroup.Get("/api/mau/daily", logHandler.GetDailyActiveUsers)
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB

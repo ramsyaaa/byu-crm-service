@@ -29,6 +29,33 @@
     />
     <!-- Custom CSS for responsive design -->
     <style>
+      /* Company branding colors */
+      :root {
+        --primary-color: #00b2e5;
+        --secondary-color: #10c0f3;
+      }
+      .bg-primary {
+        background-color: var(--primary-color);
+      }
+      .bg-secondary {
+        background-color: var(--secondary-color);
+      }
+      .text-primary {
+        color: var(--primary-color);
+      }
+      .border-primary {
+        border-color: var(--primary-color);
+      }
+      .hover\:bg-primary:hover {
+        background-color: var(--primary-color);
+      }
+      .focus\:border-primary:focus {
+        border-color: var(--primary-color);
+      }
+      .focus\:ring-primary:focus {
+        --tw-ring-color: var(--primary-color);
+      }
+
       /* Custom responsive styles */
       @media (max-width: 640px) {
         .grid-responsive {
@@ -106,20 +133,98 @@
       #chartsContainer .bg-white {
         overflow: hidden;
       }
+
+      /* Company branding */
+      :root {
+        --primary-color: #00b2e5;
+        --secondary-color: #10c0f3;
+      }
+      .bg-primary {
+        background-color: var(--primary-color);
+      }
+      .bg-secondary {
+        background-color: var(--secondary-color);
+      }
+      .text-primary {
+        color: var(--primary-color);
+      }
+      .border-primary {
+        border-color: var(--primary-color);
+      }
+      .hover\:bg-primary:hover {
+        background-color: var(--primary-color);
+      }
+      .focus\:border-primary:focus {
+        border-color: var(--primary-color);
+      }
+      .focus\:ring-primary:focus {
+        --tw-ring-color: var(--primary-color);
+      }
+
+      .gradient-bg {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+      }
     </style>
   </head>
-  <body class="bg-gray-50 font-sans">
-    <div class="container mx-auto px-6 py-8">
-      <!-- Header -->
-      <header class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-gray-800">
-          <i class="fas fa-chart-line mr-3"></i>Log Viewer Dashboard
-        </h1>
-        <p class="text-gray-600 mt-2">
-          Monitor API requests, analyze performance, and track system health
-        </p>
-      </header>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center">
+            <img
+              src="/static/logo.svg"
+              alt="Company Logo"
+              class="h-10 w-10 mr-3"
+            />
+            <div>
+              <h1 class="text-xl font-bold text-white">
+                Youth Service Admin Dashboard
+              </h1>
+              <p class="text-blue-100 text-sm">System Log Viewer & Analytics</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-white text-sm">
+              <i class="fas fa-user-shield mr-2"></i>super@admin.com
+            </span>
+            <a
+              href="/admin/logout"
+              class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200"
+            >
+              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
 
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-8">
+          <a
+            href="/admin/dashboard"
+            class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm focus:outline-none transition-colors"
+          >
+            <i class="fas fa-chart-line mr-2"></i>MAU Dashboard
+          </a>
+          <a
+            href="/admin/logs"
+            class="py-4 px-1 border-b-2 border-primary text-primary font-medium text-sm focus:outline-none"
+          >
+            <i class="fas fa-list-alt mr-2"></i>Log Viewer
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- API Logs Header -->
       <div
         class="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white"
@@ -193,17 +298,17 @@
             <!-- Search -->
             <div class="group">
               <label class="block text-sm font-bold text-gray-700 mb-3">
-                <i class="fas fa-search mr-2 text-blue-500"></i>Global Search
+                <i class="fas fa-search mr-2 text-primary"></i>Global Search
               </label>
               <div class="relative">
                 <input
                   type="text"
                   id="searchFilter"
-                  class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                  class="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-primary"
                   placeholder="Search endpoints, IPs, users..."
                 />
                 <i
-                  class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors"
+                  class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-primary transition-colors"
                 ></i>
               </div>
             </div>
@@ -494,7 +599,7 @@
         >
           <div class="flex flex-col sm:flex-row sm:items-center gap-4">
             <div class="flex items-center gap-2">
-              <i class="fas fa-info-circle text-blue-500"></i>
+              <i class="fas fa-info-circle text-primary"></i>
               <span id="resultsCount" class="text-sm font-medium text-gray-700"
                 >Loading...</span
               >
@@ -505,7 +610,7 @@
               </label>
               <select
                 id="limitSelect"
-                class="px-4 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                class="px-4 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 hover:border-primary"
               >
                 <option value="25">25</option>
                 <option value="50" selected>50</option>
@@ -575,7 +680,7 @@
                   data-sort="endpoint"
                 >
                   <div class="flex items-center">
-                    <i class="fas fa-link mr-2 text-blue-600"></i>Endpoint
+                    <i class="fas fa-link mr-2 text-primary"></i>Endpoint
                     <i class="fas fa-sort ml-2 text-gray-400"></i>
                   </div>
                 </th>
