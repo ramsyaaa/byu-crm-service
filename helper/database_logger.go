@@ -16,6 +16,11 @@ import (
 // DatabaseLogger creates a middleware that logs API requests to the database
 func DatabaseLogger(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		// Skip logging for internal admin API calls
+		if strings.HasPrefix(c.OriginalURL(), "/admin/") {
+			return c.Next()
+		}
+
 		// Store the start time
 		startTime := time.Now()
 
@@ -166,6 +171,11 @@ func extractEmailFromJWT(authHeader string) string {
 
 // LogErrorToDatabase logs an error message to the database
 func LogErrorToDatabase(db *gorm.DB, c *fiber.Ctx, errorMsg string) {
+	// Skip logging for internal admin API calls
+	if strings.HasPrefix(c.OriginalURL(), "/admin/") {
+		return
+	}
+
 	// Extract user email from JWT token if available
 	var userEmail *string
 	if authHeader := c.Get("Authorization"); authHeader != "" {
