@@ -1009,6 +1009,45 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 		}
 	}
 
+	getAccount, err := h.service.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch account", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	fmt.Println("getAccount:", getAccount)
+
+	if getAccount != nil {
+		if getAccount.Latitude != nil && getAccount.Longitude != nil {
+			lat, err1 := strconv.ParseFloat(*getAccount.Latitude, 64)
+			lon, err2 := strconv.ParseFloat(*getAccount.Longitude, 64)
+			if err1 == nil && err2 == nil {
+				fmt.Println("Latitude:", lat, "Longitude:", lon)
+				latStr := reqMap["latitude"].(string)
+				lonStr := reqMap["longitude"].(string)
+
+				latParsed, err := strconv.ParseFloat(latStr, 64)
+				if err != nil {
+					log.Println("Gagal parsing latitude:", err)
+				}
+
+				lonParsed, err := strconv.ParseFloat(lonStr, 64)
+				if err != nil {
+					log.Println("Gagal parsing longitude:", err)
+				}
+
+				inRadius := helper.IsWithinRadius(500, latParsed, lonParsed, lat, lon)
+				fmt.Println("In Radius:", inRadius)
+				if inRadius {
+					response := helper.APIResponse("Titik baru masih dalam radius 500 m, kamu tidak bisa merubah karena jarak terlalu dekat.", fiber.StatusBadRequest, "error", nil)
+					return c.Status(fiber.StatusBadRequest).JSON(response)
+				}
+			} else {
+				log.Printf("Failed to parse latitude/longitude: %v, %v", err1, err2)
+			}
+		}
+	}
+
 	requestBody := map[string]interface{}{
 		"longitude": reqMap["longitude"],
 		"latitude":  reqMap["latitude"],
@@ -1047,6 +1086,8 @@ func (h *AccountHandler) UpdateLocation(c *fiber.Ctx) error {
 			"callback_url": fmt.Sprintf("/accounts-location?type=detail&id=%d", requestLocation.ID),
 		}
 		_ = h.smsSenderService.CreateSms(requestBody, []string{"Branch"}, userRole, territoryID, 0)
+
+		successMessage := "Permintaan perubahan lokasi account berhasil diajukan. Silahkan menunggu persetujuan."
 		// Return success response
 		response := helper.APIResponse(successMessage, fiber.StatusOK, "success", requestLocation)
 		return c.Status(fiber.StatusOK).JSON(response)

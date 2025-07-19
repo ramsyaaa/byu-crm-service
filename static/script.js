@@ -138,7 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (maxResponseTime.value)
       params.append("max_response_time", maxResponseTime.value);
 
-    fetch(`/api-logs?${params}`)
+    fetch(`/admin/api-logs?${params}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
@@ -347,7 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (startDate.value) params.append("start_date", startDate.value);
     if (endDate.value) params.append("end_date", endDate.value);
 
-    fetch(`/api-logs/stats?${params}`)
+    fetch(`/admin/api-logs/stats?${params}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
@@ -371,7 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (endDate.value) params.append("end_date", endDate.value);
 
     // Fetch requests over time data
-    fetch(`/api-logs/chart-data/requests-over-time?${params}`)
+    fetch(`/admin/api-logs/chart-data/requests-over-time?${params}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {
@@ -383,7 +383,7 @@ document.addEventListener("DOMContentLoaded", function () {
       );
 
     // Fetch status code distribution data
-    fetch(`/api-logs/chart-data/status-distribution?${params}`)
+    fetch(`/admin/api-logs/chart-data/status-distribution?${params}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.status === "success") {

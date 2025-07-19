@@ -96,6 +96,12 @@ func (s *LogRetentionService) CreateIndexes() error {
 		"CREATE INDEX IF NOT EXISTS idx_api_logs_created_at ON api_logs(created_at)",
 		"CREATE INDEX IF NOT EXISTS idx_api_logs_endpoint_method ON api_logs(endpoint(255), method)",
 		"CREATE INDEX IF NOT EXISTS idx_api_logs_status_accessed ON api_logs(status_code, accessed_at)",
+		// Additional indexes for MAU dashboard performance
+		"CREATE INDEX IF NOT EXISTS idx_api_logs_accessed_user_email ON api_logs(accessed_at, auth_user_email)",
+		"CREATE INDEX IF NOT EXISTS idx_api_logs_accessed_endpoint ON api_logs(accessed_at, endpoint(255))",
+		"CREATE INDEX IF NOT EXISTS idx_api_logs_mau_composite ON api_logs(accessed_at, auth_user_email, endpoint(255))",
+		// Note: DATE() function indexes not supported in MariaDB, using accessed_at instead
+		"CREATE INDEX IF NOT EXISTS idx_api_logs_accessed_user_composite ON api_logs(accessed_at, auth_user_email, endpoint(100))",
 	}
 
 	for _, indexSQL := range indexes {

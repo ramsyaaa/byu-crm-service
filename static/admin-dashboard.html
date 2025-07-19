@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Youth CRM Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Select2 for enhanced dropdowns -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #00b2e5;
+        --secondary-color: #10c0f3;
+      }
+      .bg-primary {
+        background-color: var(--primary-color);
+      }
+      .bg-secondary {
+        background-color: var(--secondary-color);
+      }
+      .text-primary {
+        color: var(--primary-color);
+      }
+      .border-primary {
+        border-color: var(--primary-color);
+      }
+      .hover\:bg-primary:hover {
+        background-color: var(--primary-color);
+      }
+      .focus\:border-primary:focus {
+        border-color: var(--primary-color);
+      }
+      .focus\:ring-primary:focus {
+        --tw-ring-color: var(--primary-color);
+      }
+
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      .gradient-bg {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+      }
+
+      /* Custom Select2 styling to match theme */
+      .select2-container--default .select2-selection--single {
+        height: 42px !important;
+        border: 2px solid #d1d5db !important;
+        border-radius: 0.5rem !important;
+        padding: 0.5rem 0.75rem !important;
+      }
+
+      .select2-container--default
+        .select2-selection--single
+        .select2-selection__rendered {
+        line-height: 26px !important;
+        padding-left: 0 !important;
+        color: #374151 !important;
+      }
+
+      .select2-container--default
+        .select2-selection--single
+        .select2-selection__arrow {
+        height: 38px !important;
+        right: 8px !important;
+      }
+
+      .select2-container--default.select2-container--focus
+        .select2-selection--single {
+        border-color: var(--primary-color) !important;
+        box-shadow: 0 0 0 2px rgba(0, 178, 229, 0.2) !important;
+      }
+
+      .select2-dropdown {
+        border: 2px solid var(--primary-color) !important;
+        border-radius: 0.5rem !important;
+      }
+
+      .select2-container--default
+        .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--primary-color) !important;
+      }
+
+      .select2-search--dropdown .select2-search__field {
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.375rem !important;
+        padding: 0.5rem !important;
+      }
+
+      .select2-search--dropdown .select2-search__field:focus {
+        border-color: var(--primary-color) !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(0, 178, 229, 0.2) !important;
+      }
+
+      /* Enhanced user display styles */
+      .user-display-container {
+        line-height: 1.3;
+        min-height: 3rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .user-display-container > div {
+        margin: 0.125rem 0;
+      }
+
+      /* Responsive table adjustments */
+      @media (max-width: 768px) {
+        .user-display-container {
+          min-height: auto;
+          line-height: 1.2;
+        }
+
+        .user-display-container > div {
+          margin: 0.1rem 0;
+        }
+      }
+
+      /* Select2 dropdown user option styling */
+      .user-option {
+        padding: 0.5rem 0;
+        line-height: 1.4;
+      }
+
+      .user-option > div {
+        margin: 0.125rem 0;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center">
+            <img
+              src="/static/logo.svg"
+              alt="Company Logo"
+              class="h-10 w-10 mr-3"
+            />
+            <div>
+              <h1 class="text-xl font-bold text-white">
+                Youth Service Admin Dashboard
+              </h1>
+              <p class="text-blue-100 text-sm">
+                Monthly Active Users & System Analytics
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-white text-sm">
+              <i class="fas fa-user-shield mr-2"></i>super@admin.com
+            </span>
+            <a
+              href="/admin/logout"
+              class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200"
+            >
+              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-8">
+          <a
+            href="/admin/dashboard"
+            class="py-4 px-1 border-b-2 border-primary text-primary font-medium text-sm focus:outline-none"
+          >
+            <i class="fas fa-chart-line mr-2"></i>MAU Dashboard
+          </a>
+          <a
+            href="/admin/logs"
+            class="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm focus:outline-none transition-colors"
+          >
+            <i class="fas fa-list-alt mr-2"></i>Log Viewer
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Filters Section -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-filter mr-2 text-primary"></i>Filters
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Start Date</label
+            >
+            <input
+              type="date"
+              id="startDate"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >End Date</label
+            >
+            <input
+              type="date"
+              id="endDate"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >User Filter</label
+            >
+            <select
+              id="userFilter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              <option value="">All Users</option>
+            </select>
+          </div>
+          <div class="flex items-end space-x-2">
+            <div class="flex flex-col space-y-2">
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="apiOnly"
+                  checked
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="ml-2 text-sm text-gray-700">API Only</span>
+              </label>
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="businessHours"
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="ml-2 text-sm text-gray-700"
+                  >Business Hours (8AM-7PM)</span
+                >
+              </label>
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="uniqueOnly"
+                  checked
+                  class="rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <span class="ml-2 text-sm text-gray-700"
+                  >Unique Calls Only</span
+                >
+              </label>
+            </div>
+            <button
+              id="applyFilters"
+              class="bg-primary hover:bg-opacity-90 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <i class="fas fa-search mr-2"></i>Apply
+            </button>
+            <button
+              id="resetFilters"
+              class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <i class="fas fa-undo mr-2"></i>Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div
+                class="w-8 h-8 bg-blue-100 bg-opacity-20 rounded-lg flex items-center justify-center"
+              >
+                <i class="fas fa-users text-primary"></i>
+              </div>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Current MAU</p>
+              <p id="currentMAU" class="text-2xl font-bold text-gray-900">-</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div
+                class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center"
+              >
+                <i class="fas fa-chart-line text-green-600"></i>
+              </div>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Growth</p>
+              <p id="growthPercentage" class="text-2xl font-bold text-gray-900">
+                -
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div
+                class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"
+              >
+                <i class="fas fa-calendar-day text-blue-600"></i>
+              </div>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Previous MAU</p>
+              <p id="previousMAU" class="text-2xl font-bold text-gray-900">-</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div
+                class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"
+              >
+                <i class="fas fa-server text-purple-600"></i>
+              </div>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Total API Calls</p>
+              <p id="totalAPICalls" class="text-2xl font-bold text-gray-900">
+                -
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Daily Active Users Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-chart-area mr-2 text-primary"></i>Daily Active
+            Users (Last 30 Days)
+          </h3>
+          <div class="h-64">
+            <canvas id="dailyUsersChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Comparison Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-chart-bar mr-2 text-primary"></i>Monthly Comparison
+          </h3>
+          <div class="h-64">
+            <canvas id="monthlyComparisonChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Users Table -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-trophy mr-2 text-primary"></i>Top Active Users
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Rank
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  User Email
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  API Calls
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Last Activity
+                </th>
+              </tr>
+            </thead>
+            <tbody id="topUsersTable" class="bg-white divide-y divide-gray-200">
+              <!-- Data will be loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div
+      id="loadingOverlay"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+    >
+      <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+        <i class="fas fa-spinner fa-spin text-2xl text-primary"></i>
+        <span class="text-gray-700">Loading dashboard data...</span>
+      </div>
+    </div>
+
+    <script src="/static/admin-dashboard.js"></script>
+  </body>
+</html>

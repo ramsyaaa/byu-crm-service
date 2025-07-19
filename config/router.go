@@ -62,23 +62,44 @@ func Route(db *gorm.DB) {
 	app.Static("/static", "./static")
 	app.Static("/public", "./public")
 
-	// Serve the HTML dashboard on the root path
-	app.Get("/log-viewer", func(c *fiber.Ctx) error {
+	// Redirect root to admin login
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Redirect("/admin/login")
+	})
+
+	// Admin routes
+	adminHandler := helper.NewAdminHandler(db)
+
+	// Public admin routes (no auth required)
+	app.Get("/admin/login", adminHandler.ShowLogin)
+	app.Post("/admin/login", adminHandler.HandleLogin)
+	app.Get("/admin/logout", adminHandler.HandleLogout)
+
+	// Protected admin routes
+	adminGroup := app.Group("/admin", helper.AdminAuthMiddleware())
+	adminGroup.Get("/dashboard", adminHandler.ShowDashboard)
+	adminGroup.Get("/logs", func(c *fiber.Ctx) error {
 		return c.SendFile("./static/index.html")
 	})
 
-	// Database log viewer endpoints
-	logHandler := helper.NewLogViewerHandler(db)
-	app.Get("/api-logs", logHandler.GetApiLogs)
-	app.Get("/api-logs/stats", logHandler.GetLogStats)
-	app.Get("/api-logs/errors", logHandler.GetErrorLogs)
-	app.Get("/api-logs/slow", logHandler.GetSlowRequests)
-	app.Get("/api-logs/:id", logHandler.GetLogById)
-	app.Post("/api-logs/cleanup", logHandler.CleanupLogs)
+	// Database log viewer endpoints (protected under admin)
+	logHandler := helper.NewLogViewerHandlerWithRedis(db, RedisClient)
+	adminGroup.Get("/api-logs", logHandler.GetApiLogs)
+	adminGroup.Get("/api-logs/stats", logHandler.GetLogStats)
+	adminGroup.Get("/api-logs/errors", logHandler.GetErrorLogs)
+	adminGroup.Get("/api-logs/slow", logHandler.GetSlowRequests)
+	adminGroup.Get("/api-logs/:id", logHandler.GetLogById)
+	adminGroup.Post("/api-logs/cleanup", logHandler.CleanupLogs)
 
-	// Chart data endpoints
-	app.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
-	app.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
+	// Chart data endpoints (protected under admin)
+	adminGroup.Get("/api-logs/chart-data/requests-over-time", logHandler.GetRequestsOverTime)
+	adminGroup.Get("/api-logs/chart-data/status-distribution", logHandler.GetStatusDistribution)
+
+	// MAU Dashboard API endpoints
+	adminGroup.Get("/api/mau/stats", logHandler.GetMAUStats)
+	adminGroup.Get("/api/mau/users", logHandler.GetActiveUsersList)
+	adminGroup.Get("/api/mau/activity", logHandler.GetUserActivityData)
+	adminGroup.Get("/api/mau/daily", logHandler.GetDailyActiveUsers)
 
 	api := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024, // 50 MB
