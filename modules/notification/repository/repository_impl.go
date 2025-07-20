@@ -135,3 +135,55 @@ func (r *notificationRepository) CreateNotification(requestBody map[string]strin
 
 	return nil
 }
+
+func (r *notificationRepository) GetByNotificationId(notificationID uint, userID uint) (*response.NotificationResponse, error) {
+	var notification response.NotificationResponse
+
+	query := r.db.Model(&models.UserNotification{}).
+		Where("user_notifications.id = ?", notificationID)
+
+	if userID > 0 {
+		query = query.Where("user_notifications.user_id = ?", userID)
+	}
+
+	err := query.First(&notification).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &notification, nil
+}
+
+func (r *notificationRepository) MarkNotificationAsRead(notificationID uint, userID uint) error {
+	var notification models.UserNotification
+
+	err := r.db.Model(&models.UserNotification{}).
+		Where("id = ? AND user_id = ?", notificationID, userID).
+		First(&notification).Error
+	if err != nil {
+		return err
+	}
+
+	isRead := uint(1)
+	notification.IsRead = &isRead
+
+	return r.db.Save(&notification).Error
+}
+
+func (r *notificationRepository) MarkAllNotificationsAsRead(userID int) error {
+	var notifications []models.UserNotification
+
+	err := r.db.Model(&models.UserNotification{}).
+		Where("user_id = ? AND is_read = ?", userID, 0).
+		Find(&notifications).Error
+	if err != nil {
+		return err
+	}
+
+	isRead := uint(1)
+	for i := range notifications {
+		notifications[i].IsRead = &isRead
+	}
+
+	return r.db.Save(&notifications).Error
+}
