@@ -62,3 +62,7 @@ func (s *notificationService) MarkNotificationAsRead(notificationID uint, userID
 func (s *notificationService) MarkAllNotificationsAsRead(userID int) error {
 	return s.repo.MarkAllNotificationsAsRead(userID)
 }
+
+func (s *notificationService) MarkNotificationAsReadBySubjectID(subjectType string, subjectID uint, userID int) error {
+	return s.repo.MarkNotificationAsReadBySubjectID(subjectType, subjectID, userID)
+}
