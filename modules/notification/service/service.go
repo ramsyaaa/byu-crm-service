@@ -11,4 +11,5 @@ type NotificationService interface {
 	GetByNotificationId(notificationID uint, userID uint) (*response.NotificationResponse, error)
 	MarkNotificationAsRead(notificationID uint, userID uint) error
 	MarkAllNotificationsAsRead(userID int) error
+	MarkNotificationAsReadBySubjectID(subjectType string, subjectID uint, userID int) error
 }

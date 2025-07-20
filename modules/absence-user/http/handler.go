@@ -118,6 +118,7 @@ func (h *AbsenceUserHandler) GetAllAbsenceUsers(c *fiber.Ctx) error {
 }
 
 func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
 	if err != nil {
@@ -132,6 +133,8 @@ func (h *AbsenceUserHandler) GetAbsenceUserByID(c *fiber.Ctx) error {
 		response := helper.APIResponse("Failed to fetch Absence User", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
+
+	_ = h.notificationService.MarkNotificationAsReadBySubjectID("App\\Models\\AbsenceUser", uint(AbsenceUser.ID), userID)
 
 	// Return response
 	responseData := map[string]interface{}{

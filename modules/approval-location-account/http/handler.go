@@ -93,6 +93,7 @@ func (h *ApprovalLocationAccountHandler) GetAllApprovalRequest(c *fiber.Ctx) err
 
 func (h *ApprovalLocationAccountHandler) GetById(c *fiber.Ctx) error {
 	idParam := c.Params("id")
+	userID := c.Locals("user_id").(int)
 
 	// Convert to int
 	id, err := strconv.Atoi(idParam)
@@ -106,6 +107,8 @@ func (h *ApprovalLocationAccountHandler) GetById(c *fiber.Ctx) error {
 		response := helper.APIResponse("Approval request not found", fiber.StatusNotFound, "error", nil)
 		return c.Status(fiber.StatusNotFound).JSON(response)
 	}
+
+	_ = h.notificationService.MarkNotificationAsReadBySubjectID("App\\Models\\ApprovalLocationAccount", uint(approvalRequest.ID), userID)
 
 	response := helper.APIResponse("Success get approval request", fiber.StatusOK, "success", approvalRequest)
 	return c.Status(fiber.StatusOK).JSON(response)
