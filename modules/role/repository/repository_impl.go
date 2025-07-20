@@ -99,6 +99,30 @@ func (r *roleRepository) GetRoleByID(id int) (*response.RoleResponse, error) {
 	return RoleResponse, nil
 }
 
+func (r *roleRepository) GetRoleByIDs(roleIDs *[]string) ([]response.RoleResponse, error) {
+	var roles []models.Role
+
+	if roleIDs == nil || len(*roleIDs) == 0 {
+		return []response.RoleResponse{}, nil
+	}
+
+	err := r.db.Where("id IN ?", *roleIDs).Find(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var roleResponses []response.RoleResponse
+	for _, role := range roles {
+		roleResponses = append(roleResponses, response.RoleResponse{
+			ID:        role.ID,
+			Name:      role.Name,
+			GuardName: role.GuardName,
+		})
+	}
+
+	return roleResponses, nil
+}
+
 func (r *roleRepository) GetRoleByName(name string) (*response.RoleResponse, error) {
 	var role models.Role
 	err := r.db.Where("name = ?", name).First(&role).Error

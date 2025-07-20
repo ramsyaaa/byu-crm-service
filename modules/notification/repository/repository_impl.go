@@ -135,3 +135,21 @@ func (r *notificationRepository) CreateNotification(requestBody map[string]strin
 
 	return nil
 }
+
+func (r *notificationRepository) GetByNotificationId(notificationID uint, userID uint) (*response.NotificationResponse, error) {
+	var notification response.NotificationResponse
+
+	query := r.db.Model(&models.UserNotification{}).
+		Where("user_notifications.id = ?", notificationID)
+
+	if userID > 0 {
+		query = query.Where("user_notifications.user_id = ?", userID)
+	}
+
+	err := query.First(&notification).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &notification, nil
+}

@@ -19,6 +19,10 @@ func (s *notificationService) GetAllNotifications(filters map[string]string, lim
 	return s.repo.GetAllNotifications(filters, limit, userID)
 }
 
+func (s *notificationService) AssignNotificationToUsers(requestBody map[string]string, userIDs []int) error {
+	return s.repo.CreateNotification(requestBody, userIDs)
+}
+
 func (s *notificationService) CreateNotification(requestBody map[string]string, rolesName []string, userRole string, territoryID int, userID int) error {
 	if userID != 0 {
 		userIDs := []int{userID}
@@ -45,4 +49,8 @@ func (s *notificationService) CreateNotification(requestBody map[string]string, 
 		return s.repo.CreateNotification(requestBody, userIDs)
 	}
 
+}
+
+func (s *notificationService) GetByNotificationId(notificationID uint, userID uint) (*response.NotificationResponse, error) {
+	return s.repo.GetByNotificationId(notificationID, userID)
 }

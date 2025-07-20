@@ -22,6 +22,10 @@ func (s *roleService) GetRoleByID(id int) (*response.RoleResponse, error) {
 	return s.repo.GetRoleByID(id)
 }
 
+func (s *roleService) GetRoleByIDs(roleIDs *[]string) ([]response.RoleResponse, error) {
+	return s.repo.GetRoleByIDs(roleIDs)
+}
+
 func (s *roleService) GetRoleByName(name string) (*response.RoleResponse, error) {
 	return s.repo.GetRoleByName(name)
 }

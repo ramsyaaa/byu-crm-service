@@ -7,6 +7,7 @@ import (
 
 type UserRepository interface {
 	FindByID(id uint) (*response.UserResponse, error)
+	GetUserByIDs(ids []uint) ([]response.UserResponse, error)
 	FindByEmail(email string) (*response.UserResponse, error)
 	FindByMsisdn(msisdn string) (*response.UserResponse, error)
 	GetAllUsers(limit int, paginate bool, page int, filters map[string]string, only_role []string, orderByMostAssignedPic bool, userRole string, territoryID interface{}) ([]response.UserResponse, int64, error)

@@ -5,6 +5,7 @@ import (
 	userRepo "byu-crm-service/modules/user/repository"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -23,11 +24,98 @@ type SmsRequest struct {
 	Message     string `json:"message"`
 }
 
+func (s *smsSenderService) AssignSmsToUsers(requestBody map[string]string, userIDs []int) error {
+	domainSMS := os.Getenv("DOMAIN_SMS") // Contoh: https://sms.myapp.com
+	usingLink := true
+	frontendURL := os.Getenv("FRONTEND_URL") // Contoh: https://yae.youthcrm.id
+	callbackPath := ""
+	if requestBody["callback_url"] == "" {
+		usingLink = false
+	} else {
+		frontendURL = os.Getenv("FRONTEND_URL")                             // Contoh: https://yae.youthcrm.id
+		callbackPath = strings.TrimPrefix(requestBody["callback_url"], "/") // hilangkan '/' jika ada
+		frontendURL = fmt.Sprintf("%s/%s", strings.TrimRight(frontendURL, "/"), callbackPath)
+	}
+
+	message := requestBody["message"] // Ambil message dari request
+
+	suffix := fmt.Sprintf(" Silakan klik link berikut : %s", frontendURL) // Tambahan di akhir
+
+	// Convert []int to []uint
+	userIDsUint := make([]uint, len(userIDs))
+	for i, id := range userIDs {
+		userIDsUint[i] = uint(id)
+	}
+	users, err := s.userRepo.GetUserByIDs(userIDsUint)
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		if user.Msisdn == "" {
+			continue
+		}
+
+		fmt.Println("User MSISDN:", user.Msisdn)
+
+		msisdn := normalizeMsisdn(user.Msisdn)
+		if msisdn == "" {
+			continue // skip kalau gagal normalisasi
+		}
+
+		fmt.Println("Normalized MSISDN:", msisdn)
+
+		fullMessage := ""
+		if usingLink {
+			fullMessage = fmt.Sprintf("%s%s", message, suffix)
+		} else {
+			fullMessage = message
+		}
+
+		smsPayload := SmsRequest{
+			PhoneNumber: msisdn,
+			Message:     fullMessage,
+		}
+
+		payloadBytes, err := json.Marshal(smsPayload)
+		if err != nil {
+			continue
+		}
+
+		fmt.Println("domaim", domainSMS)
+		req, err := http.NewRequest("POST", domainSMS+"/api/v1/sms/send", bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			fmt.Println("Error creating request:", err)
+			continue
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error sending request:", err)
+			continue
+		}
+		fmt.Println("RESPONSE", resp)
+		defer resp.Body.Close()
+	}
+
+	return nil
+}
+
 func (s *smsSenderService) CreateSms(requestBody map[string]string, rolesName []string, userRole string, territoryID int, userID int) error {
-	domainSMS := os.Getenv("DOMAIN_SMS")                                 // Contoh: https://sms.myapp.com
-	frontendURL := os.Getenv("FRONTEND_URL")                             // Contoh: https://yae.youthcrm.id
-	callbackPath := strings.TrimPrefix(requestBody["callback_url"], "/") // hilangkan '/' jika ada
-	frontendURL = fmt.Sprintf("%s/%s", strings.TrimRight(frontendURL, "/"), callbackPath)
+	domainSMS := os.Getenv("DOMAIN_SMS") // Contoh: https://sms.myapp.com
+	usingLink := true
+	frontendURL := os.Getenv("FRONTEND_URL") // Contoh: https://yae.youthcrm.id
+	callbackPath := ""
+	if requestBody["callback_url"] == "" {
+		usingLink = false
+	} else {
+		frontendURL = os.Getenv("FRONTEND_URL")                             // Contoh: https://yae.youthcrm.id
+		callbackPath = strings.TrimPrefix(requestBody["callback_url"], "/") // hilangkan '/' jika ada
+		frontendURL = fmt.Sprintf("%s/%s", strings.TrimRight(frontendURL, "/"), callbackPath)
+	}
+
 	message := requestBody["message"]                                     // Ambil message dari request
 	suffix := fmt.Sprintf(" Silakan klik link berikut : %s", frontendURL) // Tambahan di akhir
 
@@ -37,7 +125,12 @@ func (s *smsSenderService) CreateSms(requestBody map[string]string, rolesName []
 			return err
 		}
 		if user.Msisdn != "" && strings.HasPrefix(user.Msisdn, "+62") {
-			fullMessage := fmt.Sprintf("%s%s", message, suffix)
+			fullMessage := ""
+			if usingLink {
+				fullMessage = fmt.Sprintf("%s%s", message, suffix)
+			} else {
+				fullMessage = fmt.Sprintf("%s", message)
+			}
 
 			smsPayload := SmsRequest{
 				PhoneNumber: user.Msisdn,
@@ -76,35 +169,73 @@ func (s *smsSenderService) CreateSms(requestBody map[string]string, rolesName []
 			return err
 		}
 		for _, user := range users {
-			if user.Msisdn != "" && strings.HasPrefix(user.Msisdn, "+62") {
-				fullMessage := fmt.Sprintf("%s%s", message, suffix)
+			if user.Msisdn == "" {
+				continue
+			}
 
-				smsPayload := SmsRequest{
-					PhoneNumber: user.Msisdn,
-					Message:     fullMessage,
-				}
+			msisdn := normalizeMsisdn(user.Msisdn)
+			if msisdn == "" {
+				continue // skip kalau gagal normalisasi
+			}
 
-				payloadBytes, err := json.Marshal(smsPayload)
-				if err != nil {
-					continue
-				}
+			fullMessage := ""
+			if usingLink {
+				fullMessage = fmt.Sprintf("%s%s", message, suffix)
+			} else {
+				fullMessage = message
+			}
 
-				req, err := http.NewRequest("POST", domainSMS+"/api/v1/sms/send", bytes.NewBuffer(payloadBytes))
-				if err != nil {
-					continue
-				}
-				req.Header.Set("Content-Type", "application/json")
+			smsPayload := SmsRequest{
+				PhoneNumber: msisdn,
+				Message:     fullMessage,
+			}
 
-				client := &http.Client{}
-				resp, err := client.Do(req)
-				if err != nil {
-					continue
-				}
-				defer resp.Body.Close()
+			payloadBytes, err := json.Marshal(smsPayload)
+			if err != nil {
+				continue
+			}
+
+			req, err := http.NewRequest("POST", domainSMS+"/api/v1/sms/send", bytes.NewBuffer(payloadBytes))
+			if err != nil {
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				fmt.Println("Error sending request:", err)
+				continue
+			}
+			fmt.Println("RESPONSE", resp)
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Println("Error reading response body:", err)
+			} else {
+				fmt.Println("Error response body:", string(body))
 			}
 		}
 
 		return nil
 	}
 	return nil
+}
+
+func normalizeMsisdn(msisdn string) string {
+	msisdn = strings.TrimSpace(msisdn)
+	msisdn = strings.ReplaceAll(msisdn, " ", "")
+	msisdn = strings.ReplaceAll(msisdn, "-", "")
+
+	if strings.HasPrefix(msisdn, "+62") {
+		return msisdn
+	} else if strings.HasPrefix(msisdn, "62") {
+		return "+" + msisdn
+	} else if strings.HasPrefix(msisdn, "08") {
+		return "+62" + msisdn[1:]
+	} else if strings.HasPrefix(msisdn, "8") {
+		return "+62" + msisdn
+	}
+
+	return "" // jika format tidak dikenali
 }
