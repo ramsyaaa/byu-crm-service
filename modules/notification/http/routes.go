@@ -12,4 +12,6 @@ func NotificationRoutes(router fiber.Router, handler *NotificationHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllNotifications)
+	authRouter.Post("/mark-all-notification-as-read", handler.MarkAllNotificationAsRead)
+	authRouter.Get("/:id", handler.GetNotificationById)
 }

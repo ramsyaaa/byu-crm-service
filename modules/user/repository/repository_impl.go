@@ -318,6 +318,111 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 	return response, nil
 }
 
+func (r *userRepository) GetUserByIDs(ids []uint) ([]response.UserResponse, error) {
+	var users []models.User
+	if err := r.db.
+		Where("id IN ?", ids).
+		Find(&users).Error; err != nil {
+		return nil, err
+	}
+	if len(users) == 0 {
+		return nil, nil
+	}
+
+	// Ambil user IDs
+	var userIDs []uint
+	for _, u := range users {
+		userIDs = append(userIDs, u.ID)
+	}
+
+	// =========== Ambil Role ================
+	var userRoles []struct {
+		UserID uint
+		Name   string
+	}
+	if err := r.db.
+		Table("roles").
+		Select("model_has_roles.model_id as user_id, roles.name").
+		Joins("JOIN model_has_roles ON model_has_roles.role_id = roles.id").
+		Where("model_has_roles.model_id IN ? AND model_has_roles.model_type = ?", userIDs, "App\\Models\\User").
+		Scan(&userRoles).Error; err != nil {
+		return nil, err
+	}
+
+	roleMap := make(map[uint][]string)
+	for _, ur := range userRoles {
+		roleMap[ur.UserID] = append(roleMap[ur.UserID], ur.Name)
+	}
+
+	// =========== Ambil Permissions ===========
+	var roleIDs []uint
+	if err := r.db.
+		Table("model_has_roles").
+		Where("model_id IN ? AND model_type = ?", userIDs, "App\\Models\\User").
+		Pluck("role_id", &roleIDs).Error; err != nil {
+		return nil, err
+	}
+
+	var permissionIDs []uint
+	if len(roleIDs) > 0 {
+		if err := r.db.
+			Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	var permissions []string
+	if len(permissionIDs) > 0 {
+		if err := r.db.
+			Table("permissions").
+			Where("id IN ?", permissionIDs).
+			Pluck("name", &permissions).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// ========== Build Response ==============
+	var responses []response.UserResponse
+	for _, user := range users {
+		var area_id, region_id, branch_id, cluster_id uint
+
+		switch user.TerritoryType {
+		case "App\\Models\\Area":
+			area_id = user.TerritoryID
+		case "App\\Models\\Region":
+			region_id = user.TerritoryID
+		case "App\\Models\\Branch":
+			branch_id = user.TerritoryID
+		case "App\\Models\\Cluster":
+			cluster_id = user.TerritoryID
+		}
+
+		responses = append(responses, response.UserResponse{
+			ID:              user.ID,
+			Name:            user.Name,
+			Email:           user.Email,
+			Avatar:          user.Avatar,
+			Msisdn:          user.Msisdn,
+			UserStatus:      user.UserStatus,
+			UserType:        user.UserType,
+			TerritoryID:     user.TerritoryID,
+			TerritoryType:   user.TerritoryType,
+			OutletIDDigipos: &user.OutletIDDigipos,
+			NamiAgentID:     &user.NamiAgentID,
+			RoleNames:       roleMap[user.ID],
+			Permissions:     permissions,
+			AreaID:          &area_id,
+			RegionID:        &region_id,
+			BranchID:        &branch_id,
+			ClusterID:       &cluster_id,
+		})
+	}
+
+	return responses, nil
+}
+
 func (r *userRepository) FindByEmail(email string) (*response.UserResponse, error) {
 	var user models.User
 	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {

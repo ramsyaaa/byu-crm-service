@@ -11,4 +11,5 @@ type RoleService interface {
 	CreateRole(name *string) (*response.RoleResponse, error)
 	UpdateRole(name *string, id int) (*response.RoleResponse, error)
 	AssignModelHasRole(model_type string, model_id int, role_id int) error
+	GetRoleByIDs(roleIDs *[]string) ([]response.RoleResponse, error)
 }
