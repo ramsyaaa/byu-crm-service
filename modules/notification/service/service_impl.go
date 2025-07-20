@@ -54,3 +54,11 @@ func (s *notificationService) CreateNotification(requestBody map[string]string, 
 func (s *notificationService) GetByNotificationId(notificationID uint, userID uint) (*response.NotificationResponse, error) {
 	return s.repo.GetByNotificationId(notificationID, userID)
 }
+
+func (s *notificationService) MarkNotificationAsRead(notificationID uint, userID uint) error {
+	return s.repo.MarkNotificationAsRead(notificationID, userID)
+}
+
+func (s *notificationService) MarkAllNotificationsAsRead(userID int) error {
+	return s.repo.MarkAllNotificationsAsRead(userID)
+}
