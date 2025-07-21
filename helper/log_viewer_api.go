@@ -650,6 +650,38 @@ func (h *LogViewerHandler) GetMAUStats(c *fiber.Ctx) error {
 		endDate = now.Format("2006-01-02")
 	}
 
+	// Create cache key based on all parameters
+	cacheParams := map[string]string{
+		"start_date":     startDate,
+		"end_date":       endDate,
+		"api_only":       apiOnly,
+		"business_hours": businessHours,
+		"unique_only":    uniqueOnly,
+	}
+	cacheKey := h.generateCacheKey("mau_stats", cacheParams)
+
+	// Try to get from cache first
+	ctx := context.Background()
+	if cachedData, found := h.getCachedData(ctx, cacheKey); found {
+		// Add cached flag to the existing response structure
+		if dataMap, ok := cachedData.(map[string]interface{}); ok {
+			dataMap["cached"] = true
+			return c.JSON(fiber.Map{
+				"status": "success",
+				"data":   dataMap,
+			})
+		}
+		// Fallback if cached data structure is unexpected
+		return c.JSON(fiber.Map{
+			"status": "success",
+			"data": fiber.Map{
+				"cached": true,
+			},
+		})
+	}
+
+	log.Printf("Cache MISS for key: %s - executing database query", cacheKey)
+
 	// Parse dates
 	startDateTime, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
@@ -755,19 +787,26 @@ func (h *LogViewerHandler) GetMAUStats(c *fiber.Ctx) error {
 		}
 	}
 
+	// Prepare response data for caching
+	responseData := fiber.Map{
+		"current_mau":       result.CurrentMAU,
+		"previous_mau":      previousMAU,
+		"growth_percentage": growthPercentage,
+		"total_api_calls":   result.TotalAPICalls,
+		"period_start":      startDate,
+		"period_end":        endDate,
+		"business_hours":    businessHours == "true",
+		"unique_only":       uniqueOnly == "true",
+		"api_only":          apiOnly == "true",
+	}
+
+	// Cache the results for 12 hours
+	cacheExpiration := 12 * time.Hour
+	h.setCachedData(ctx, cacheKey, responseData, cacheExpiration)
+
 	return c.JSON(fiber.Map{
 		"status": "success",
-		"data": fiber.Map{
-			"current_mau":       result.CurrentMAU,
-			"previous_mau":      previousMAU,
-			"growth_percentage": growthPercentage,
-			"total_api_calls":   result.TotalAPICalls,
-			"period_start":      startDate,
-			"period_end":        endDate,
-			"business_hours":    businessHours == "true",
-			"unique_only":       uniqueOnly == "true",
-			"api_only":          apiOnly == "true",
-		},
+		"data":   responseData,
 	})
 }
 
@@ -789,6 +828,39 @@ func (h *LogViewerHandler) GetUserActivityData(c *fiber.Ctx) error {
 	if endDate == "" {
 		endDate = now.Format("2006-01-02")
 	}
+
+	// Create cache key based on all parameters
+	cacheParams := map[string]string{
+		"start_date":     startDate,
+		"end_date":       endDate,
+		"api_only":       apiOnly,
+		"business_hours": businessHours,
+		"unique_only":    uniqueOnly,
+		"limit":          strconv.Itoa(limit),
+	}
+	cacheKey := h.generateCacheKey("user_activity", cacheParams)
+
+	// Try to get from cache first
+	ctx := context.Background()
+	if cachedData, found := h.getCachedData(ctx, cacheKey); found {
+		// Add cached flag to the existing response structure
+		if dataMap, ok := cachedData.(map[string]interface{}); ok {
+			dataMap["cached"] = true
+			return c.JSON(fiber.Map{
+				"status": "success",
+				"data":   dataMap,
+			})
+		}
+		// Fallback if cached data structure is unexpected
+		return c.JSON(fiber.Map{
+			"status": "success",
+			"data": fiber.Map{
+				"cached": true,
+			},
+		})
+	}
+
+	log.Printf("Cache MISS for key: %s - executing database query", cacheKey)
 
 	// Parse dates
 	startDateTime, err := time.Parse("2006-01-02", startDate)
@@ -906,13 +978,20 @@ func (h *LogViewerHandler) GetUserActivityData(c *fiber.Ctx) error {
 		enhancedActivities = append(enhancedActivities, enhanced)
 	}
 
+	// Prepare response data for caching
+	responseData := fiber.Map{
+		"top_users":    enhancedActivities,
+		"period_start": startDate,
+		"period_end":   endDate,
+	}
+
+	// Cache the results for 12 hours
+	cacheExpiration := 12 * time.Hour
+	h.setCachedData(ctx, cacheKey, responseData, cacheExpiration)
+
 	return c.JSON(fiber.Map{
 		"status": "success",
-		"data": fiber.Map{
-			"top_users":    enhancedActivities,
-			"period_start": startDate,
-			"period_end":   endDate,
-		},
+		"data":   responseData,
 	})
 }
 
@@ -923,6 +1002,7 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 	apiOnly := c.Query("api_only", "true")
 	businessHours := c.Query("business_hours", "false")
 	uniqueOnly := c.Query("unique_only", "true")
+	userFilter := c.Query("user_filter", "") // Optional user filter
 
 	// Calculate date range
 	endDate := time.Now()
@@ -934,6 +1014,7 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 		"api_only":       apiOnly,
 		"business_hours": businessHours,
 		"unique_only":    uniqueOnly,
+		"user_filter":    userFilter,
 		"start_date":     startDate.Format("2006-01-02"),
 		"end_date":       endDate.Format("2006-01-02"),
 	}
@@ -942,11 +1023,19 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 	// Try to get from cache first
 	ctx := context.Background()
 	if cachedData, found := h.getCachedData(ctx, cacheKey); found {
+		// Add cached flag to the existing response structure
+		if dataMap, ok := cachedData.(map[string]interface{}); ok {
+			dataMap["cached"] = true
+			return c.JSON(fiber.Map{
+				"status": "success",
+				"data":   dataMap,
+			})
+		}
+		// Fallback if cached data structure is unexpected
 		return c.JSON(fiber.Map{
 			"status": "success",
 			"data": fiber.Map{
-				"daily_activities": cachedData,
-				"cached":           true,
+				"cached": true,
 			},
 		})
 	}
@@ -968,6 +1057,12 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 		baseWhere += " AND HOUR(accessed_at) >= 8 AND HOUR(accessed_at) <= 19"
 	}
 
+	// Add user filter if specified
+	if userFilter != "" {
+		baseWhere += " AND auth_user_email = ?"
+		baseArgs = append(baseArgs, userFilter)
+	}
+
 	type DailyActivity struct {
 		Date        string `json:"date"`
 		ActiveUsers int64  `json:"active_users"`
@@ -979,11 +1074,11 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 
 	// Choose query based on unique_only parameter
 	if uniqueOnly == "true" {
-		// Count unique API calls per user per endpoint per day
+		// Count unique users per day (not user-endpoint combinations)
 		sqlQuery = `
 			SELECT
 				DATE(accessed_at) as date,
-				COUNT(DISTINCT CONCAT(auth_user_email, '|', endpoint)) as active_users
+				COUNT(DISTINCT auth_user_email) as active_users
 			FROM api_logs
 			WHERE ` + baseWhere + `
 			GROUP BY DATE(accessed_at)
@@ -997,6 +1092,9 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 		}
 		if businessHours == "true" {
 			additionalFilters += " AND HOUR(al.accessed_at) >= 8 AND HOUR(al.accessed_at) <= 19"
+		}
+		if userFilter != "" {
+			additionalFilters += " AND al.auth_user_email = '" + userFilter + "'"
 		}
 
 		sqlQuery = `
@@ -1045,22 +1143,24 @@ func (h *LogViewerHandler) GetDailyActiveUsers(c *fiber.Ctx) error {
 		}
 	}
 
+	// Prepare response data for caching
+	responseData := fiber.Map{
+		"daily_activities": dailyActivities,
+		"period_days":      days,
+		"start_date":       startDate.Format("2006-01-02"),
+		"end_date":         endDate.Format("2006-01-02"),
+		"business_hours":   businessHours == "true",
+		"unique_only":      uniqueOnly == "true",
+		"api_only":         apiOnly == "true",
+	}
+
 	// Cache the results for 12 hours (43,200 seconds)
 	cacheExpiration := 12 * time.Hour
-	h.setCachedData(ctx, cacheKey, dailyActivities, cacheExpiration)
+	h.setCachedData(ctx, cacheKey, responseData, cacheExpiration)
 
 	return c.JSON(fiber.Map{
 		"status": "success",
-		"data": fiber.Map{
-			"daily_activities": dailyActivities,
-			"period_days":      days,
-			"start_date":       startDate.Format("2006-01-02"),
-			"end_date":         endDate.Format("2006-01-02"),
-			"business_hours":   businessHours == "true",
-			"unique_only":      uniqueOnly == "true",
-			"api_only":         apiOnly == "true",
-			"cached":           false,
-		},
+		"data":   responseData,
 	})
 }
 
@@ -1098,6 +1198,37 @@ func (h *LogViewerHandler) GetActiveUsersList(c *fiber.Ctx) error {
 		})
 	}
 	endDateTime = endDateTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	// Create cache key based on all parameters
+	cacheParams := map[string]string{
+		"start_date":     startDate,
+		"end_date":       endDate,
+		"api_only":       apiOnly,
+		"business_hours": businessHours,
+	}
+	cacheKey := h.generateCacheKey("active_users_list", cacheParams)
+
+	// Try to get from cache first
+	ctx := context.Background()
+	if cachedData, found := h.getCachedData(ctx, cacheKey); found {
+		// Add cached flag to the existing response structure
+		if dataMap, ok := cachedData.(map[string]interface{}); ok {
+			dataMap["cached"] = true
+			return c.JSON(fiber.Map{
+				"status": "success",
+				"data":   dataMap,
+			})
+		}
+		// Fallback if cached data structure is unexpected
+		return c.JSON(fiber.Map{
+			"status": "success",
+			"data": fiber.Map{
+				"cached": true,
+			},
+		})
+	}
+
+	log.Printf("Cache MISS for key: %s - executing database query", cacheKey)
 
 	// Build optimized query for distinct user emails (exclude admin account)
 	baseWhere := "accessed_at >= ? AND accessed_at <= ? AND auth_user_email IS NOT NULL AND auth_user_email != '' AND auth_user_email != 'super@admin.com'"
@@ -1151,13 +1282,20 @@ func (h *LogViewerHandler) GetActiveUsersList(c *fiber.Ctx) error {
 		}
 	}
 
+	// Prepare response data for caching
+	responseData := fiber.Map{
+		"users":        enhancedUserList,
+		"total_users":  len(enhancedUserList),
+		"period_start": startDate,
+		"period_end":   endDate,
+	}
+
+	// Cache the results for 12 hours
+	cacheExpiration := 12 * time.Hour
+	h.setCachedData(ctx, cacheKey, responseData, cacheExpiration)
+
 	return c.JSON(fiber.Map{
 		"status": "success",
-		"data": fiber.Map{
-			"users":        enhancedUserList,
-			"total_users":  len(enhancedUserList),
-			"period_start": startDate,
-			"period_end":   endDate,
-		},
+		"data":   responseData,
 	})
 }

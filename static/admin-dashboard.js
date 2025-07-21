@@ -113,9 +113,12 @@ class AdminDashboard {
     const response = await fetch(`/admin/api/mau/stats?${params}`);
     const data = await response.json();
 
-    if (data.status === "success") {
+    if (data.status === "success" && data.data) {
       this.updateStatsCards(data.data);
       this.updateMonthlyComparisonChart(data.data);
+    } else {
+      console.error("Invalid MAU stats response:", data);
+      this.showError("Failed to load MAU statistics");
     }
   }
 
@@ -131,8 +134,11 @@ class AdminDashboard {
     const response = await fetch(`/admin/api/mau/users?${params}`);
     const data = await response.json();
 
-    if (data.status === "success") {
+    if (data.status === "success" && data.data && data.data.users) {
       this.updateUsersDropdown(data.data.users);
+    } else {
+      console.error("Invalid users list response:", data);
+      this.updateUsersDropdown([]); // Fallback to empty array
     }
   }
 
@@ -153,8 +159,11 @@ class AdminDashboard {
     const response = await fetch(`/admin/api/mau/activity?${params}`);
     const data = await response.json();
 
-    if (data.status === "success") {
+    if (data.status === "success" && data.data && data.data.top_users) {
       this.updateTopUsersTable(data.data.top_users);
+    } else {
+      console.error("Invalid top users response:", data);
+      this.updateTopUsersTable([]); // Fallback to empty array
     }
   }
 
@@ -167,26 +176,53 @@ class AdminDashboard {
     const response = await fetch(`/admin/api/mau/daily?${params}`);
     const data = await response.json();
 
-    if (data.status === "success") {
+    if (data.status === "success" && data.data && data.data.daily_activities) {
       this.updateDailyUsersChart(data.data.daily_activities);
+    } else {
+      console.error("Invalid daily active users response:", data);
+      console.error("Expected: data.data.daily_activities, got:", data.data);
+      this.updateDailyUsersChart([]); // Fallback to empty array
     }
   }
 
   updateStatsCards(data) {
-    document.getElementById("currentMAU").textContent =
-      data.current_mau.toLocaleString();
-    document.getElementById("previousMAU").textContent =
-      data.previous_mau.toLocaleString();
-    document.getElementById("totalAPICalls").textContent =
-      data.total_api_calls.toLocaleString();
+    // Defensive programming: check if data exists and has expected properties
+    if (!data || typeof data !== "object") {
+      console.error("Invalid data structure for stats cards:", data);
+      return;
+    }
 
+    // Safely update current MAU with fallback
+    const currentMAU = data.current_mau || 0;
+    document.getElementById("currentMAU").textContent = (
+      typeof currentMAU === "number" ? currentMAU : parseInt(currentMAU) || 0
+    ).toLocaleString();
+
+    // Safely update previous MAU with fallback
+    const previousMAU = data.previous_mau || 0;
+    document.getElementById("previousMAU").textContent = (
+      typeof previousMAU === "number" ? previousMAU : parseInt(previousMAU) || 0
+    ).toLocaleString();
+
+    // Safely update total API calls with fallback
+    const totalAPICalls = data.total_api_calls || 0;
+    document.getElementById("totalAPICalls").textContent = (
+      typeof totalAPICalls === "number"
+        ? totalAPICalls
+        : parseInt(totalAPICalls) || 0
+    ).toLocaleString();
+
+    // Safely update growth percentage
     const growthElement = document.getElementById("growthPercentage");
-    const growth = data.growth_percentage;
-    growthElement.textContent = `${growth >= 0 ? "+" : ""}${growth.toFixed(
-      1
-    )}%`;
+    const growth = data.growth_percentage || 0;
+    const growthValue =
+      typeof growth === "number" ? growth : parseFloat(growth) || 0;
+
+    growthElement.textContent = `${
+      growthValue >= 0 ? "+" : ""
+    }${growthValue.toFixed(1)}%`;
     growthElement.className = `text-2xl font-bold ${
-      growth >= 0 ? "text-green-600" : "text-red-600"
+      growthValue >= 0 ? "text-green-600" : "text-red-600"
     }`;
 
     // Show cache status if available
@@ -236,6 +272,12 @@ class AdminDashboard {
     const select = document.getElementById("userFilter");
     select.innerHTML = '<option value="">All Users</option>';
 
+    // Defensive programming: check if users is an array
+    if (!Array.isArray(users)) {
+      console.error("Invalid users data structure - expected array:", users);
+      return;
+    }
+
     users.forEach((user) => {
       const option = document.createElement("option");
 
@@ -243,13 +285,17 @@ class AdminDashboard {
       if (typeof user === "string") {
         option.value = user;
         option.textContent = user;
-      } else {
+      } else if (user && typeof user === "object") {
         // Enhanced user data with name and territory - show name as primary text
-        option.value = user.email;
-        option.textContent = user.name || user.email; // Show name as primary, fallback to email
-        option.setAttribute("data-name", user.name);
-        option.setAttribute("data-email", user.email);
-        option.setAttribute("data-territory", user.territory_name);
+        option.value = user.email || user;
+        option.textContent = user.name || user.email || user; // Show name as primary, fallback to email
+        option.setAttribute("data-name", user.name || "");
+        option.setAttribute("data-email", user.email || "");
+        option.setAttribute("data-territory", user.territory_name || "");
+      } else {
+        // Fallback for unexpected data types
+        option.value = String(user);
+        option.textContent = String(user);
       }
 
       select.appendChild(option);
@@ -326,7 +372,27 @@ class AdminDashboard {
     const tbody = document.getElementById("topUsersTable");
     tbody.innerHTML = "";
 
+    // Defensive programming: check if users is an array
+    if (!Array.isArray(users)) {
+      console.error("Invalid users data structure - expected array:", users);
+      // Show empty state message
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+          No user data available
+        </td>
+      `;
+      tbody.appendChild(row);
+      return;
+    }
+
     users.forEach((user, index) => {
+      // Defensive check for user object
+      if (!user || typeof user !== "object") {
+        console.warn("Invalid user object at index", index, ":", user);
+        return;
+      }
+
       const row = document.createElement("tr");
       row.className = "hover:bg-gray-50";
 
@@ -337,8 +403,8 @@ class AdminDashboard {
             }-500 mr-2"></i>${index + 1}`
           : `${index + 1}`;
 
-      // Handle both old format and new enhanced format
-      const userEmail = user.auth_user_email || user.email;
+      // Handle both old format and new enhanced format with safe property access
+      const userEmail = user.auth_user_email || user.email || "Unknown";
       const userName = user.name || userEmail;
       const territoryName = user.territory_name || "Not Assigned";
 
@@ -354,6 +420,17 @@ class AdminDashboard {
         <div class="font-medium text-gray-900">${userEmail}</div>
       `;
 
+      // Safely handle call_count and last_activity with fallbacks
+      const callCount = user.call_count || 0;
+      const callCountValue =
+        typeof callCount === "number" ? callCount : parseInt(callCount) || 0;
+
+      const lastActivity = user.last_activity || new Date();
+      const lastActivityDate = new Date(lastActivity);
+      const lastActivityString = isNaN(lastActivityDate.getTime())
+        ? "Unknown"
+        : lastActivityDate.toLocaleString();
+
       row.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     ${rankDisplay}
@@ -363,11 +440,11 @@ class AdminDashboard {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        ${user.call_count.toLocaleString()}
+                        ${callCountValue.toLocaleString()}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${new Date(user.last_activity).toLocaleString()}
+                    ${lastActivityString}
                 </td>
             `;
       tbody.appendChild(row);
@@ -375,16 +452,66 @@ class AdminDashboard {
   }
 
   updateDailyUsersChart(dailyData) {
+    // Defensive programming: check if dailyData is an array
+    if (!Array.isArray(dailyData)) {
+      console.error(
+        "Invalid daily data structure - expected array:",
+        dailyData
+      );
+      return;
+    }
+
     const ctx = document.getElementById("dailyUsersChart").getContext("2d");
 
     if (this.charts.dailyUsers) {
       this.charts.dailyUsers.destroy();
     }
 
-    const labels = dailyData.map((item) =>
-      new Date(item.date).toLocaleDateString()
-    );
-    const data = dailyData.map((item) => item.active_users);
+    // Handle empty data gracefully
+    if (dailyData.length === 0) {
+      console.warn("No daily activity data available");
+      // Create empty chart with placeholder data
+      this.charts.dailyUsers = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["No Data"],
+          datasets: [
+            {
+              label: "Daily Active Users",
+              data: [0],
+              borderColor: "#00B2E5",
+              backgroundColor: "rgba(0, 178, 229, 0.1)",
+              tension: 0.4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "No daily activity data available",
+            },
+          },
+        },
+      });
+      return;
+    }
+
+    const labels = dailyData.map((item) => {
+      // Safe date handling
+      const date = item && item.date ? new Date(item.date) : new Date();
+      return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleDateString();
+    });
+
+    const data = dailyData.map((item) => {
+      // Safe active users handling
+      const activeUsers =
+        item && item.active_users !== undefined ? item.active_users : 0;
+      return typeof activeUsers === "number"
+        ? activeUsers
+        : parseInt(activeUsers) || 0;
+    });
 
     this.charts.dailyUsers = new Chart(ctx, {
       type: "line",
@@ -423,6 +550,15 @@ class AdminDashboard {
   }
 
   updateMonthlyComparisonChart(data) {
+    // Defensive programming: check if data exists and has expected properties
+    if (!data || typeof data !== "object") {
+      console.error(
+        "Invalid data structure for monthly comparison chart:",
+        data
+      );
+      return;
+    }
+
     const ctx = document
       .getElementById("monthlyComparisonChart")
       .getContext("2d");
@@ -431,6 +567,16 @@ class AdminDashboard {
       this.charts.monthlyComparison.destroy();
     }
 
+    // Safely extract data with fallbacks
+    const previousMAU = data.previous_mau || 0;
+    const currentMAU = data.current_mau || 0;
+    const previousMAUValue =
+      typeof previousMAU === "number"
+        ? previousMAU
+        : parseInt(previousMAU) || 0;
+    const currentMAUValue =
+      typeof currentMAU === "number" ? currentMAU : parseInt(currentMAU) || 0;
+
     this.charts.monthlyComparison = new Chart(ctx, {
       type: "bar",
       data: {
@@ -438,7 +584,7 @@ class AdminDashboard {
         datasets: [
           {
             label: "Monthly Active Users",
-            data: [data.previous_mau, data.current_mau],
+            data: [previousMAUValue, currentMAUValue],
             backgroundColor: ["#10C0F3", "#00B2E5"],
             borderColor: ["#10C0F3", "#00B2E5"],
             borderWidth: 1,
