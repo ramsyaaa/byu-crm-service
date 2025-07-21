@@ -20,6 +20,10 @@ func (s *userService) GetUserByID(id uint) (*response.UserResponse, error) {
 	return s.repo.FindByID(id)
 }
 
+func (s *userService) GetUserByIDs(id []uint) ([]response.UserResponse, error) {
+	return s.repo.GetUserByIDs(id)
+}
+
 func (s *userService) GetUserByMsisdn(msisdn string) (*response.UserResponse, error) {
 	return s.repo.FindByMsisdn(msisdn)
 }

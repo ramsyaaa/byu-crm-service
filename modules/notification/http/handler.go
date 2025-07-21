@@ -49,3 +49,49 @@ func (h *NotificationHandler) GetAllNotifications(c *fiber.Ctx) error {
 	response := helper.APIResponse("Get Notifications Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+func (h *NotificationHandler) GetNotificationById(c *fiber.Ctx) error {
+	notificationID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid notification ID",
+			"error":   err.Error(),
+		})
+	}
+
+	userID := c.Locals("user_id").(int)
+
+	notification, err := h.notificationService.GetByNotificationId(uint(notificationID), uint(userID))
+	if err != nil {
+		response := helper.APIResponse("Notification not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	err = h.notificationService.MarkNotificationAsRead(uint(notificationID), uint(userID))
+	if err != nil {
+		response := helper.APIResponse("Failed to mark notification as read", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	if notification == nil {
+		response := helper.APIResponse("Notification not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	response := helper.APIResponse("Get Notification Successfully", fiber.StatusOK, "success", notification)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *NotificationHandler) MarkAllNotificationAsRead(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+
+	err := h.notificationService.MarkAllNotificationsAsRead(userID)
+	if err != nil {
+		response := helper.APIResponse("Failed to mark all notifications as read", fiber.StatusInternalServerError, "error", err.Error())
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	response := helper.APIResponse("All notifications marked as read successfully", fiber.StatusOK, "success", nil)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
