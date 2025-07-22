@@ -47,7 +47,7 @@ func (r *absenceUserRepository) GetAllAbsences(limit int, paginate bool, page in
 			query = query.Where("absence_users.user_id = ?", user_id)
 		}
 	} else if allUser == "1" {
-		if userRole != "Super-Admin" && userRole != "HQ" {
+		if userRole != "Super-Admin" && userRole != "HQ" && userRole != "Outsourcing-Supervisor" {
 			if len(userIDs) > 0 {
 				query = query.Where("absence_users.user_id IN ?", userIDs)
 			} else {
