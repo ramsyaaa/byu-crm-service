@@ -119,6 +119,12 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
+	} else if req.Type != "" && req.Type == "TERRITORY" {
+		errors := validation.ValidateByTerritory(req)
+		if errors != nil {
+			response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
 	} else {
 		errors := map[string]string{
 			"type": "Tipe tidak valid.",
@@ -222,6 +228,53 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 		if err != nil {
 			response := helper.APIResponse("Error sending SMS", fiber.StatusBadRequest, "error", err.Error())
 			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+	} else if req.Type != "" && req.Type == "TERRITORY" {
+
+		if *req.TerritoryType == "ALL" {
+			err := h.notificationService.CreateNotification(requestBody, []string{}, "Super-Admin", 0, 0)
+			if err != nil {
+				response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+
+			err = h.smsSenderService.CreateSms(requestBody, []string{}, "Super-Admin", 0, 0)
+			if err != nil {
+				response := helper.APIResponse("Error sending SMS", fiber.StatusBadRequest, "error", err.Error())
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+		} else {
+			userRole := ""
+			if *req.TerritoryType == "AREA" {
+				userRole = "Area"
+			} else if *req.TerritoryType == "REGIONAL" {
+				userRole = "Region"
+			} else if *req.TerritoryType == "BRANCH" {
+				userRole = "Branch"
+			} else if *req.TerritoryType == "CLUSTER" {
+				userRole = "Cluster"
+			}
+
+			if req.TerritoryID != nil {
+				for _, territory := range *req.TerritoryID {
+					territoryInt, convErr := strconv.Atoi(territory)
+					if convErr != nil {
+						response := helper.APIResponse("Invalid territory ID: "+territory, fiber.StatusBadRequest, "error", nil)
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+					err := h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryInt, 0)
+					if err != nil {
+						response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+
+					err = h.smsSenderService.CreateSms(requestBody, []string{}, userRole, territoryInt, 0)
+					if err != nil {
+						response := helper.APIResponse("Error sending SMS", fiber.StatusBadRequest, "error", err.Error())
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+				}
+			}
 		}
 	}
 
