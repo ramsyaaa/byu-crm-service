@@ -62,7 +62,7 @@ func ValidateByTerritory(req *ValidateRequest) map[string]string {
 		errors["territory_type"] = "Type territory tidak boleh kosong."
 	}
 
-	if *req.TerritoryType != "ALL" && *req.TerritoryType != "AREA" && *req.TerritoryType != "REGIONAL" && *req.TerritoryType != "BRANCH" && *req.TerritoryType != "CLUSTER" {
+	if *req.TerritoryType != "all" && *req.TerritoryType != "areas" && *req.TerritoryType != "regions" && *req.TerritoryType != "branches" && *req.TerritoryType != "clusters" {
 		errors["territory_type"] = "Type territory tidak valid."
 	}
 
