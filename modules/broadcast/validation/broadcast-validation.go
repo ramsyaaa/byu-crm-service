@@ -54,12 +54,14 @@ func ValidateByRole(req *ValidateRequest) map[string]string {
 
 func ValidateByTerritory(req *ValidateRequest) map[string]string {
 	errors := make(map[string]string)
-	if req.TerritoryID == nil || len(*req.TerritoryID) == 0 {
-		errors["territory_id"] = "Territory tidak boleh kosong."
-	}
-
 	if req.TerritoryType == nil || *req.TerritoryType == "" {
 		errors["territory_type"] = "Type territory tidak boleh kosong."
+	}
+
+	if *req.TerritoryType != "all" && *req.TerritoryType != "" {
+		if req.TerritoryID == nil || len(*req.TerritoryID) == 0 {
+			errors["territory_id"] = "Territory tidak boleh kosong."
+		}
 	}
 
 	if *req.TerritoryType != "all" && *req.TerritoryType != "areas" && *req.TerritoryType != "regions" && *req.TerritoryType != "branches" && *req.TerritoryType != "clusters" {
