@@ -231,7 +231,7 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 		}
 	} else if req.Type != "" && req.Type == "TERRITORY" {
 
-		if *req.TerritoryType == "ALL" {
+		if *req.TerritoryType == "all" {
 			err := h.notificationService.CreateNotification(requestBody, []string{}, "Super-Admin", 0, 0)
 			if err != nil {
 				response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
@@ -245,13 +245,13 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 			}
 		} else {
 			userRole := ""
-			if *req.TerritoryType == "AREA" {
+			if *req.TerritoryType == "areas" {
 				userRole = "Area"
-			} else if *req.TerritoryType == "REGIONAL" {
+			} else if *req.TerritoryType == "regions" {
 				userRole = "Region"
-			} else if *req.TerritoryType == "BRANCH" {
+			} else if *req.TerritoryType == "branches" {
 				userRole = "Branch"
-			} else if *req.TerritoryType == "CLUSTER" {
+			} else if *req.TerritoryType == "clusters" {
 				userRole = "Cluster"
 			}
 
