@@ -75,6 +75,13 @@ var MenuList = []Menu{
 				Route:      "/accounts-location",
 				Status:     true,
 			},
+			{
+				Name:       "Broadcast Message",
+				Icon:       "fa-solid fa-bullhorn",
+				Permission: "broadcast message",
+				Route:      "/broadcast-notification",
+				Status:     true,
+			},
 		},
 	},
 	{
