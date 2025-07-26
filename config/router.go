@@ -180,6 +180,7 @@ func Route(db *gorm.DB) {
 	routes.ApprovalLocationAccountRouter(api, db)
 	routes.NotificationRouter(api, db)
 	routes.BroadcastRouter(api, db)
+	routes.BakGeneratorRouter(api, db)
 
 	app.Mount("/api/v1", api)
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
