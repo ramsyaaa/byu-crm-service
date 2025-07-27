@@ -48,6 +48,13 @@ var MenuList = []Menu{
 				Status:     true,
 			},
 			{
+				Name:       "BAK School",
+				Icon:       "fa-solid fa-file-signature",
+				Permission: "create bak",
+				Route:      "/bak",
+				Status:     true,
+			},
+			{
 				Name:       "Registration Dealing",
 				Icon:       "fa-solid fa-table-list",
 				Permission: "view registration dealing",

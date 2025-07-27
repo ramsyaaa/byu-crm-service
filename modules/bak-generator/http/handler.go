@@ -564,7 +564,57 @@ func Download(c *fiber.Ctx, reqMap map[string]interface{}) error {
 		pdf.CellFormat(colWidth, 6, first_party_position, "", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidth, 6, second_party_position, "", 0, "C", false, 0, "")
 		pdf.CellFormat(colWidth, 6, addPositions[0], "", 1, "C", false, 0, "")
+		break
 	case 2:
+		colWidth := 90.0
+		pdf.CellFormat(colWidth, 7, "Pihak Pertama", "", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidth, 7, "Pihak Kedua", "", 1, "C", false, 0, "")
+
+		pdf.SetFont("Arial", "", 11)
+		pdf.CellFormat(colWidth, 6, first_party_school, "", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidth, 6, second_party_company, "", 1, "C", false, 0, "")
+		pdf.Ln(20)
+
+		pdf.SetFont("Arial", "BU", 11)
+		pdf.CellFormat(colWidth, 7, first_party_name, "", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidth, 7, second_party_name, "", 1, "C", false, 0, "")
+
+		pdf.SetFont("Arial", "", 11)
+		pdf.CellFormat(colWidth, 6, first_party_position, "", 0, "C", false, 0, "")
+		pdf.CellFormat(colWidth, 6, second_party_position, "", 1, "C", false, 0, "")
+		pdf.Ln(10)
+
+		// Tambahkan teks "Mengetahui," sebelum baris kedua (additional)
+		pdf.SetFont("Arial", "B", 11)
+		pdf.CellFormat(0, 7, "Mengetahui,", "", 1, "C", false, 0, "")
+		pdf.SetFont("Arial", "", 11)
+
+		// Baris kedua: Additional (bisa 2 atau 3)
+		additionalCount := len(addNames)
+		if additionalCount > 0 {
+			colAddWidth := 180.0 / float64(additionalCount)
+
+			// Baris label jabatan
+			for i := 0; i < additionalCount; i++ {
+				pdf.CellFormat(colAddWidth, 7, addTitles[i], "", 0, "C", false, 0, "")
+			}
+			pdf.Ln(20) // spasi untuk tanda tangan
+
+			// Nama tambahan
+			pdf.SetFont("Arial", "BU", 11)
+			for i := 0; i < additionalCount; i++ {
+				pdf.CellFormat(colAddWidth, 7, addNames[i], "", 0, "C", false, 0, "")
+			}
+			pdf.Ln(6)
+
+			// Jabatan tambahan
+			pdf.SetFont("Arial", "", 11)
+			for i := 0; i < additionalCount; i++ {
+				pdf.CellFormat(colAddWidth, 6, addPositions[i], "", 0, "C", false, 0, "")
+			}
+			pdf.Ln(10)
+		}
+		break
 	case 3:
 		// Baris pertama: Pihak Pertama dan Kedua
 		colWidth := 90.0
@@ -654,7 +704,7 @@ func Download(c *fiber.Ctx, reqMap map[string]interface{}) error {
 	pdfBytes := buf.Bytes()
 
 	c.Set("Content-Type", "application/pdf")
-	c.Set("Content-Disposition", "attachment; filename=laporan_pengguna.pdf")
+	c.Set("Content-Disposition", "attachment; filename=Berita_Acara.pdf")
 	return c.Send(pdfBytes)
 }
 
