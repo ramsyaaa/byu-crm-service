@@ -425,7 +425,11 @@ func SaveUploadedFile(c *fiber.Ctx, file *multipart.FileHeader, folder string) (
 
 // Fungsi bantu deteksi MIME dari data file
 func httpDetectContentType(data []byte) string {
-	return http.DetectContentType(data[:512])
+	limit := 512
+	if len(data) < limit {
+		limit = len(data)
+	}
+	return http.DetectContentType(data[:limit])
 }
 
 func CapitalizeWords(input string) string {
