@@ -192,7 +192,7 @@ func (r *notificationRepository) MarkNotificationAsReadBySubjectID(subjectType s
 	var notifications []models.UserNotification
 
 	err := r.db.Model(&models.UserNotification{}).
-		Where("subject_type = ? AND subject_id = ? AND user_id = ? AND is_read = ?", subjectType, subjectID, userID, 0).
+		Where("subject_type = ? AND subject_id = ? AND is_read = ?", subjectType, subjectID, 0).
 		Find(&notifications).Error
 	if err != nil {
 		return err
