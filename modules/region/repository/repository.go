@@ -6,7 +6,7 @@ import (
 )
 
 type RegionRepository interface {
-	GetAllRegions(filters map[string]string, userRole string, territoryID int) ([]response.RegionResponse, int64, error)
+	GetAllRegions(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.RegionResponse, int64, error)
 	GetRegionByID(id int) (*response.RegionResponse, error)
 	GetRegionByName(name string) (*response.RegionResponse, error)
 	CreateRegion(region *models.Region) (*response.RegionResponse, error)

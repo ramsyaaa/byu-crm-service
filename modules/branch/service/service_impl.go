@@ -15,8 +15,8 @@ func NewBranchService(repo repository.BranchRepository) BranchService {
 	return &branchService{repo: repo}
 }
 
-func (s *branchService) GetAllBranches(filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error) {
-	return s.repo.GetAllBranches(filters, userRole, territoryID)
+func (s *branchService) GetAllBranches(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.BranchResponse, int64, error) {
+	return s.repo.GetAllBranches(filters, userRole, territoryID, withGeo)
 }
 
 func (s *branchService) GetBranchByID(id int) (*response.BranchResponse, error) {
