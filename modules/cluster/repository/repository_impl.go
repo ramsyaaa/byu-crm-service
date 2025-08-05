@@ -17,13 +17,19 @@ func NewClusterRepository(db *gorm.DB) ClusterRepository {
 	return &clusterRepository{db: db}
 }
 
-func (r *clusterRepository) GetAllClusters(filters map[string]string, userRole string, territoryID int) ([]response.ClusterResponse, int64, error) {
+func (r *clusterRepository) GetAllClusters(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.ClusterResponse, int64, error) {
 	var clusters []response.ClusterResponse
 	var total int64
 
 	query := r.db.Model(&models.Cluster{}).
 		Joins("JOIN branches ON branches.id = clusters.branch_id").
 		Joins("JOIN regions ON regions.id = branches.region_id")
+
+	if withGeo {
+		query = query.Select("branches.id, branches.name, branches.geojson")
+	} else {
+		query = query.Select("branches.id, branches.name")
+	}
 
 	// Filter berdasarkan role dan territory
 	if userRole != "" && territoryID != 0 {
@@ -78,6 +84,7 @@ func (r *clusterRepository) GetClusterByID(id int) (*response.ClusterResponse, e
 			}
 			return 0
 		}(),
+		Geojson: cluster.Geojson,
 	}
 
 	return clusterResponse, nil

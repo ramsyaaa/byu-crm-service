@@ -17,11 +17,17 @@ func NewRegionRepository(db *gorm.DB) RegionRepository {
 	return &regionRepository{db: db}
 }
 
-func (r *regionRepository) GetAllRegions(filters map[string]string, userRole string, territoryID int) ([]response.RegionResponse, int64, error) {
+func (r *regionRepository) GetAllRegions(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.RegionResponse, int64, error) {
 	var regions []response.RegionResponse
 	var total int64
 
 	query := r.db.Model(&models.Region{})
+
+	if withGeo {
+		query = query.Select("id, name, geojson")
+	} else {
+		query = query.Select("id, name")
+	}
 
 	// Apply search filter
 	if search, exists := filters["search"]; exists && search != "" {
@@ -88,6 +94,7 @@ func (r *regionRepository) GetRegionByID(id int) (*response.RegionResponse, erro
 			}
 			return 0
 		}(),
+		Geojson: region.Geojson,
 	}
 
 	return regionResponse, nil

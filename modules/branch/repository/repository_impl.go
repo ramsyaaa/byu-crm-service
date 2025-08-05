@@ -17,11 +17,17 @@ func NewBranchRepository(db *gorm.DB) BranchRepository {
 	return &branchRepository{db: db}
 }
 
-func (r *branchRepository) GetAllBranches(filters map[string]string, userRole string, territoryID int) ([]response.BranchResponse, int64, error) {
+func (r *branchRepository) GetAllBranches(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.BranchResponse, int64, error) {
 	var branches []response.BranchResponse
 	var total int64
 
 	query := r.db.Model(&models.Branch{}).Joins("JOIN regions ON regions.id = branches.region_id")
+
+	if withGeo {
+		query = query.Select("regions.id, regions.name, regions.geojson")
+	} else {
+		query = query.Select("regions.id, regions.name")
+	}
 
 	// Filter berdasarkan role dan territory
 	if userRole != "" && territoryID != 0 {
