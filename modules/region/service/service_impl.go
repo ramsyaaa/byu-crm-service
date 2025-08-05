@@ -15,8 +15,8 @@ func NewRegionService(repo repository.RegionRepository) RegionService {
 	return &regionService{repo: repo}
 }
 
-func (s *regionService) GetAllRegions(filters map[string]string, userRole string, territoryID int) ([]response.RegionResponse, int64, error) {
-	return s.repo.GetAllRegions(filters, userRole, territoryID)
+func (s *regionService) GetAllRegions(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.RegionResponse, int64, error) {
+	return s.repo.GetAllRegions(filters, userRole, territoryID, withGeo)
 }
 
 func (s *regionService) GetRegionByID(id int) (*response.RegionResponse, error) {

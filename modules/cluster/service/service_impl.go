@@ -15,8 +15,8 @@ func NewClusterService(repo repository.ClusterRepository) ClusterService {
 	return &clusterService{repo: repo}
 }
 
-func (s *clusterService) GetAllClusters(filters map[string]string, userRole string, territoryID int) ([]response.ClusterResponse, int64, error) {
-	return s.repo.GetAllClusters(filters, userRole, territoryID)
+func (s *clusterService) GetAllClusters(filters map[string]string, userRole string, territoryID int, withGeo bool) ([]response.ClusterResponse, int64, error) {
+	return s.repo.GetAllClusters(filters, userRole, territoryID, withGeo)
 }
 
 func (s *clusterService) GetClusterByID(id int) (*response.ClusterResponse, error) {

@@ -25,12 +25,14 @@ func (h *AreaHandler) GetAllAreas(c *fiber.Ctx) error {
 		"search": c.Query("search", ""),
 	}
 
+	withGeo := strings.ToLower(c.Query("with_geo", "0")) == "1"
+
 	// Parse integer and boolean values
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
 
 	// Call service with filters
-	areas, total, err := h.areaService.GetAllAreas(filters, userRole, territoryID)
+	areas, total, err := h.areaService.GetAllAreas(filters, userRole, territoryID, withGeo)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch areas",
