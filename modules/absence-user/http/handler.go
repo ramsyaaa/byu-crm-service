@@ -815,7 +815,27 @@ func (h *AbsenceUserHandler) ExportRawAbsenceUsers(c *fiber.Ctx) error {
 	// Panggil service untuk generate file Excel
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
-	excelFile, err := h.absenceUserService.GenerateAbsenceExcel(userID, filters, month, year, absenceType, userRole, territoryID, []int{})
+	filtersUser := map[string]string{
+		"search":      "",
+		"order_by":    "id",
+		"order":       "DESC",
+		"start_date":  "",
+		"end_date":    "",
+		"user_status": "active",
+	}
+	getAllUsers, _, err := h.userService.GetAllUsers(0, false, 1, filtersUser, []string{"YAE"}, false, userRole, territoryID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Gagal mengambil data user",
+		})
+	}
+
+	userIDs := []int{}
+	for _, user := range getAllUsers {
+		userIDs = append(userIDs, int(user.ID)) // konversi uint ke int
+	}
+
+	excelFile, err := h.absenceUserService.GenerateAbsenceExcel(userID, filters, month, year, absenceType, userRole, territoryID, userIDs)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Gagal membuat file Excel",
