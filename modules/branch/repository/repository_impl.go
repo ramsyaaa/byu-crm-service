@@ -24,9 +24,9 @@ func (r *branchRepository) GetAllBranches(filters map[string]string, userRole st
 	query := r.db.Model(&models.Branch{}).Joins("JOIN regions ON regions.id = branches.region_id")
 
 	if withGeo {
-		query = query.Select("regions.id, regions.name, regions.geojson")
+		query = query.Select("branches.id, branches.name, branches.region_id, branches.geojson")
 	} else {
-		query = query.Select("regions.id, regions.name")
+		query = query.Select("branches.id, branches.name, branches.region_id")
 	}
 
 	// Filter berdasarkan role dan territory
