@@ -26,9 +26,9 @@ func (r *clusterRepository) GetAllClusters(filters map[string]string, userRole s
 		Joins("JOIN regions ON regions.id = branches.region_id")
 
 	if withGeo {
-		query = query.Select("branches.id, branches.name, branches.geojson")
+		query = query.Select("clusters.id, clusters.name, clusters.branch_id, clusters.geojson")
 	} else {
-		query = query.Select("branches.id, branches.name")
+		query = query.Select("clusters.id, clusters.name, clusters.branch_id")
 	}
 
 	// Filter berdasarkan role dan territory

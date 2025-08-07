@@ -24,9 +24,9 @@ func (r *regionRepository) GetAllRegions(filters map[string]string, userRole str
 	query := r.db.Model(&models.Region{})
 
 	if withGeo {
-		query = query.Select("id, name, geojson")
+		query = query.Select("id, name, area_id, geojson")
 	} else {
-		query = query.Select("id, name")
+		query = query.Select("id, name, area_id")
 	}
 
 	// Apply search filter
