@@ -13,6 +13,7 @@ type UserResponse struct {
 	TerritoryType   string   `json:"territory_type"`
 	OutletIDDigipos *string  `json:"outlet_id_digipos"`
 	NamiAgentID     *string  `json:"nami_agent_id"`
+	YaeCode         *string  `json:"yae_code"`
 	AreaID          *uint    `json:"area_id"`
 	RegionID        *uint    `json:"region_id"`
 	BranchID        *uint    `json:"branch_id"`

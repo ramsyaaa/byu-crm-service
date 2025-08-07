@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/user/response"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -146,7 +147,7 @@ func (r *userRepository) GetAllUsers(
 	}
 
 	// ======================= Query Data Users =======================
-	if err := baseQuery.Select("users.id, users.name, users.email, users.avatar, users.msisdn, users.user_status, users.user_type, users.territory_type, users.territory_id").Find(&users).Error; err != nil {
+	if err := baseQuery.Select("users.id, users.name, users.email, users.avatar, users.msisdn, users.user_status, users.user_type, users.territory_type, users.territory_id, users.yae_code").Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -211,6 +212,8 @@ func (r *userRepository) GetAllUsers(
 			cluster_id = user.TerritoryID
 		}
 
+		fmt.Println("YAE Code:", user.YaeCode)
+
 		responses = append(responses, response.UserResponse{
 			ID:              user.ID,
 			Name:            user.Name,
@@ -223,6 +226,7 @@ func (r *userRepository) GetAllUsers(
 			TerritoryType:   user.TerritoryType,
 			OutletIDDigipos: &user.OutletIDDigipos,
 			NamiAgentID:     &user.NamiAgentID,
+			YaeCode:         user.YaeCode,
 			TotalPic:        totalPic,
 			RoleNames:       roleMap[user.ID],
 			AreaID:          &area_id,
@@ -309,6 +313,7 @@ func (r *userRepository) FindByID(id uint) (*response.UserResponse, error) {
 		NamiAgentID:     &user.NamiAgentID,
 		RoleNames:       roleNames,
 		Permissions:     permissions,
+		YaeCode:         user.YaeCode,
 		AreaID:          &area_id,
 		RegionID:        &region_id,
 		BranchID:        &branch_id,
@@ -413,6 +418,7 @@ func (r *userRepository) GetUserByIDs(ids []uint) ([]response.UserResponse, erro
 			NamiAgentID:     &user.NamiAgentID,
 			RoleNames:       roleMap[user.ID],
 			Permissions:     permissions,
+			YaeCode:         user.YaeCode,
 			AreaID:          &area_id,
 			RegionID:        &region_id,
 			BranchID:        &branch_id,
@@ -481,6 +487,7 @@ func (r *userRepository) FindByEmail(email string) (*response.UserResponse, erro
 		UserType:      user.UserType,
 		TerritoryID:   user.TerritoryID,
 		TerritoryType: user.TerritoryType,
+		YaeCode:       user.YaeCode,
 		RoleNames:     roleNames,
 		Permissions:   permissions,
 	}
@@ -546,6 +553,7 @@ func (r *userRepository) FindByMsisdn(msisdn string) (*response.UserResponse, er
 		UserType:      user.UserType,
 		TerritoryID:   user.TerritoryID,
 		TerritoryType: user.TerritoryType,
+		YaeCode:       user.YaeCode,
 		RoleNames:     roleNames,
 		Permissions:   permissions,
 	}
@@ -696,6 +704,7 @@ func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{})
 		Msisdn:        existingUser.Msisdn,
 		UserStatus:    existingUser.UserStatus,
 		UserType:      existingUser.UserType,
+		YaeCode:       existingUser.YaeCode,
 		TerritoryID:   existingUser.TerritoryID,
 		TerritoryType: existingUser.TerritoryType,
 	}
