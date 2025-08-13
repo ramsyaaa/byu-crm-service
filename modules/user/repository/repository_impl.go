@@ -4,7 +4,6 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/user/response"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -211,8 +210,6 @@ func (r *userRepository) GetAllUsers(
 		} else if user.TerritoryType == "App\\Models\\Cluster" {
 			cluster_id = user.TerritoryID
 		}
-
-		fmt.Println("YAE Code:", user.YaeCode)
 
 		responses = append(responses, response.UserResponse{
 			ID:              user.ID,
