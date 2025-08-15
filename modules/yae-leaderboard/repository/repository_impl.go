@@ -62,3 +62,44 @@ func (r *yaeLeaderboardRepository) GetAllLeaderboards(userIDs []int, startDate, 
 
 	return results, nil
 }
+
+func (r *yaeLeaderboardRepository) GetUserRank(userIDs []int, startDate, endDate time.Time, targetUserID int) (int, int, error) {
+	// Kalau tidak ada userID, return kosong
+	if len(userIDs) == 0 {
+		return 0, 0, nil
+	}
+
+	// Query untuk dapatkan ranking user
+	query := `
+		WITH leaderboard AS (
+			SELECT 
+				vh.user_id,
+				ROW_NUMBER() OVER (
+					ORDER BY COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(vh.detail_visit, '$.amount_dealing')) AS DECIMAL(15,2))), 0) DESC
+				) AS rank_position
+			FROM visit_histories vh
+			WHERE vh.user_id IN ?
+			  AND vh.created_at BETWEEN ? AND ?
+			GROUP BY vh.user_id
+		)
+		SELECT rank_position FROM leaderboard WHERE user_id = ?
+	`
+
+	var userRank int
+	if err := r.db.Raw(query, userIDs, startDate, endDate, targetUserID).Scan(&userRank).Error; err != nil {
+		return 0, 0, err
+	}
+
+	// Hitung total user yang masuk leaderboard
+	var totalUsers int
+	if err := r.db.Raw(`
+		SELECT COUNT(DISTINCT vh.user_id)
+		FROM visit_histories vh
+		WHERE vh.user_id IN ?
+		  AND vh.created_at BETWEEN ? AND ?
+	`, userIDs, startDate, endDate).Scan(&totalUsers).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return userRank, totalUsers, nil
+}
