@@ -7,4 +7,5 @@ import (
 
 type YaeLeaderboardService interface {
 	GetAllLeaderboards(userIDs []int, startDate, endDate time.Time) ([]response.LeaderboardData, error)
+	GetUserRank(userIDs []int, startDate, endDate time.Time, targetUserID int) (int, int, error)
 }

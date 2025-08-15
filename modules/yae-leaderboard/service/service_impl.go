@@ -39,3 +39,7 @@ func (s *yaeLeaderboardService) GetAllLeaderboards(userIDs []int, startDate, end
 
 	return result, nil
 }
+
+func (s *yaeLeaderboardService) GetUserRank(userIDs []int, startDate, endDate time.Time, targetUserID int) (int, int, error) {
+	return s.repo.GetUserRank(userIDs, startDate, endDate, targetUserID)
+}
