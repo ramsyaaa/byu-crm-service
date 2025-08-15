@@ -151,8 +151,8 @@ func (h *YaeLeaderboardHandler) GetUserRank(c *fiber.Ctx) error {
 
 	// Return response
 	responseData := map[string]interface{}{
-		"leaderboard": rank,
-		"total":       total,
+		"rank_branch":       rank,
+		"total_user_branch": total,
 	}
 	response := helper.APIResponse("Get Rank Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
