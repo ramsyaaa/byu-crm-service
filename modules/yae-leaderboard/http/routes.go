@@ -12,4 +12,5 @@ func YaeLeaderboardRoutes(router fiber.Router, handler *YaeLeaderboardHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Get("/", handler.GetAllLeaderboards)
+	authRouter.Get("/rank", handler.GetUserRank)
 }
