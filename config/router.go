@@ -182,6 +182,7 @@ func Route(db *gorm.DB) {
 	routes.BroadcastRouter(api, db)
 	routes.BakGeneratorRouter(api, db)
 	routes.YaeLeaderboardRouter(api, db)
+	routes.TemplateFileRouter(api, db)
 
 	app.Mount("/api/v1", api)
 	log.Fatalln(app.Listen(":" + os.Getenv("PORT")))
