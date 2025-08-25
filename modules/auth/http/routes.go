@@ -4,6 +4,7 @@ import "github.com/gofiber/fiber/v2"
 
 func AuthRoutes(router fiber.Router, handler *AuthHandler) {
 	router.Post("/login", handler.Login)
+	router.Post("/refresh", handler.Refresh)
 
 	// Google OAuth routes
 	router.Get("/google/login", handler.GoogleLogin)

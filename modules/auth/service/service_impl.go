@@ -53,18 +53,55 @@ func generateJWT(email string, userID int, userRole string, territoryType string
 	return signedToken, nil
 }
 
-// Login Service
-func (s *authService) Login(email, password string) (string, error) {
+func (s *authService) GenerateAccessToken(email string, userID int, userRole string, territoryType string, territoryID int, user_permissions []string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return "", errors.New("missing JWT secret")
+	}
+
+	claims := jwt.MapClaims{
+		"email":          email,
+		"user_id":        userID,
+		"user_role":      userRole,
+		"territory_type": territoryType,
+		"territory_id":   territoryID,
+		"permissions":    user_permissions,
+		"exp":            time.Now().Add(time.Minute * 15).Unix(), // 🔥 access token cuma 15 menit
+		"iat":            time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(jwtSecret))
+}
+
+func generateRefreshToken(userID int) (string, error) {
+	refreshSecret := os.Getenv("REFRESH_SECRET") // 🔥 tambahkan secret baru
+	if refreshSecret == "" {
+		return "", errors.New("missing REFRESH secret")
+	}
+
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(time.Hour * 24 * 30).Unix(), // 🔥 refresh token 30 hari
+		"iat":     time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(refreshSecret))
+}
+
+// 🔥 ubah return: sekarang return accessToken + refreshToken
+func (s *authService) Login(email, password string) (map[string]string, error) {
 	user, err := s.userRepo.GetUserByKey("email", email)
 	if err != nil {
-		return "", errors.New("invalid email or password")
+		return nil, errors.New("invalid email or password")
 	}
 
 	if !s.userRepo.CheckPassword(password, user.Password) {
-		return "", errors.New("invalid email or password")
+		return nil, errors.New("invalid email or password")
 	}
 
-	//  Check if user has the required roles
+	// role check tetap
 	allowed := true
 	for _, role := range user.RoleNames {
 		if role == "Super-Admin" || role == "YAE" {
@@ -72,17 +109,25 @@ func (s *authService) Login(email, password string) (string, error) {
 			break
 		}
 	}
-
 	if !allowed {
-		return "", errors.New("you cannot access this application")
+		return nil, errors.New("you cannot access this application")
 	}
 
-	token, err := generateJWT(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
+	// 🔥 generate access + refresh token
+	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
 	if err != nil {
-		return "", errors.New("failed to generate token")
+		return nil, errors.New("failed to generate access token")
 	}
 
-	return token, nil
+	refreshToken, err := generateRefreshToken(int(user.ID))
+	if err != nil {
+		return nil, errors.New("failed to generate refresh token")
+	}
+
+	return map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	}, nil
 }
 
 func (s *authService) CheckPassword(password, hashedPassword string) bool {
