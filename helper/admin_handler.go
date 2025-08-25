@@ -63,7 +63,7 @@ func (h *AdminHandler) HandleLogin(c *fiber.Ctx) error {
 	}
 
 	// Validate that user has admin role
-	if !h.validateAdminRole(token) {
+	if !h.validateAdminRole(token["access_token"]) {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Access denied. Admin privileges required.",
@@ -73,7 +73,7 @@ func (h *AdminHandler) HandleLogin(c *fiber.Ctx) error {
 	// Set secure HTTP-only cookie with the JWT token
 	c.Cookie(&fiber.Cookie{
 		Name:     "admin_token",
-		Value:    token,
+		Value:    token["access_token"],
 		Expires:  time.Now().Add(24 * time.Hour), // 24 hours
 		HTTPOnly: true,
 		Secure:   os.Getenv("APP_ENV") == "production",
