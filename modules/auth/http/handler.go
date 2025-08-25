@@ -81,7 +81,8 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(helper.APIResponse("Token refreshed", fiber.StatusOK, "success", fiber.Map{
-		"token": accessToken,
+		"token":         accessToken,
+		"refresh_token": req.RefreshToken,
 	}))
 }
 
