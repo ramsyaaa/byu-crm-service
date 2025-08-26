@@ -66,7 +66,7 @@ func (s *authService) GenerateAccessToken(email string, userID int, userRole str
 		"territory_type": territoryType,
 		"territory_id":   territoryID,
 		"permissions":    user_permissions,
-		"exp":            time.Now().Add(24 * time.Hour).Unix(),
+		"exp":            time.Now().Add(2 * time.Minute).Unix(), // 🔥 access token 2 meni	t
 		"iat":            time.Now().Unix(),
 	}
 
