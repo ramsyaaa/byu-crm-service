@@ -35,6 +35,7 @@ import (
 	smsSenderService "byu-crm-service/modules/sms-sender/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 	userService "byu-crm-service/modules/user/service"
+	visitHistoryService "byu-crm-service/modules/visit-history/service"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -55,6 +56,7 @@ type AccountHandler struct {
 	approvalLocationAccountService    approvalLocationAccountService.ApprovalLocationAccountService
 	notificationService               notificationService.NotificationService
 	smsSenderService                  smsSenderService.SmsSenderService
+	visitHistoryService               visitHistoryService.VisitHistoryService
 	redis                             *redis.Client
 }
 
@@ -74,6 +76,7 @@ func NewAccountHandler(
 	approvalLocationAccountService approvalLocationAccountService.ApprovalLocationAccountService,
 	notificationService notificationService.NotificationService,
 	smsSenderService smsSenderService.SmsSenderService,
+	visitHistoryService visitHistoryService.VisitHistoryService,
 	redis *redis.Client) *AccountHandler {
 
 	return &AccountHandler{
@@ -92,6 +95,7 @@ func NewAccountHandler(
 		approvalLocationAccountService:    approvalLocationAccountService,
 		notificationService:               notificationService,
 		smsSenderService:                  smsSenderService,
+		visitHistoryService:               visitHistoryService,
 		redis:                             redis}
 }
 
@@ -311,38 +315,36 @@ func (h *AccountHandler) CheckAlreadyUpdateData(c *fiber.Ctx) error {
 func (h *AccountHandler) GetAccountVisitCounts(c *fiber.Ctx) error {
 	// Default query params
 	filters := map[string]string{
-		"search":     c.Query("search", ""),
-		"order_by":   c.Query("order_by", "id"),
-		"order":      c.Query("order", "DESC"),
-		"start_date": c.Query("start_date", ""),
-		"end_date":   c.Query("end_date", ""),
+		"search":           c.Query("search", ""),
+		"order_by":         "id",
+		"order":            "DESC",
+		"start_date":       c.Query("start_date", ""),
+		"end_date":         c.Query("end_date", ""),
+		"account_category": "",
+		"account_type":     "",
+		"only_skulid":      "0",
+		"is_priority":      "1",
+		"priority":         "P1",
+		"longitude":        "",
+		"latitude":         "",
 	}
 
 	// Parse integer and boolean values
+	limit, _ := strconv.Atoi("10")
+	paginate, _ := strconv.ParseBool("true")
+	page, _ := strconv.Atoi("1")
 	userRole := c.Locals("user_role").(string)
 	territoryID := c.Locals("territory_id").(int)
+
+	// Ambil user_id dari query jika tersedia, jika tidak pakai dari middleware
+	var err error
 	userID := c.Locals("user_id").(int)
 
-	// Generate Redis Cache Key berdasarkan semua filter
-	cacheKey := fmt.Sprintf("accountsVisitCount:role=%s:territory=%d:userID=%d", userRole, territoryID, userID)
-
-	for k, v := range filters {
-		cacheKey += fmt.Sprintf(":%s=%s", k, v)
-	}
-
-	// Coba ambil dari Redis
-	cached, err := h.redis.Get(c.Context(), cacheKey).Result()
-	if err == nil {
-		// Berhasil ambil dari cache
-		var cachedData map[string]interface{}
-		json.Unmarshal([]byte(cached), &cachedData)
-
-		response := helper.APIResponse("Get Accounts Visit Count (From Cache) Successfully", fiber.StatusOK, "success", cachedData)
-		return c.Status(fiber.StatusOK).JSON(response)
-	}
+	onlyUserPic, _ := strconv.ParseBool("0")
+	excludeVisited, _ := strconv.ParseBool("false")
 
 	// Call service with filters
-	visited_account, not_visited, total, err := h.service.GetAccountVisitCounts(filters, userRole, territoryID, userID)
+	_, total, err := h.service.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, userID, onlyUserPic, excludeVisited)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"message": "Failed to fetch accounts",
@@ -350,16 +352,20 @@ func (h *AccountHandler) GetAccountVisitCounts(c *fiber.Ctx) error {
 		})
 	}
 
+	visited_account, err := h.visitHistoryService.CountVisitHistory(userID, 0, 0, "")
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch visited accounts",
+			"error":   err.Error(),
+		})
+	}
+
 	// Return response
 	responseData := map[string]interface{}{
 		"visited_account": visited_account,
-		"not_visited":     not_visited,
+		"not_visited":     total - int64(visited_account),
 		"total":           total,
 	}
-
-	// Simpan ke Redis (misal selama 5 menit)
-	cacheBytes, _ := json.Marshal(responseData)
-	h.redis.Set(c.Context(), cacheKey, cacheBytes, 5*time.Minute)
 
 	response := helper.APIResponse("Get Accounts Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)

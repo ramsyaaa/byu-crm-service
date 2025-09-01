@@ -32,8 +32,12 @@ func (r *visitHistoryRepository) CountVisitHistory(user_id int, month uint, year
 	var count int64
 
 	query := r.db.Model(&models.VisitHistory{}).
-		Where("subject_type = ? AND MONTH(created_at) = ? AND YEAR(created_at) = ?",
-			"App\\Models\\Account", month, year)
+		Where("subject_type = ?", "App\\Models\\Account")
+
+	// Tambahkan filter bulan & tahun kalau tidak nol
+	if month != 0 && year != 0 {
+		query = query.Where("MONTH(created_at) = ? AND YEAR(created_at) = ?", month, year)
+	}
 
 	// Tambahkan filter kpi_name jika ada
 	if kpi_name != "" {

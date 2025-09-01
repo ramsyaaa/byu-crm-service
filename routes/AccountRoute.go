@@ -29,6 +29,7 @@ import (
 	socialMediaRepo "byu-crm-service/modules/social-media/repository"
 	territoryRepo "byu-crm-service/modules/territory/repository"
 	userRepo "byu-crm-service/modules/user/repository"
+	visitHistoryRepo "byu-crm-service/modules/visit-history/repository"
 
 	absenceUserService "byu-crm-service/modules/absence-user/service"
 	accountFacultyService "byu-crm-service/modules/account-faculty/service"
@@ -41,6 +42,7 @@ import (
 	productService "byu-crm-service/modules/product/service"
 	socialMediaService "byu-crm-service/modules/social-media/service"
 	userService "byu-crm-service/modules/user/service"
+	visitHistoryService "byu-crm-service/modules/visit-history/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
@@ -70,6 +72,7 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	userRepo := userRepo.NewUserRepository(db)
 	territoryRepo := territoryRepo.NewTerritoryRepository(db)
 	approvalLocationAccountRepo := approvalLocationAccountRepo.NewApprovalLocationAccountRepository(db)
+	visitHistoryRepo := visitHistoryRepo.NewVisitHistoryRepository(db)
 
 	// Set the account repository for validation
 	validation.SetAccountRepository(accountRepo)
@@ -87,8 +90,9 @@ func AccountRouter(router fiber.Router, db *gorm.DB, redisClient any) {
 	absenceUserService := absenceUserService.NewAbsenceUserService(absenceUserRepo, territoryRepo)
 	userService := userService.NewUserService(userRepo)
 	approvalLocationAccountService := approvalLocationAccountService.NewApprovalLocationAccountService(approvalLocationAccountRepo, accountRepo)
+	visitHistoryService := visitHistoryService.NewVisitHistoryService(visitHistoryRepo)
 
-	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, notificationService.NewNotificationService(notificationRepo.NewNotificationRepository(db), userRepo), smsSenderService.NewSmsSenderService(userRepo), redisClient.(*redis.Client))
+	accountHandler := http.NewAccountHandler(accountService, contactAccountService, socialMediaService, accountTypeSchoolDetailService, accountFacultyService, accountMemberService, accountScheduleService, accountTypeCampusDetailService, accountTypeCommunityDetailService, productService, absenceUserService, userService, approvalLocationAccountService, notificationService.NewNotificationService(notificationRepo.NewNotificationRepository(db), userRepo), smsSenderService.NewSmsSenderService(userRepo), visitHistoryService, redisClient.(*redis.Client))
 
 	http.AccountRoutes(router, accountHandler)
 
