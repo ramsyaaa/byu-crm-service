@@ -171,21 +171,17 @@ func (r *notificationRepository) MarkNotificationAsRead(notificationID uint, use
 }
 
 func (r *notificationRepository) MarkAllNotificationsAsRead(userID int) error {
-	var notifications []models.UserNotification
-
-	err := r.db.Model(&models.UserNotification{}).
-		Where("user_id = ? AND is_read = ?", userID, 0).
-		Find(&notifications).Error
-	if err != nil {
-		return err
-	}
-
 	isRead := uint(1)
-	for i := range notifications {
-		notifications[i].IsRead = &isRead
+
+	result := r.db.Model(&models.UserNotification{}).
+		Where("user_id = ? AND is_read = ?", userID, 0).
+		Update("is_read", isRead)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return r.db.Save(&notifications).Error
+	return nil
 }
 
 func (r *notificationRepository) MarkNotificationAsReadBySubjectID(subjectType string, subjectID uint, userID int) error {
