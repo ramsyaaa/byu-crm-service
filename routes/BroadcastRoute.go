@@ -4,6 +4,8 @@ import (
 	"byu-crm-service/modules/broadcast/http"
 	"byu-crm-service/modules/broadcast/repository"
 	"byu-crm-service/modules/broadcast/service"
+	notificationOneSignalRepo "byu-crm-service/modules/notification-one-signal/repository"
+	notificationOneSignalService "byu-crm-service/modules/notification-one-signal/service"
 	notificationRepo "byu-crm-service/modules/notification/repository"
 	notificationService "byu-crm-service/modules/notification/service"
 	roleRepo "byu-crm-service/modules/role/repository"
@@ -26,12 +28,15 @@ func BroadcastRouter(router fiber.Router, db *gorm.DB) {
 	notificationRepo := notificationRepo.NewNotificationRepository(db)
 	notificationService := notificationService.NewNotificationService(notificationRepo, userRepo)
 
+	notificationOneSignalRepo := notificationOneSignalRepo.NewNotificationOneSignalRepository(db)
+	notificationOneSignalService := notificationOneSignalService.NewNotificationOneSignalService(notificationOneSignalRepo, userRepo)
+
 	roleRepo := roleRepo.NewRoleRepository(db)
 	roleService := roleService.NewRoleService(roleRepo)
 
 	smsSenderService := smsSender.NewSmsSenderService(userRepo)
 
-	broadcastHandler := http.NewBroadcastHandler(broadcastService, notificationService, userService, roleService, smsSenderService)
+	broadcastHandler := http.NewBroadcastHandler(broadcastService, notificationService, userService, roleService, smsSenderService, notificationOneSignalService)
 
 	http.BroadcastRoutes(router, broadcastHandler)
 

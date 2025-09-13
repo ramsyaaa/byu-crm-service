@@ -11,6 +11,7 @@ import (
 	"byu-crm-service/helper"
 	"byu-crm-service/modules/broadcast/service"
 	"byu-crm-service/modules/broadcast/validation"
+	notificationOneSignalService "byu-crm-service/modules/notification-one-signal/service"
 	notificationService "byu-crm-service/modules/notification/service"
 	roleService "byu-crm-service/modules/role/service"
 	smsSender "byu-crm-service/modules/sms-sender/service"
@@ -20,11 +21,12 @@ import (
 )
 
 type BroadcastHandler struct {
-	service             service.BroadcastService
-	notificationService notificationService.NotificationService
-	userService         userService.UserService
-	roleService         roleService.RoleService
-	smsSenderService    smsSender.SmsSenderService
+	service                      service.BroadcastService
+	notificationService          notificationService.NotificationService
+	userService                  userService.UserService
+	roleService                  roleService.RoleService
+	smsSenderService             smsSender.SmsSenderService
+	notificationOneSignalService notificationOneSignalService.NotificationOneSignalService
 }
 
 func NewBroadcastHandler(
@@ -32,14 +34,16 @@ func NewBroadcastHandler(
 	notificationService notificationService.NotificationService,
 	userService userService.UserService,
 	roleService roleService.RoleService,
-	smsSenderService smsSender.SmsSenderService) *BroadcastHandler {
+	smsSenderService smsSender.SmsSenderService,
+	notificationOneSignalService notificationOneSignalService.NotificationOneSignalService) *BroadcastHandler {
 
 	return &BroadcastHandler{
-		service:             service,
-		notificationService: notificationService,
-		userService:         userService,
-		roleService:         roleService,
-		smsSenderService:    smsSenderService}
+		service:                      service,
+		notificationService:          notificationService,
+		userService:                  userService,
+		roleService:                  roleService,
+		smsSenderService:             smsSenderService,
+		notificationOneSignalService: notificationOneSignalService}
 }
 
 func (h *BroadcastHandler) GetBroadcastByNotificationId(c *fiber.Ctx) error {
@@ -206,6 +210,12 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
+		err = h.notificationOneSignalService.AssignNotificationOneSignalToUsers(requestBody, userIDs)
+		if err != nil {
+			response := helper.APIResponse("Error push Notification", fiber.StatusBadRequest, "error", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
 	} else if req.Type != "" && req.Type == "ROLE" {
 		roles, err := h.roleService.GetRoleByIDs(req.RoleID)
 		if err != nil {
@@ -224,6 +234,12 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(response)
 		}
 
+		err = h.notificationOneSignalService.SendNotification(requestBody, roleNames, userRole, territoryID, 0)
+		if err != nil {
+			response := helper.APIResponse("Error push notification", fiber.StatusBadRequest, "error", err.Error())
+			return c.Status(fiber.StatusBadRequest).JSON(response)
+		}
+
 		err = h.smsSenderService.CreateSms(requestBody, roleNames, userRole, territoryID, 0)
 		if err != nil {
 			response := helper.APIResponse("Error sending SMS", fiber.StatusBadRequest, "error", err.Error())
@@ -235,6 +251,12 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 			err := h.notificationService.CreateNotification(requestBody, []string{}, "Super-Admin", 0, 0)
 			if err != nil {
 				response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
+				return c.Status(fiber.StatusBadRequest).JSON(response)
+			}
+
+			err = h.notificationOneSignalService.SendNotification(requestBody, []string{}, "Super-Admin", 0, 0)
+			if err != nil {
+				response := helper.APIResponse("Error push notification", fiber.StatusBadRequest, "error", err.Error())
 				return c.Status(fiber.StatusBadRequest).JSON(response)
 			}
 
@@ -263,6 +285,12 @@ func (h *BroadcastHandler) CreateBroadcast(c *fiber.Ctx) error {
 						return c.Status(fiber.StatusBadRequest).JSON(response)
 					}
 					err := h.notificationService.CreateNotification(requestBody, []string{}, userRole, territoryInt, 0)
+					if err != nil {
+						response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
+						return c.Status(fiber.StatusBadRequest).JSON(response)
+					}
+
+					err = h.notificationOneSignalService.SendNotification(requestBody, []string{}, userRole, territoryInt, 0)
 					if err != nil {
 						response := helper.APIResponse("Error create notification", fiber.StatusBadRequest, "error", err.Error())
 						return c.Status(fiber.StatusBadRequest).JSON(response)
