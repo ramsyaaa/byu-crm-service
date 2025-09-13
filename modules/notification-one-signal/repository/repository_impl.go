@@ -6,6 +6,7 @@ import (
 	"byu-crm-service/modules/notification-one-signal/response"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -50,6 +51,15 @@ func (r *notificationOneSignalRepository) SendNotification(requestBody map[strin
 		return err
 	}
 	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to send notification, status: %s", string(respBody))
+		// return err
+	}
+
+	fmt.Println("Response Status:", resp.Status)
+	fmt.Println("Response Body:", string(respBody))
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("failed to send notification, status: %s", resp.Status)
