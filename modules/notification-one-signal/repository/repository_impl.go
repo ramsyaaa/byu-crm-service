@@ -62,7 +62,7 @@ func (r *notificationOneSignalRepository) SendNotification(requestBody map[strin
 	fmt.Println("Response Body:", string(respBody))
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("failed to send notification, status: %s", resp.Status)
+		return fmt.Errorf("failed to send notification, status: %s", string(respBody))
 	}
 
 	fmt.Println("Notification push successfully!")
