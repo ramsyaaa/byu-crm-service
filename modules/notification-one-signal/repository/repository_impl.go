@@ -6,7 +6,6 @@ import (
 	"byu-crm-service/modules/notification-one-signal/response"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 
@@ -27,12 +26,17 @@ func (r *notificationOneSignalRepository) SendNotification(requestBody map[strin
 	OneSignalAppID := os.Getenv("ONESIGNAL_APP_ID")
 	OneSignalAPIKey := os.Getenv("ONESIGNAL_API_KEY")
 
+	callback_url := ""
+	if val, ok := requestBody["callback_url"]; ok && val != "" {
+		callback_url = val
+	}
+
 	reqBody := response.NotificationRequest{
 		AppID:            OneSignalAppID,
 		IncludePlayerIDs: playerID,
 		Headings:         map[string]string{"en": requestBody["title"]},
 		Contents:         map[string]string{"en": requestBody["description"]},
-		URL:              requestBody["callback_url"],
+		URL:              callback_url,
 	}
 
 	body, _ := json.Marshal(reqBody)
@@ -52,17 +56,8 @@ func (r *notificationOneSignalRepository) SendNotification(requestBody map[strin
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to send notification, status: %s", string(respBody))
-		// return err
-	}
-
-	fmt.Println("Response Status:", resp.Status)
-	fmt.Println("Response Body:", string(respBody))
-
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("failed to send notification, status: %s", string(respBody))
+		return fmt.Errorf("failed to send notification, status: %s", resp.Status)
 	}
 
 	fmt.Println("Notification push successfully!")
