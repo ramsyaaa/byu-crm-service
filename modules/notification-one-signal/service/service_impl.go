@@ -84,12 +84,20 @@ func (s *notificationService) SendNotification(requestBody map[string]string, ro
 
 }
 
-func (s *notificationService) CreateSubscribeNotification(userID *uint, SubscribeID string) error {
-	area := &models.SubscribeNotification{
-		UserID:      userID,
-		SubscribeID: SubscribeID,
+func (s *notificationService) CreateSubscribeNotification(userID *uint, SubscribeID string, SubscribeType string) error {
+	userData := &models.SubscribeNotification{
+		UserID:        userID,
+		SubscribeID:   SubscribeID,
+		SubscribeType: SubscribeType,
 	}
-	return s.repo.CreateSubscribeNotification(area)
+
+	existingSub, _ := s.repo.GetSubscribeNotificationBySubscriptionID(SubscribeID)
+
+	if existingSub != nil {
+		return s.repo.UpdateSubscribeNotificationBySubscribeID(SubscribeID, userData)
+	} else {
+		return s.repo.CreateSubscribeNotification(userData)
+	}
 }
 
 func (s *notificationService) DeleteSubscribeNotification(userID *uint, SubscribeID string) error {

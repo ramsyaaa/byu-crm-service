@@ -67,12 +67,25 @@ func (r *notificationOneSignalRepository) SendNotification(requestBody map[strin
 func (r *notificationOneSignalRepository) GetSubscribeNotificationsByUserIDs(userIDs []int) ([]models.SubscribeNotification, error) {
 	var subscriptions []models.SubscribeNotification
 
-	if err := r.db.Where("user_id IN ?", userIDs).Find(&subscriptions).Error; err != nil {
+	if err := r.db.Where("user_id IN ? AND subscribe_type = ?", userIDs, "Subscribe").
+		Find(&subscriptions).Error; err != nil {
 		fmt.Println("Error getting subscribe notifications:", err.Error())
 		return nil, err
 	}
 
 	return subscriptions, nil
+}
+
+func (r *notificationOneSignalRepository) GetSubscribeNotificationBySubscriptionID(subscriptionID string) (*models.SubscribeNotification, error) {
+	var subscription models.SubscribeNotification
+
+	if err := r.db.Where("subscribe_id = ?", subscriptionID).
+		First(&subscription).Error; err != nil {
+		fmt.Println("Error getting subscribe notification:", err.Error())
+		return nil, err
+	}
+
+	return &subscription, nil
 }
 
 func (r *notificationOneSignalRepository) CreateSubscribeNotification(dataSubscribe *models.SubscribeNotification) error {
@@ -81,6 +94,16 @@ func (r *notificationOneSignalRepository) CreateSubscribeNotification(dataSubscr
 		return err
 	}
 
+	return nil
+}
+
+func (r *notificationOneSignalRepository) UpdateSubscribeNotificationBySubscribeID(subscribeID string, data *models.SubscribeNotification) error {
+	if err := r.db.Model(&models.SubscribeNotification{}).
+		Where("subscribe_id = ?", subscribeID).
+		Updates(data).Error; err != nil {
+		fmt.Println("Error updating subscribe notification:", err.Error())
+		return err
+	}
 	return nil
 }
 
