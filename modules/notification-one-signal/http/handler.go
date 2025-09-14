@@ -42,35 +42,16 @@ func (h *NotificationOneSignalHandler) SubscribeNotification(c *fiber.Ctx) error
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	if req.Type == "Subscribe" {
-		uid := uint(userID)
-		err := h.notificationService.CreateSubscribeNotification(&uid, req.SubscriptionID)
+	uid := uint(userID)
+	err := h.notificationService.CreateSubscribeNotification(&uid, req.SubscriptionID, req.Type)
 
-		if err != nil {
-			// Response
-			response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "error", nil)
-			return c.Status(fiber.StatusInternalServerError).JSON(response)
-		}
-
+	if err != nil {
 		// Response
-		response := helper.APIResponse("Success Subscribe Notification", successCode, "success", nil)
-		return c.Status(successCode).JSON(response)
-	} else if req.Type == "Unsubscribe" {
-		uid := uint(userID)
-		err := h.notificationService.DeleteSubscribeNotification(&uid, req.SubscriptionID)
-
-		if err != nil {
-			// Response
-			response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "error", nil)
-			return c.Status(fiber.StatusInternalServerError).JSON(response)
-		}
-
-		// Response
-		response := helper.APIResponse("Success Unsubscribe Notification", successCode, "success", nil)
-		return c.Status(successCode).JSON(response)
+		response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
 
 	// Response
-	response := helper.APIResponse("Internal Server Error", fiber.StatusInternalServerError, "error", nil)
-	return c.Status(fiber.StatusInternalServerError).JSON(response)
+	response := helper.APIResponse("Success "+req.Type+" Notification", successCode, "success", nil)
+	return c.Status(successCode).JSON(response)
 }
