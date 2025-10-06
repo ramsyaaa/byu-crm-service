@@ -344,6 +344,209 @@ func (h *UserHandler) GetUserProfileResume(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *UserHandler) GetUserSelfProfileResume(c *fiber.Ctx) error {
+	intID := c.Locals("user_id").(int)
+	monthParam := c.Query("month")
+	yearParam := c.Query("year")
+
+	// Default: bulan & tahun saat ini
+	now := time.Now()
+	month := uint(now.Month())
+	year := uint(now.Year())
+
+	// Jika parameter ada dan valid, override nilai default
+	if monthParam != "" {
+		if m, err := strconv.Atoi(monthParam); err == nil && m >= 1 && m <= 12 {
+			month = uint(m)
+		}
+	}
+
+	if yearParam != "" {
+		if y, err := strconv.Atoi(yearParam); err == nil && y > 2000 {
+			year = uint(y)
+		}
+	}
+
+	if m := c.Query("month"); m != "" {
+		if parsedMonth, err := strconv.Atoi(m); err == nil && parsedMonth >= 1 && parsedMonth <= 12 {
+			month = uint(parsedMonth)
+		}
+	}
+
+	// Cek jika parameter year dikirim
+	if y := c.Query("year"); y != "" {
+		if parsedYear, err := strconv.Atoi(y); err == nil && parsedYear > 0 {
+			year = uint(parsedYear)
+		}
+	}
+
+	user, err := h.service.GetUserByID(uint(intID))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"message": "Failed to fetch user",
+			"error":   err.Error(),
+		})
+	}
+
+	accountsData := []accountResponse.AccountResponse{}
+	if user != nil {
+		filters := map[string]string{
+			"search":           c.Query("search", ""),
+			"order_by":         c.Query("order_by", "id"),
+			"order":            c.Query("order", "DESC"),
+			"start_date":       c.Query("start_date", ""),
+			"end_date":         c.Query("end_date", ""),
+			"account_category": c.Query("account_category", ""),
+			"account_type":     c.Query("account_type", ""),
+			"only_skulid":      c.Query("only_skulid", "0"),
+			"is_priority":      c.Query("is_priority", "0"),
+		}
+
+		// Parse integer and boolean values
+		limit := 0
+		paginate := false
+		page := 1
+		userRole := c.Locals("user_role").(string)
+		territoryID := c.Locals("territory_id").(int)
+
+		if user.UserType == "Administrator" {
+			userRole = "Super-Admin"
+		} else if user.UserType == "HQ" {
+			userRole = "HQ"
+		} else if user.UserType == "AREA" {
+			userRole = "Area"
+		} else if user.UserType == "REGIONAL" {
+			userRole = "Regional"
+		} else if user.UserType == "BRANCH" {
+			userRole = "Branch"
+		}
+
+		territoryID = int(user.TerritoryID)
+
+		onlyUserPic := true
+		accounts, _, err := h.accountService.GetAllAccounts(limit, paginate, page, filters, userRole, territoryID, intID, onlyUserPic, false)
+		if err != nil {
+			response := helper.APIResponse("Failed to fetch account PICs", fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+		accountsData = accounts
+	} else {
+		responseData := map[string]interface{}{
+			"user":     user,
+			"accounts": accountsData,
+		}
+
+		response := helper.APIResponse("User not found", fiber.StatusNotFound, "error", responseData)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+
+	kpi_lists, err := h.kpiYaeRangeService.GetKpiYaeRangeByDate(month, year)
+	if err != nil {
+		response := helper.APIResponse("Failed to fetch KPI", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	var items []Item
+	var performances []UserPerformance
+
+	err = json.Unmarshal([]byte(kpi_lists.Target), &items)
+	if err != nil {
+		response := helper.APIResponse("Error data KPI", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	// Looping KPI
+	for _, item := range items {
+		if item.Name == "Visit" {
+			visitActual, err := h.visitHistoryService.CountVisitHistory(intID, month, year, "")
+			if err != nil {
+				response := helper.APIResponse("Counting Visit Error", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			target, _ := strconv.Atoi(item.Target) // konversi target ke int
+			percentage := 0
+			if target > 0 {
+				percentage = (visitActual * 100) / target
+			}
+
+			performances = append(performances, UserPerformance{
+				Name:       item.Name,
+				Target:     item.Target,
+				Actual:     strconv.Itoa(visitActual),
+				Percentage: fmt.Sprintf("%d%%", percentage),
+			})
+		} else if item.Name == "Presentasi Demo" {
+			PresentationActual, err := h.visitHistoryService.CountVisitHistory(intID, month, year, "presentasi_demo")
+			if err != nil {
+				response := helper.APIResponse("Counting Visit Error", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			target, _ := strconv.Atoi(item.Target) // convertion to int
+			percentage := 0
+			if target > 0 {
+				percentage = (PresentationActual * 100) / target
+			}
+
+			performances = append(performances, UserPerformance{
+				Name:       item.Name,
+				Target:     item.Target,
+				Actual:     strconv.Itoa(PresentationActual),
+				Percentage: fmt.Sprintf("%d%%", percentage),
+			})
+		}
+	}
+
+	// Call service with filters
+	limit := 0
+	paginate := false
+	page := 1
+	orderByMostAssignedPic := false
+	onlyRole := []string{"YAE"}
+	filterRank := map[string]string{
+		"search":      "",
+		"order_by":    "id",
+		"order":       "DESC",
+		"start_date":  "",
+		"end_date":    "",
+		"user_status": "active",
+	}
+	users, _, err := h.service.GetAllUsers(limit, paginate, page, filterRank, onlyRole, orderByMostAssignedPic, user.RoleNames[0], user.TerritoryID)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+
+	var userIDs []int
+	for _, u := range users {
+		userIDs = append(userIDs, int(u.ID))
+	}
+
+	startDate := time.Date(int(year), time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+
+	// Tentukan akhir bulan (hari terakhir)
+	endDate := startDate.AddDate(0, 1, 0).Add(-time.Nanosecond)
+
+	// Ambil leaderboard berdasarkan user dan tanggal
+	rank, total, err := h.yaeLeaderboardService.GetUserRank(userIDs, startDate, endDate, intID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(helper.APIResponse("Gagal mengambil leaderboard", fiber.StatusInternalServerError, "error", err.Error()))
+	}
+
+	// Return response
+	responseData := map[string]interface{}{
+		"user":              user,
+		"accounts":          accountsData,
+		"performances":      performances,
+		"rank_branch":       rank,
+		"total_user_branch": total,
+	}
+
+	response := helper.APIResponse("Get User Successfully", fiber.StatusOK, "success", responseData)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 	// Add a timeout context to prevent long-running operations
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
