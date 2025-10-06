@@ -13,6 +13,7 @@ func UserRoutes(router fiber.Router, handler *UserHandler) {
 	)
 	authRouter.Put("/profile", handler.UpdateUserProfile)
 	authRouter.Get("/profile", handler.GetUserProfile)
+	authRouter.Get("/resume-user", handler.GetUserSelfProfileResume)
 	authRouter.Get("/resume-user/:id", handler.GetUserProfileResume)
 	authRouter.Get("/resume-territory", handler.GetUsersResume)
 	authRouter.Get("/:id", handler.GetUserByID)
