@@ -17,6 +17,9 @@ func NewTemplateFileRepository(db *gorm.DB) TemplateFileRepository {
 
 var template_file_lists = []response.TemplateFile{
 	{Name: "Tutorial YAE", Type: "tutorial-yae", FilePath: "public/format/Role-YAE-Guide.pdf"},
+	{Name: "Tutorial Branch", Type: "tutorial-branch", FilePath: "public/format/Role-Branch-Guide.pdf"},
+	{Name: "Tutorial Regional", Type: "tutorial-regional", FilePath: "public/format/Role-Regional-Guide.pdf"},
+	{Name: "Tutorial Area", Type: "tutorial-area", FilePath: "public/format/Role-Area-Guide.pdf"},
 }
 
 // Function untuk filter sesuai type
