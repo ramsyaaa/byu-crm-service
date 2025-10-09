@@ -1026,3 +1026,44 @@ func NormalizeMsisdn(msisdn string) string {
 
 	return msisdn
 }
+
+func (h *UserHandler) ResignUser(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic in Resign User: %v", r)
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Call service with timeout
+	var serviceErr error
+	userIDStr := c.Params("id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid User ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during user creation", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		serviceErr = h.service.ResignUser(uint(userID))
+		if serviceErr != nil {
+			log.Printf(fmt.Sprintf("Failed to resign user: %v", serviceErr))
+			response := helper.APIResponse("Failed to resign user: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Return success response
+	response := helper.APIResponse("Resign User Succsesfully", fiber.StatusOK, "success", nil)
+	return c.Status(fiber.StatusOK).JSON(response)
+}

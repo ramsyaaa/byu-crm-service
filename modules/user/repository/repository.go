@@ -15,4 +15,5 @@ type UserRepository interface {
 	UpdateUser(requestBody map[string]string, userID int) (*response.UserResponse, error)
 	UpdateUserProfile(id uint, user map[string]interface{}) (*response.UserResponse, error)
 	GetUserCountByRoles(onlyRoles []string, userRole string, territoryID interface{}) (map[string]int64, error)
+	ResignUser(id uint) error
 }
