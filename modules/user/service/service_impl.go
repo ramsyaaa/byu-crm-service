@@ -173,6 +173,10 @@ func (s *userService) UpdateUserProfile(id uint, user map[string]interface{}) (*
 	return s.repo.UpdateUserProfile(id, user)
 }
 
+func (s *userService) ResignUser(id uint) error {
+	return s.repo.ResignUser(id)
+}
+
 func getStringValue(val interface{}) string {
 	if val == nil {
 		return ""

@@ -14,4 +14,5 @@ type UserService interface {
 	GetUsersResume(only_role []string, userRole string, territoryID interface{}) (map[string]string, error)
 	CreateUser(requestBody map[string]interface{}) (*models.User, error)
 	UpdateUser(requestBody map[string]interface{}, userID int) (*response.UserResponse, error)
+	ResignUser(id uint) error
 }
