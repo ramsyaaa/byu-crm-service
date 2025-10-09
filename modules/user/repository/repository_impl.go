@@ -4,6 +4,7 @@ import (
 	"byu-crm-service/models"
 	"byu-crm-service/modules/user/response"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -794,4 +795,38 @@ func (r *userRepository) GetUserCountByRoles(
 	}
 
 	return countMap, nil
+}
+func (r *userRepository) ResignUser(id uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Ambil user yang akan diupdate
+		var existingUser models.User
+		if err := tx.First(&existingUser, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				fmt.Printf("User not found")
+				return nil
+			}
+			return err
+		}
+
+		// Update user_status menjadi inactive
+		userResult := tx.Model(&models.User{}).
+			Where("id = ?", id).
+			Update("user_status", "inactive")
+
+		if userResult.Error != nil {
+			return fmt.Errorf("error update user status: %w", userResult.Error)
+		}
+
+		// Update accounts, set pic = NULL
+		strID := strconv.FormatUint(uint64(id), 10)
+		accountResult := tx.Model(&models.Account{}).
+			Where("pic = ?", strID).
+			Update("pic", nil)
+
+		if accountResult.Error != nil {
+			return fmt.Errorf("error update PIC accounts: %w", accountResult.Error)
+		}
+
+		return nil
+	})
 }
