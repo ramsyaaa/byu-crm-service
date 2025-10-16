@@ -44,3 +44,11 @@ type AccountSimple struct {
 	AccountCategory *string `json:"account_category"`
 	AccountCode     *string `json:"account_code"`
 }
+
+type HistoryAccountPic struct {
+	ID        uint       `gorm:"primaryKey"`
+	AccountID uint       `gorm:"column:account_id"`
+	UserID    uint       `gorm:"column:user_id"`
+	StartDate time.Time  `gorm:"column:start_date"`
+	EndDate   *time.Time `gorm:"column:end_date"`
+}

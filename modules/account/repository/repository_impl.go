@@ -982,3 +982,34 @@ func (r *accountRepository) CreateHistoryActivityAccount(userID, accountID uint,
 	}
 	return r.db.Table("history_activity_accounts").Create(&history).Error
 }
+
+type UserHistoryResponse struct {
+	UserID    uint       `json:"user_id"`
+	Name      string     `json:"name"`
+	YaeCode   string     `json:"yae_code"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
+}
+
+func (r *accountRepository) GetPicHistory(accountID int) ([]UserHistoryResponse, error) {
+	var results []UserHistoryResponse
+
+	query := `
+		SELECT 
+			hap.user_id,
+			u.name,
+			u.yae_code,
+			hap.start_date,
+			hap.end_date
+		FROM history_account_pics hap
+		JOIN users u ON hap.user_id = u.id
+		WHERE hap.account_id = ?
+		ORDER BY hap.start_date DESC
+	`
+
+	if err := r.db.Raw(query, accountID).Scan(&results).Error; err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}

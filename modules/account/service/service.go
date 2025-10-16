@@ -2,6 +2,7 @@ package service
 
 import (
 	"byu-crm-service/models"
+	"byu-crm-service/modules/account/repository"
 	"byu-crm-service/modules/account/response"
 	"time"
 )
@@ -21,4 +22,5 @@ type AccountService interface {
 	UpdatePicMultipleAccounts(accountIDs []int, userID int) error
 	UpdatePriorityMultipleAccounts(accountIDs []int, priority string) error
 	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
+	GetPicHistory(accountID int) ([]repository.UserHistoryResponse, error)
 }

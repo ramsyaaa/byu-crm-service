@@ -23,4 +23,5 @@ type AccountRepository interface {
 	UpdatePicMultipleAccounts(accountIDs []int, picID int) error
 	UpdateAccountsPriority(accountIDs []int, priority string) error
 	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
+	GetPicHistory(accountID int) ([]UserHistoryResponse, error)
 }
