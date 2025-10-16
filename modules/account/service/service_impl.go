@@ -690,3 +690,6 @@ func getStringValue(val interface{}) string {
 	}
 	return fmt.Sprintf("%v", val)
 }
+func (s *accountService) GetPicHistory(accountID int) ([]repository.UserHistoryResponse, error) {
+	return s.repo.GetPicHistory(accountID)
+}
