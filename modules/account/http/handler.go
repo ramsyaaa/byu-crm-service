@@ -395,6 +395,26 @@ func (h *AccountHandler) GetAccountById(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *AccountHandler) HistoryAccountPic(c *fiber.Ctx) error {
+	accountIDParam := c.Params("id")
+	accountID, err := strconv.Atoi(accountIDParam)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Parameter account_id harus berupa angka",
+		})
+	}
+
+	users, err := h.service.GetPicHistory(accountID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	response := helper.APIResponse("Success get history pic account", fiber.StatusOK, "success", users)
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	// Add a timeout context to prevent long-running operations
 	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
