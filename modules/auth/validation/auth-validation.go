@@ -15,6 +15,10 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
+type ImpersonateRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
 // Google OAuth Callback Request
 type GoogleCallbackRequest struct {
 	Code string `json:"code" validate:"required"`
@@ -31,6 +35,14 @@ var validationMessages = map[string]string{
 
 // Fungsi Validasi Request
 func ValidateLogin(req *LoginRequest) map[string]string {
+	err := validate.Struct(req)
+	if err != nil {
+		return helper.ErrorValidationFormat(err, validationMessages)
+	}
+	return nil
+}
+
+func ValidateImpersonate(req *ImpersonateRequest) map[string]string {
 	err := validate.Struct(req)
 	if err != nil {
 		return helper.ErrorValidationFormat(err, validationMessages)

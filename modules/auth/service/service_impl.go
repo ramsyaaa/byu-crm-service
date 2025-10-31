@@ -130,6 +130,29 @@ func (s *authService) Login(email, password string) (map[string]string, error) {
 	}, nil
 }
 
+func (s *authService) Impersonate(email string) (map[string]string, error) {
+	user, err := s.userRepo.GetUserByKey("email", email)
+	if err != nil {
+		return nil, errors.New("invalid email")
+	}
+
+	// 🔥 generate access + refresh token
+	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
+	if err != nil {
+		return nil, errors.New("failed to generate access token")
+	}
+
+	refreshToken, err := generateRefreshToken(int(user.ID))
+	if err != nil {
+		return nil, errors.New("failed to generate refresh token")
+	}
+
+	return map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	}, nil
+}
+
 func (s *authService) CheckPassword(password, hashedPassword string) bool {
 	return s.userRepo.CheckPassword(password, hashedPassword)
 }
