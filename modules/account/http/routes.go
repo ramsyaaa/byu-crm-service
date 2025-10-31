@@ -24,4 +24,5 @@ func AccountRoutes(router fiber.Router, handler *AccountHandler) {
 	authRouter.Post("/update-priority", handler.UpdatePriorityMultipleAccounts)
 	authRouter.Post("/", handler.CreateAccount)
 	authRouter.Put("/:id", handler.UpdateAccount)
+	authRouter.Put("/:id/delete-pic", handler.DeletePic)
 }
