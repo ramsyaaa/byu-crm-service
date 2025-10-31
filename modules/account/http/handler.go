@@ -18,6 +18,7 @@ import (
 
 	"byu-crm-service/helper"
 	"byu-crm-service/models"
+	"byu-crm-service/modules/account/response"
 	"byu-crm-service/modules/account/service"
 	"byu-crm-service/modules/account/validation"
 
@@ -802,6 +803,54 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 
 	// Return success response
 	response := helper.APIResponse("Update Account Succsesfully", fiber.StatusOK, "success", account[0])
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AccountHandler) DeletePic(c *fiber.Ctx) error {
+	// Add a timeout context to prevent long-running operations
+	ctx, cancel := context.WithTimeout(c.Context(), 30*time.Second)
+	defer cancel()
+
+	// Use a recovery function to catch any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf(fmt.Sprintf("Panic in Delete Account: %v", r))
+			response := helper.APIResponse("Internal server error", fiber.StatusInternalServerError, "error", r)
+			c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}()
+
+	// Get and validate account ID
+	accountIDStr := c.Params("id")
+	if accountIDStr == "" {
+		response := helper.APIResponse("Account ID is required", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		response := helper.APIResponse("Invalid Account ID", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+	// Call service with timeout
+	var account *response.AccountResponse
+	var serviceErr error
+
+	select {
+	case <-ctx.Done():
+		response := helper.APIResponse("Request timeout during account update delete pic", fiber.StatusRequestTimeout, "error", nil)
+		return c.Status(fiber.StatusRequestTimeout).JSON(response)
+	default:
+		account, serviceErr = h.service.DeletePic(accountID)
+		if serviceErr != nil {
+			log.Printf(fmt.Sprintf("Failed to delete pic account: %v", serviceErr))
+			response := helper.APIResponse("Failed to delete pic account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
+	}
+
+	// Return success response
+	response := helper.APIResponse("Delete PIC Account Succsesfully", fiber.StatusOK, "success", account)
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 

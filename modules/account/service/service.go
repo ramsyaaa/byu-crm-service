@@ -12,6 +12,7 @@ type AccountService interface {
 	CountAccount(userRole string, territoryID int, withGeoJson bool) (int64, map[string]int64, []map[string]interface{}, response.TerritoryInfo, error)
 	CreateAccount(requestBody map[string]interface{}, userID int) ([]models.Account, error)
 	UpdateAccount(requestBody map[string]interface{}, accountID int, userRole string, territoryID int, userID int) ([]models.Account, error)
+	DeletePic(accountID int) (*response.AccountResponse, error)
 	UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error)
 	UpdateFields(id uint, fields map[string]interface{}) error
 	ProcessAccount(data []string) error
