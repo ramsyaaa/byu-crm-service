@@ -82,6 +82,20 @@ func (s *accountService) UpdateFields(id uint, fields map[string]interface{}) er
 	return s.repo.UpdateFields(id, fields)
 }
 
+func (s *accountService) DeletePic(accountID int) (*response.AccountResponse, error) {
+	existingAccount, err := s.repo.FindByAccountID(uint(accountID), "Super-Admin", 0, 0)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if existingAccount.Pic != nil && *existingAccount.Pic != "" {
+		s.repo.UpdateFields(uint(accountID), map[string]interface{}{"pic": nil})
+	}
+
+	return existingAccount, nil
+}
+
 func (s *accountService) UpdatePic(accountID int, userRole string, territoryID int, userID int) (*response.AccountResponse, error) {
 	existingAccount, err := s.repo.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
 
