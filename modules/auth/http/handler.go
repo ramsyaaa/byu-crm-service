@@ -48,6 +48,39 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
+func (h *AuthHandler) Impersonate(c *fiber.Ctx) error {
+	userRole := c.Locals("user_role").(string)
+	if userRole != "Super-Admin" && userRole != "HQ" {
+		response := helper.APIResponse("Unauthorized: only admin can impersonate", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	req := new(validation.ImpersonateRequest)
+	if err := c.BodyParser(req); err != nil {
+		response := helper.APIResponse("Invalid request", fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	errors := validation.ValidateImpersonate(req)
+	if errors != nil {
+		response := helper.APIResponse("Validation error", fiber.StatusBadRequest, "error", errors)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	// 🔥 sekarang token = map access + refresh
+	tokens, err := h.authService.Impersonate(req.Email)
+	if err != nil {
+		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
+		return c.Status(fiber.StatusBadRequest).JSON(response)
+	}
+
+	response := helper.APIResponse("Impersonate successful", fiber.StatusOK, "success", fiber.Map{
+		"token":         tokens["access_token"],
+		"refresh_token": tokens["refresh_token"],
+	})
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	type Req struct {
 		RefreshToken string `json:"refresh_token"`
