@@ -152,6 +152,13 @@ var MenuList = []Menu{
 				Status:     true,
 			},
 			{
+				Name:       "Kalkulator KPI",
+				Icon:       "fa-solid fa-calculator",
+				Permission: "view calculator kpi",
+				Route:      "/calculator-kpi",
+				Status:     true,
+			},
+			{
 				Name:       "Edit Profile",
 				Icon:       "fa-solid fa-key",
 				Permission: "change password",

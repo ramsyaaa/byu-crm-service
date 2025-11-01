@@ -50,6 +50,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 func (h *AuthHandler) Impersonate(c *fiber.Ctx) error {
 	userRole := c.Locals("user_role").(string)
+	adminID := c.Locals("user_id").(int)
 	if userRole != "Super-Admin" && userRole != "HQ" {
 		response := helper.APIResponse("Unauthorized: only admin can impersonate", fiber.StatusUnauthorized, "error", nil)
 		return c.Status(fiber.StatusUnauthorized).JSON(response)
@@ -68,7 +69,7 @@ func (h *AuthHandler) Impersonate(c *fiber.Ctx) error {
 	}
 
 	// 🔥 sekarang token = map access + refresh
-	tokens, err := h.authService.Impersonate(req.Email)
+	tokens, err := h.authService.Impersonate(adminID, req.Email)
 	if err != nil {
 		response := helper.APIResponse(err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
@@ -77,6 +78,31 @@ func (h *AuthHandler) Impersonate(c *fiber.Ctx) error {
 	response := helper.APIResponse("Impersonate successful", fiber.StatusOK, "success", fiber.Map{
 		"token":         tokens["access_token"],
 		"refresh_token": tokens["refresh_token"],
+	})
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *AuthHandler) StopImpersonate(c *fiber.Ctx) error {
+	adminID := c.Locals("admin_id").(int)
+	if adminID == 0 {
+		response := helper.APIResponse("Unauthorized: not impersonating", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+	// ambil user asli
+	user, err := h.authService.GetUserByKey("id", fmt.Sprintf("%d", adminID))
+	if err != nil {
+		response := helper.APIResponse("User not found", fiber.StatusUnauthorized, "error", nil)
+		return c.Status(fiber.StatusUnauthorized).JSON(response)
+	}
+
+	token, err := h.authService.Impersonate(0, user.Email)
+	if err != nil {
+		response := helper.APIResponse("Failed to generate refresh token", fiber.StatusInternalServerError, "error", nil)
+		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	}
+	response := helper.APIResponse("Stop impersonate successful", fiber.StatusOK, "success", fiber.Map{
+		"token":         token["access_token"],
+		"refresh_token": token["refresh_token"],
 	})
 	return c.Status(fiber.StatusOK).JSON(response)
 }
@@ -100,6 +126,23 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 
 	claims := token.Claims.(jwt.MapClaims)
 	userID := int(claims["user_id"].(float64))
+	var adminID int
+	if v, ok := claims["admin_id"]; ok && v != nil {
+		switch t := v.(type) {
+		case float64:
+			adminID = int(t)
+		case int:
+			adminID = t
+		case int64:
+			adminID = int(t)
+		case string:
+			fmt.Sscanf(t, "%d", &adminID)
+		default:
+			adminID = 0
+		}
+	} else {
+		adminID = 0
+	}
 
 	// ambil user
 	user, err := h.authService.GetUserByKey("id", fmt.Sprintf("%d", userID))
@@ -108,7 +151,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	}
 
 	// generate access token baru
-	accessToken, err := h.authService.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
+	accessToken, err := h.authService.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions, adminID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(helper.APIResponse("Failed to generate access token", fiber.StatusInternalServerError, "error", nil))
 	}

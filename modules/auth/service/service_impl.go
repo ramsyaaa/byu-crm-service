@@ -53,7 +53,7 @@ func generateJWT(email string, userID int, userRole string, territoryType string
 	return signedToken, nil
 }
 
-func (s *authService) GenerateAccessToken(email string, userID int, userRole string, territoryType string, territoryID int, user_permissions []string) (string, error) {
+func (s *authService) GenerateAccessToken(email string, userID int, userRole string, territoryType string, territoryID int, user_permissions []string, adminID int) (string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		return "", errors.New("missing JWT secret")
@@ -66,6 +66,7 @@ func (s *authService) GenerateAccessToken(email string, userID int, userRole str
 		"territory_type": territoryType,
 		"territory_id":   territoryID,
 		"permissions":    user_permissions,
+		"admin_id":       adminID,
 		"exp":            time.Now().Add(30 * time.Minute).Unix(), // 🔥 access token 2 meni	t
 		"iat":            time.Now().Unix(),
 	}
@@ -74,16 +75,17 @@ func (s *authService) GenerateAccessToken(email string, userID int, userRole str
 	return token.SignedString([]byte(jwtSecret))
 }
 
-func generateRefreshToken(userID int) (string, error) {
+func generateRefreshToken(adminID, userID int) (string, error) {
 	refreshSecret := os.Getenv("REFRESH_SECRET") // 🔥 tambahkan secret baru
 	if refreshSecret == "" {
 		return "", errors.New("missing REFRESH secret")
 	}
 
 	claims := jwt.MapClaims{
-		"user_id": userID,
-		"exp":     time.Now().Add(time.Hour * 24 * 30).Unix(), // 🔥 refresh token 30 hari
-		"iat":     time.Now().Unix(),
+		"user_id":  userID,
+		"admin_id": adminID,
+		"exp":      time.Now().Add(time.Hour * 24 * 30).Unix(), // 🔥 refresh token 30 hari
+		"iat":      time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -114,12 +116,12 @@ func (s *authService) Login(email, password string) (map[string]string, error) {
 	}
 
 	// 🔥 generate access + refresh token
-	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
+	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions, 0)
 	if err != nil {
 		return nil, errors.New("failed to generate access token")
 	}
 
-	refreshToken, err := generateRefreshToken(int(user.ID))
+	refreshToken, err := generateRefreshToken(0, int(user.ID))
 	if err != nil {
 		return nil, errors.New("failed to generate refresh token")
 	}
@@ -130,19 +132,19 @@ func (s *authService) Login(email, password string) (map[string]string, error) {
 	}, nil
 }
 
-func (s *authService) Impersonate(email string) (map[string]string, error) {
+func (s *authService) Impersonate(adminID int, email string) (map[string]string, error) {
 	user, err := s.userRepo.GetUserByKey("email", email)
 	if err != nil {
 		return nil, errors.New("invalid email")
 	}
 
 	// 🔥 generate access + refresh token
-	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions)
+	accessToken, err := s.GenerateAccessToken(user.Email, int(user.ID), user.RoleNames[0], user.TerritoryType, int(user.TerritoryID), user.Permissions, adminID)
 	if err != nil {
 		return nil, errors.New("failed to generate access token")
 	}
 
-	refreshToken, err := generateRefreshToken(int(user.ID))
+	refreshToken, err := generateRefreshToken(adminID, int(user.ID))
 	if err != nil {
 		return nil, errors.New("failed to generate refresh token")
 	}
