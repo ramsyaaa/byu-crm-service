@@ -22,4 +22,5 @@ func AuthRoutes(router fiber.Router, handler *AuthHandler) {
 		middleware.JWTUserContextMiddleware(),
 	)
 	authRouter.Post("/", handler.Impersonate)
+	authRouter.Post("/stop", handler.StopImpersonate)
 }
