@@ -65,6 +65,11 @@ func JWTUserContextMiddleware() fiber.Handler {
 			return unauthorized(c, "Unauthorized: permissions not found or invalid")
 		}
 
+		adminID, ok := claims["admin_id"].(float64)
+		if !ok {
+			adminID = 0
+		}
+
 		var permStrings []string
 		for _, p := range permissions {
 			if str, ok := p.(string); ok {
@@ -78,6 +83,7 @@ func JWTUserContextMiddleware() fiber.Handler {
 		c.Locals("territory_type", territoryType)
 		c.Locals("territory_id", int(territoryID))
 		c.Locals("permissions", permStrings)
+		c.Locals("admin_id", int(adminID))
 
 		return c.Next()
 	}
