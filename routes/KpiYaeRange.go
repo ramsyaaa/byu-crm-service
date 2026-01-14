@@ -1,11 +1,14 @@
 package routes
 
 import (
+	clusterRepo "byu-crm-service/modules/cluster/repository"
 	"byu-crm-service/modules/kpi-yae-range/http"
 	"byu-crm-service/modules/kpi-yae-range/repository"
 	"byu-crm-service/modules/kpi-yae-range/service"
 	kpiYaeRepo "byu-crm-service/modules/kpi-yae/repository"
 	kpiYaeService "byu-crm-service/modules/kpi-yae/service"
+	performanceDigiposRepo "byu-crm-service/modules/performance-digipos/repository"
+	performanceDigiposService "byu-crm-service/modules/performance-digipos/service"
 	visitHistoryRepo "byu-crm-service/modules/visit-history/repository"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 
@@ -17,10 +20,13 @@ func KpiYaeRangeRouter(router fiber.Router, db *gorm.DB) {
 	kpiYaeRangeRepo := repository.NewKpiYaeRangeRepository(db)
 	kpiYaeRepo := kpiYaeRepo.NewKpiYaeRepository(db)
 	visitHistoryRepo := visitHistoryRepo.NewVisitHistoryRepository(db)
+	performanceDigiposRepo := performanceDigiposRepo.NewPerformanceDigiposRepository(db)
+	clusterRepo := clusterRepo.NewClusterRepository(db)
 	kpiYaeRangeService := service.NewKpiYaeRangeService(kpiYaeRangeRepo)
 	kpiYaeService := kpiYaeService.NewKpiYaeService(kpiYaeRepo)
 	visitHistoryService := visitHistoryService.NewVisitHistoryService(visitHistoryRepo)
-	kpiYaeRangeHandler := http.NewKpiYaeRangeHandler(kpiYaeRangeService, kpiYaeService, visitHistoryService)
+	performanceDigiposService := performanceDigiposService.NewPerformanceDigiposService(performanceDigiposRepo, clusterRepo)
+	kpiYaeRangeHandler := http.NewKpiYaeRangeHandler(kpiYaeRangeService, kpiYaeService, visitHistoryService, performanceDigiposService)
 
 	http.KpiYaeRangeRoutes(router, kpiYaeRangeHandler)
 

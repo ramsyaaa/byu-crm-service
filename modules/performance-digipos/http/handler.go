@@ -11,6 +11,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,7 +33,25 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 	}
 
 	// Save file temporarily
-	file, _ := c.FormFile("file_csv")
+	file, err := c.FormFile("file_csv")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).
+			JSON(fiber.Map{"error": "File tidak ditemukan"})
+	}
+
+	filename := file.Filename
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	// Validasi ekstensi
+	allowed := map[string]bool{
+		".csv": true,
+	}
+
+	if !allowed[ext] {
+		return c.Status(fiber.StatusBadRequest).
+			JSON(fiber.Map{"error": "Format file harus CSV atau Excel"})
+	}
+
 	tempPath := "./temp/" + file.Filename
 
 	// Ensure the temp directory exists

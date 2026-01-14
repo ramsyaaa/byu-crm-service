@@ -5,6 +5,7 @@ import (
 	clusterRepository "byu-crm-service/modules/cluster/repository"
 	"byu-crm-service/modules/performance-digipos/repository"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 )
@@ -37,6 +38,22 @@ func (s *performanceDigiposService) ProcessPerformanceDigipos(data []string) err
 	if err != nil {
 		return err
 	}
+
+	// branchName := data[29]       // Branch
+	// regionName := data[30]       // Region
+	// areaName := data[31]         // Area
+	// brand := data[32]            // Brand
+	// firstPayloadDate := data[33] // First Payload
+	// eventName2 := data[34]       // Event Name
+	// poiID := data[35]            // POI ID
+	// poiName := data[36]          // POI Name
+	// poiCategory := data[37]      // POI Category
+	// poiNpsn := data[38]          // POI NPSN
+	// poiLong := data[39]          // POI Long
+	// poiLat := data[40]           // POI Lat
+	// poiAddress := data[41]       // POI Address
+
+	fmt.Println("tanggal: ", parseDate(data[14]))
 
 	performanceDigipos := models.PerformanceDigipos{
 		IdImport:        &data[0],
@@ -79,15 +96,31 @@ func (s *performanceDigiposService) ProcessPerformanceDigipos(data []string) err
 	return s.repo.Create(&performanceDigipos)
 }
 
+func (s *performanceDigiposService) CountPerformanceByUserYaeCode(user_id int, month uint, year uint) (int, error) {
+	return s.repo.CountPerformanceByUserYaeCode(user_id, month, year)
+}
+
 func parseDate(dateStr string) *time.Time {
-	if dateStr == "\\N" || strings.TrimSpace(dateStr) == "" {
+	dateStr = strings.TrimSpace(dateStr)
+
+	if dateStr == "" || dateStr == "\\N" {
 		return nil
 	}
 
-	parsedDate, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		fmt.Printf("Error parsing date: %s\n", err)
-		return nil
+	layouts := []string{
+		"02/01/2006 15:04:05", // 25/11/2025 15:38:29
+		"02/01/2006 15:04",    // 25/11/2025 15:38
+		"02/01/2006",          // 25/11/2025
+		"2006-01-02 15:04:05", // fallback ISO
+		"2006-01-02",
 	}
-	return &parsedDate
+
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, dateStr); err == nil {
+			return &t
+		}
+	}
+
+	log.Printf("Error parsing date: %q\n", dateStr)
+	return nil
 }
