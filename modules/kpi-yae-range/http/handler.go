@@ -5,6 +5,7 @@ import (
 	"byu-crm-service/modules/kpi-yae-range/service"
 	"byu-crm-service/modules/kpi-yae-range/validation"
 	kpiYaeService "byu-crm-service/modules/kpi-yae/service"
+	performanceDigiposService "byu-crm-service/modules/performance-digipos/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"encoding/json"
 	"fmt"
@@ -15,13 +16,14 @@ import (
 )
 
 type KpiYaeRangeHandler struct {
-	service             service.KpiYaeRangeService
-	kpiYaeService       kpiYaeService.KpiYaeService
-	visitHistoryService visitHistoryService.VisitHistoryService
+	service                   service.KpiYaeRangeService
+	kpiYaeService             kpiYaeService.KpiYaeService
+	visitHistoryService       visitHistoryService.VisitHistoryService
+	performanceDigiposService performanceDigiposService.PerformanceDigiposService
 }
 
-func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService) *KpiYaeRangeHandler {
-	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService}
+func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService, performanceDigiposService performanceDigiposService.PerformanceDigiposService) *KpiYaeRangeHandler {
+	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService, performanceDigiposService: performanceDigiposService}
 }
 
 func (h *KpiYaeRangeHandler) GetCurrentKpiYaeRanges(c *fiber.Ctx) error {
@@ -178,6 +180,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 		response := helper.APIResponse("Error data KPI", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
+	fmt.Println(items)
 
 	// Looping KPI
 	for _, item := range items {
@@ -204,6 +207,25 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 			PresentationActual, err := h.visitHistoryService.CountVisitHistory(userID, month, year, "presentasi_demo")
 			if err != nil {
 				response := helper.APIResponse("Counting Visit Error", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			target, _ := strconv.Atoi(item.Target) // convertion to int
+			percentage := 0
+			if target > 0 {
+				percentage = (PresentationActual * 100) / target
+			}
+
+			performances = append(performances, UserPerformance{
+				Name:       item.Name,
+				Target:     item.Target,
+				Actual:     strconv.Itoa(PresentationActual),
+				Percentage: fmt.Sprintf("%d%%", percentage),
+			})
+		} else if item.Name == "Digipos" {
+			PresentationActual, err := h.performanceDigiposService.CountPerformanceByUserYaeCode(userID, month, year)
+			if err != nil {
+				response := helper.APIResponse("Counting Digipos Error", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
 
