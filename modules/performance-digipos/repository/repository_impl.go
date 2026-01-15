@@ -2,7 +2,9 @@ package repository
 
 import (
 	"byu-crm-service/models"
+	"database/sql"
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -42,29 +44,29 @@ func (r *performanceDigiposRepository) CountPerformanceByUserYaeCode(
 ) (int, error) {
 
 	var count int64
-	var yaeCode string
+	var yaeCode sql.NullString
 
-	// 1. Ambil yae_code dari table users
+	// 1. Ambil yae_code dari users
 	err := r.db.
 		Table("users").
 		Select("yae_code").
 		Where("id = ?", userID).
 		Scan(&yaeCode).Error
-
 	if err != nil {
 		return 0, err
 	}
 
-	if yaeCode == "" {
-		return 0, nil // tidak ada yae_code → tidak ada data
+	// 2. Jika NULL atau string kosong → return 0
+	if !yaeCode.Valid || strings.TrimSpace(yaeCode.String) == "" {
+		return 0, nil
 	}
 
-	// 2. Query ke table performances
+	// 3. Query ke performances
 	query := r.db.
 		Model(&models.PerformanceDigipos{}).
-		Where("event_name LIKE ?", "%"+yaeCode+"%")
+		Where("event_name LIKE ?", "%"+yaeCode.String+"%")
 
-	// 3. Filter bulan & tahun (opsional)
+	// 4. Filter bulan & tahun (opsional)
 	if month != 0 && year != 0 {
 		query = query.Where(
 			"MONTH(created_at) = ? AND YEAR(created_at) = ?",
@@ -73,7 +75,7 @@ func (r *performanceDigiposRepository) CountPerformanceByUserYaeCode(
 		)
 	}
 
-	// 4. Hitung jumlah data
+	// 5. Hitung
 	if err := query.Count(&count).Error; err != nil {
 		return 0, err
 	}
