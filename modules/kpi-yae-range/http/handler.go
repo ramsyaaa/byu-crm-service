@@ -180,7 +180,6 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 		response := helper.APIResponse("Error data KPI", fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
-	fmt.Println(items)
 
 	// Looping KPI
 	for _, item := range items {
@@ -225,6 +224,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 		} else if item.Name == "Digipos" {
 			PresentationActual, err := h.performanceDigiposService.CountPerformanceByUserYaeCode(userID, month, year)
 			if err != nil {
+				fmt.Println(err.Error())
 				response := helper.APIResponse("Counting Digipos Error", fiber.StatusInternalServerError, "error", nil)
 				return c.Status(fiber.StatusInternalServerError).JSON(response)
 			}
