@@ -6,8 +6,6 @@ import (
 )
 
 type UploadRequest struct {
-	FileCSV string `form:"file_csv" validate:"required,file_extension=csv"`
-	UserID  string `form:"user_id" validate:"required"`
 }
 
 func ValidatePerformanceDigiposRequest(c *fiber.Ctx) error {

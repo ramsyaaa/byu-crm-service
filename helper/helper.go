@@ -243,6 +243,59 @@ func DecodeBase64File(data string) ([]byte, string, error) {
 	return decoded, mimeType, nil
 }
 
+type Base64FileResult struct {
+	Path      string
+	Extension string
+	Filename  string
+}
+
+func DecodeBase64Excel(base64Data string) (*Base64FileResult, error) {
+	if base64Data == "" {
+		return nil, errors.New("file base64 kosong")
+	}
+
+	var ext string
+
+	// DETEKSI MIME TYPE
+	switch {
+	case strings.Contains(base64Data, "data:text/csv"):
+		ext = ".csv"
+	case strings.Contains(base64Data, "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
+		ext = ".xlsx"
+	default:
+		return nil, errors.New("mime type tidak dikenali (csv/xlsx)")
+	}
+
+	// Ambil isi base64
+	if strings.Contains(base64Data, ",") {
+		base64Data = strings.Split(base64Data, ",")[1]
+	}
+
+	fileBytes, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return nil, errors.New("base64 tidak valid")
+	}
+
+	tempDir := "./temp/"
+	if _, err := os.Stat(tempDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+
+	filename := time.Now().Format("20060102_150405") + ext
+	tempPath := filepath.Join(tempDir, filename)
+
+	if err := os.WriteFile(tempPath, fileBytes, 0644); err != nil {
+		return nil, err
+	}
+
+	return &Base64FileResult{
+		Path:      tempPath,
+		Extension: ext,
+	}, nil
+}
+
 func DeleteFile(filePath string) error {
 	if filePath == "" {
 		return nil
