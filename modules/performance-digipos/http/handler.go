@@ -37,17 +37,6 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 
 	tempPath := result.Path
 
-	totalRows, err := countCSVRows(tempPath)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).
-			JSON(fiber.Map{"error": "Gagal membaca file CSV"})
-	}
-
-	processingTimePerRow := 0.5
-	estimatedDuration := time.Duration(
-		float64(totalRows) * processingTimePerRow * float64(time.Second),
-	)
-
 	go func() {
 		defer os.Remove(tempPath)
 
@@ -83,47 +72,9 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 				}
 			}
 		}
-
-		// =====================
-		// KIRIM NOTIFIKASI
-		// =====================
-		// notificationURL := os.Getenv("NOTIFICATION_URL") + "/api/notification/create"
-
-		// payload := map[string]interface{}{
-		// 	"model":    "App\\Models\\Performance",
-		// 	"model_id": 0,
-		// 	"user_id":  userID,
-		// 	"data": map[string]string{
-		// 		"title":        "Import Performance Digipos",
-		// 		"description":  "Import Performance Digipos berhasil",
-		// 		"callback_url": "/performances-digipos",
-		// 	},
-		// }
-
-		// payloadBytes, _ := json.Marshal(payload)
-
-		// resp, err := http.Post(
-		// 	notificationURL,
-		// 	"application/json",
-		// 	bytes.NewReader(payloadBytes),
-		// )
-		// if err != nil {
-		// 	fmt.Println("Gagal kirim notifikasi:", err)
-		// 	return
-		// }
-		// defer resp.Body.Close()
-
-		fmt.Println("Import Performance Digipos selesai")
-
 	}()
-
-	// =====================
-	// RESPONSE USER
-	// =====================
-	return c.JSON(fiber.Map{
-		"message":           "File berhasil diterima dan sedang diproses",
-		"estimated_seconds": estimatedDuration.Seconds(),
-	})
+	response := helper.APIResponse("File has been successfully received and is being processed.", fiber.StatusOK, "success", nil)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 // countCSVRows menghitung jumlah total baris dalam file CSV
