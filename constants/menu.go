@@ -165,6 +165,13 @@ var MenuList = []Menu{
 				Route:      "/user/edit-profile",
 				Status:     true,
 			},
+			{
+				Name:       "Import Performance Digipos",
+				Icon:       "fa-solid fa-file-import",
+				Permission: "import performance",
+				Route:      "/import-digipos",
+				Status:     true,
+			},
 		},
 	},
 }
