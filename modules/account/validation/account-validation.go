@@ -129,17 +129,17 @@ func SetDefaultsIfInvalid(req *ValidateRequest) {
 		}
 	}
 
-	validateLatLong := func(field **string) {
-		if *field == nil || **field == "" {
-			def := "0.0"
-			*field = &def
-			return
-		}
-		if _, err := strconv.ParseFloat(**field, 64); err != nil {
-			def := "0.0"
-			*field = &def
-		}
-	}
+	// validateLatLong := func(field **string) {
+	// 	if *field == nil || **field == "" {
+	// 		def := "0.0"
+	// 		*field = &def
+	// 		return
+	// 	}
+	// 	if _, err := strconv.ParseFloat(**field, 64); err != nil {
+	// 		def := "0.0"
+	// 		*field = &def
+	// 	}
+	// }
 
 	// Set default untuk pointer string, kecuali yang required (yang di struct non-pointer string)
 	setStringPtrDefault(&req.AccountCode, "")
@@ -152,8 +152,8 @@ func SetDefaultsIfInvalid(req *ValidateRequest) {
 	setStringPtrDefault(&req.PicInternal, "")
 
 	// Latitude & Longitude khusus validasi float string
-	validateLatLong(&req.Latitude)
-	validateLatLong(&req.Longitude)
+	// validateLatLong(&req.Latitude)
+	// validateLatLong(&req.Longitude)
 
 	setStringPtrDefault(&req.DiesNatalis, "")
 	setStringPtrDefault(&req.Extracurricular, "")
