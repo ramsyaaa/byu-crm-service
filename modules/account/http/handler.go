@@ -462,6 +462,9 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		response := helper.APIResponse("Invalid request format: "+err.Error(), fiber.StatusBadRequest, "error", nil)
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
+
+	validation.SetDefaultsIfInvalid(req)
+
 	// Request Validation with context
 	select {
 	case <-ctx.Done():
