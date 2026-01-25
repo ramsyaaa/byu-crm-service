@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetAllUsers(limit int, paginate bool, page int, filters map[string]string, only_role []string, orderByMostAssignedPic bool, userRole string, territoryID interface{}) ([]response.UserResponse, int64, error)
 	CreateUser(requestBody map[string]string) (*models.User, error)
 	UpdateUser(requestBody map[string]string, userID int) (*response.UserResponse, error)
+	UpdateYaeCode(userID uint, yaeCode string) error
 	UpdateUserProfile(id uint, user map[string]interface{}) (*response.UserResponse, error)
 	GetUserCountByRoles(onlyRoles []string, userRole string, territoryID interface{}) (map[string]int64, error)
 	ResignUser(id uint) error

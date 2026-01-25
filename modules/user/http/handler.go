@@ -659,6 +659,10 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 	}
 	_ = h.roleService.AssignModelHasRole("App\\Models\\User", int(user.ID), roleID)
 
+	if roleID == 11 {
+		_ = h.service.UpdateYaeCode(user.ID, "YPCR"+strconv.FormatUint(uint64(user.ID), 10))
+	}
+
 	// Return success response
 	response := helper.APIResponse("Create User Succsesfully", fiber.StatusOK, "success", user)
 	return c.Status(fiber.StatusOK).JSON(response)

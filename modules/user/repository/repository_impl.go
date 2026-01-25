@@ -647,6 +647,12 @@ func (r *userRepository) UpdateUser(requestBody map[string]string, userID int) (
 	return updatedUser, nil
 }
 
+func (r *userRepository) UpdateYaeCode(userID uint, yaeCode string) error {
+	return r.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("yae_code", yaeCode).Error
+}
+
 func (r *userRepository) UpdateUserProfile(id uint, user map[string]interface{}) (*response.UserResponse, error) {
 	// Ambil user yang akan diupdate
 	var existingUser models.User

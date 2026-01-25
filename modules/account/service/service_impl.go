@@ -707,3 +707,84 @@ func getStringValue(val interface{}) string {
 func (s *accountService) GetPicHistory(accountID int) ([]repository.UserHistoryResponse, error) {
 	return s.repo.GetPicHistory(accountID)
 }
+
+func (s *accountService) HandleAccountPic(accountID int, pic *int) error {
+	now := time.Now()
+
+	account, err := s.repo.FindByAccountID(uint(accountID), "Super-Admin", 0, 0)
+	if err != nil || account == nil {
+		return errors.New("account tidak ditemukan")
+	}
+
+	// =====================================================
+	// CASE 1: pic == nil (DELETE PIC)
+	// =====================================================
+	if pic == nil {
+		if account.Pic == nil {
+			return nil
+		}
+
+		oldPic := *account.Pic
+		oldPicInt, err := strconv.Atoi(oldPic)
+		if err != nil {
+			return fmt.Errorf("invalid PIC value: %v", err)
+		}
+
+		// delete PIC in account
+		if err := s.repo.UpdatePicMultipleAccounts([]int{accountID}, 0); err != nil {
+			return err
+		}
+
+		// tutup history aktif
+		return s.repo.CloseActivePic(accountID, oldPicInt, now)
+	}
+
+	// =====================================================
+	// CASE 2: pic != nil & NOT YET HAVE PIC
+	// =====================================================
+	if account.Pic == nil {
+
+		lastHistory, err := s.repo.FindLast(accountID)
+
+		// if new PIC same as last PIC, reopen
+		if err == nil && lastHistory.UserID == uint(*pic) {
+			if err := s.repo.UpdatePicMultipleAccounts([]int{accountID}, *pic); err != nil {
+				return err
+			}
+			return s.repo.ReopenPic(accountID, *pic)
+		}
+
+		// if PIC different than last PIC, open new
+		if err := s.repo.UpdatePicMultipleAccounts([]int{accountID}, *pic); err != nil {
+			return err
+		}
+
+		return s.repo.OpenNew(accountID, *pic, now)
+	}
+
+	// =====================================================
+	// CASE 3: pic != nil & ALREADY HAVE PIC
+	// =====================================================
+	oldPic := *account.Pic
+	oldPicInt, err := strconv.Atoi(oldPic)
+	if err != nil {
+		return fmt.Errorf("invalid PIC value: %v", err)
+	}
+
+	if oldPicInt == *pic {
+		return nil // same PIC, no action needed
+	}
+
+	// close old PIC history
+	if err := s.repo.CloseActivePic(accountID, oldPicInt, now); err != nil {
+		return err
+	}
+
+	// update PIC account
+	if err := s.repo.UpdatePicMultipleAccounts([]int{accountID}, *pic); err != nil {
+		return err
+	}
+
+	// create new PIC history
+	return s.repo.OpenNew(accountID, *pic, now)
+}
