@@ -280,6 +280,13 @@ func toRadians(deg float64) float64 {
 	return deg * math.Pi / 180
 }
 
+func stringPtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 func (r *accountRepository) CreateAccount(requestBody map[string]string, userID int) ([]models.Account, error) {
 	account := models.Account{
 		AccountName:     func(s string) *string { return &s }(requestBody["account_name"]),
@@ -301,11 +308,11 @@ func (r *accountRepository) CreateAccount(requestBody map[string]string, userID 
 		EmailAccount:            func(s string) *string { return &s }(requestBody["email_account"]),
 		WebsiteAccount:          func(s string) *string { return &s }(requestBody["website_account"]),
 		SystemInformasiAkademik: func(s string) *string { return &s }(requestBody["system_informasi_akademik"]),
-		Latitude:                func(s string) *string { return &s }(requestBody["latitude"]),
-		Longitude:               func(s string) *string { return &s }(requestBody["longitude"]),
+		Latitude:                stringPtrOrNil(requestBody["latitude"]),
+		Longitude:               stringPtrOrNil(requestBody["longitude"]),
 		Ownership:               func(s string) *string { return &s }(requestBody["ownership"]),
-		Pic:                     func(s string) *string { return &s }(requestBody["pic"]),
-		PicInternal:             func(s string) *string { return &s }(requestBody["pic_internal"]),
+		Pic:                     stringPtrOrNil(requestBody["pic"]),
+		PicInternal:             stringPtrOrNil(requestBody["pic_internal"]),
 		IsSkulid:                func(u uint) *uint { return &u }(0),
 	}
 
@@ -350,11 +357,10 @@ func (r *accountRepository) UpdateAccount(requestBody map[string]string, account
 		EmailAccount:            func(s string) *string { return &s }(requestBody["email_account"]),
 		WebsiteAccount:          func(s string) *string { return &s }(requestBody["website_account"]),
 		SystemInformasiAkademik: func(s string) *string { return &s }(requestBody["system_informasi_akademik"]),
-		Latitude:                func(s string) *string { return &s }(requestBody["latitude"]),
-		Longitude:               func(s string) *string { return &s }(requestBody["longitude"]),
+		Latitude:                stringPtrOrNil(requestBody["latitude"]),
+		Longitude:               stringPtrOrNil(requestBody["longitude"]),
 		Ownership:               func(s string) *string { return &s }(requestBody["ownership"]),
-		Pic:                     func(s string) *string { return &s }(requestBody["pic"]),
-		PicInternal:             func(s string) *string { return &s }(requestBody["pic_internal"]),
+		PicInternal:             stringPtrOrNil(requestBody["pic_internal"]),
 	}
 
 	// Update semua kolom
