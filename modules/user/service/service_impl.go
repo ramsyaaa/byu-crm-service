@@ -150,6 +150,10 @@ func (s *userService) UpdateUser(requestBody map[string]interface{}, userID int)
 	return accounts, nil
 }
 
+func (s *userService) UpdateYaeCode(userID uint, yaeCode string) error {
+	return s.repo.UpdateYaeCode(userID, yaeCode)
+}
+
 func (s *userService) GetUsersResume(onlyRoles []string, userRole string, territoryID interface{}) (map[string]string, error) {
 	counts, err := s.repo.GetUserCountByRoles(onlyRoles, userRole, territoryID)
 	if err != nil {
