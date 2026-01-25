@@ -24,4 +24,9 @@ type AccountRepository interface {
 	UpdateAccountsPriority(accountIDs []int, priority string) error
 	FindAccountsWithDifferentPic(accountIDs []int, userID int) ([]models.Account, error)
 	GetPicHistory(accountID int) ([]UserHistoryResponse, error)
+	FindActive(accountID int, userID int) (*models.HistoryAccountPic, error)
+	FindLast(accountID int) (*models.HistoryAccountPic, error)
+	CloseActivePic(accountID int, userID int, endDate time.Time) error
+	OpenNew(accountID int, userID int, startDate time.Time) error
+	ReopenPic(accountID int, userID int) error
 }

@@ -549,6 +549,19 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 			response := helper.APIResponse("Failed to create account: "+serviceErr.Error(), fiber.StatusInternalServerError, "error", nil)
 			return c.Status(fiber.StatusInternalServerError).JSON(response)
 		}
+		var picID *int
+		if req.Pic != nil {
+			id, err := strconv.Atoi(*req.Pic)
+			if err == nil {
+				picID = &id
+			}
+		}
+		err := h.service.HandleAccountPic(int(account[0].ID), picID)
+		if err != nil {
+			log.Printf(fmt.Sprintf("Failed to handle account pic: %v", err))
+			response := helper.APIResponse("Failed to handle account pic: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
 
 	_, _ = h.contactAccountService.InsertContactAccount(reqMap, account[0].ID)
@@ -735,6 +748,19 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		response := helper.APIResponse("Request timeout during account update", fiber.StatusRequestTimeout, "error", nil)
 		return c.Status(fiber.StatusRequestTimeout).JSON(response)
 	default:
+		var picID *int
+		if req.Pic != nil {
+			id, err := strconv.Atoi(*req.Pic)
+			if err == nil {
+				picID = &id
+			}
+		}
+		err := h.service.HandleAccountPic(accountID, picID)
+		if err != nil {
+			log.Printf(fmt.Sprintf("Failed to handle account pic: %v", err))
+			response := helper.APIResponse("Failed to handle account pic: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 		account, serviceErr = h.service.UpdateAccount(reqMap, accountID, userRole, territoryID, userID)
 		if serviceErr != nil {
 			log.Printf(fmt.Sprintf("Failed to update account: %v", serviceErr))
@@ -841,6 +867,12 @@ func (h *AccountHandler) DeletePic(c *fiber.Ctx) error {
 		response := helper.APIResponse("Request timeout during account update delete pic", fiber.StatusRequestTimeout, "error", nil)
 		return c.Status(fiber.StatusRequestTimeout).JSON(response)
 	default:
+		err := h.service.HandleAccountPic(accountID, nil)
+		if err != nil {
+			log.Printf(fmt.Sprintf("Failed to handle account pic: %v", err))
+			response := helper.APIResponse("Failed to handle account pic: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 		account, serviceErr = h.service.DeletePic(accountID)
 		if serviceErr != nil {
 			log.Printf(fmt.Sprintf("Failed to delete pic account: %v", serviceErr))
@@ -969,12 +1001,24 @@ func (h *AccountHandler) UpdatePic(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	// Panggil service untuk update pic
-	account, err := h.service.UpdatePic(accountID, userRole, territoryID, userID)
+	err = h.service.HandleAccountPic(accountID, &userID)
 	if err != nil {
-		response := helper.APIResponse("Failed to update pic", fiber.StatusInternalServerError, "error", err.Error())
+		log.Printf(fmt.Sprintf("Failed to handle account pic: %v", err))
+		response := helper.APIResponse("Failed to handle account pic: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
 		return c.Status(fiber.StatusInternalServerError).JSON(response)
 	}
+
+	account, err := h.service.FindByAccountID(uint(accountID), userRole, uint(territoryID), uint(userID))
+	if err != nil {
+		response := helper.APIResponse("Account not found", fiber.StatusNotFound, "error", nil)
+		return c.Status(fiber.StatusNotFound).JSON(response)
+	}
+	// // Panggil service untuk update pic
+	// account, err := h.service.UpdatePic(accountID, userRole, territoryID, userID)
+	// if err != nil {
+	// 	response := helper.APIResponse("Failed to update pic", fiber.StatusInternalServerError, "error", err.Error())
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// }
 
 	// Return success response
 	response := helper.APIResponse("PIC Account successfully updated", fiber.StatusOK, "success", account)
@@ -1231,11 +1275,19 @@ func (h *AccountHandler) UpdatePicMultipleAccounts(c *fiber.Ctx) error {
 		}
 	}
 
-	err = h.service.UpdatePicMultipleAccounts(accountIDs, userID)
-	if err != nil {
-		response := helper.APIResponse("Gagal update PIC accounts: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
-		return c.Status(fiber.StatusInternalServerError).JSON(response)
+	for _, id := range accountIDs {
+		err := h.service.HandleAccountPic(id, &userID)
+		if err != nil {
+			response := helper.APIResponse("Failed to handle account pic: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+			return c.Status(fiber.StatusInternalServerError).JSON(response)
+		}
 	}
+
+	// err = h.service.UpdatePicMultipleAccounts(accountIDs, userID)
+	// if err != nil {
+	// 	response := helper.APIResponse("Gagal update PIC accounts: "+err.Error(), fiber.StatusInternalServerError, "error", nil)
+	// 	return c.Status(fiber.StatusInternalServerError).JSON(response)
+	// }
 
 	response := helper.APIResponse("PIC Accounts successfully updated", fiber.StatusOK, "success", nil)
 

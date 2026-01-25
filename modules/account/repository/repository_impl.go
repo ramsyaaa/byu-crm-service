@@ -1013,3 +1013,43 @@ func (r *accountRepository) GetPicHistory(accountID int) ([]UserHistoryResponse,
 
 	return results, nil
 }
+
+func (r *accountRepository) FindActive(accountID int, userID int) (*models.HistoryAccountPic, error) {
+	var h models.HistoryAccountPic
+	err := r.db.Where(
+		"account_id = ? AND user_id = ? AND end_date IS NULL",
+		accountID, userID,
+	).First(&h).Error
+	return &h, err
+}
+
+func (r *accountRepository) FindLast(accountID int) (*models.HistoryAccountPic, error) {
+	var h models.HistoryAccountPic
+	err := r.db.Where("account_id = ?", accountID).
+		Order("start_date DESC").
+		First(&h).Error
+	return &h, err
+}
+
+func (r *accountRepository) CloseActivePic(accountID int, userID int, endDate time.Time) error {
+	return r.db.Model(&models.HistoryAccountPic{}).
+		Where("account_id = ? AND user_id = ? AND end_date IS NULL", accountID, userID).
+		Update("end_date", endDate).Error
+}
+
+func (r *accountRepository) OpenNew(accountID int, userID int, startDate time.Time) error {
+	return r.db.Create(&models.HistoryAccountPic{
+		AccountID: uint(accountID),
+		UserID:    uint(userID),
+		StartDate: startDate,
+		EndDate:   nil,
+	}).Error
+}
+
+func (r *accountRepository) ReopenPic(accountID int, userID int) error {
+	return r.db.Model(&models.HistoryAccountPic{}).
+		Where("account_id = ? AND user_id = ?", accountID, userID).
+		Order("start_date DESC").
+		Limit(1).
+		Update("end_date", nil).Error
+}
