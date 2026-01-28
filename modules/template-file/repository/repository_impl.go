@@ -21,6 +21,7 @@ var template_file_lists = []response.TemplateFile{
 	{Name: "Tutorial Regional", Type: "tutorial-regional", FilePath: "public/format/Role-Regional-Guide.pdf"},
 	{Name: "Tutorial Area", Type: "tutorial-area", FilePath: "public/format/Role-Area-Guide.pdf"},
 	{Name: "Template Import Digipos", Type: "template-import-digipos", FilePath: "public/format/Template-Import-Digipos.csv"},
+	{Name: "Template Import Indiana", Type: "template-import-indiana", FilePath: "public/format/Template-Import-Indiana.csv"},
 }
 
 // Function untuk filter sesuai type
