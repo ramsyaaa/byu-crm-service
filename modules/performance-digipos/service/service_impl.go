@@ -107,16 +107,22 @@ func parseDate(dateStr string) *time.Time {
 		return nil
 	}
 
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		log.Println("failed load location:", err)
+		return nil
+	}
+
 	layouts := []string{
-		"02/01/2006 15:04:05", // 25/11/2025 15:38:29
-		"02/01/2006 15:04",    // 25/11/2025 15:38
-		"02/01/2006",          // 25/11/2025
-		"2006-01-02 15:04:05", // fallback ISO
+		"02/01/2006 15:04:05",
+		"02/01/2006 15:04",
+		"02/01/2006",
+		"2006-01-02 15:04:05",
 		"2006-01-02",
 	}
 
 	for _, layout := range layouts {
-		if t, err := time.Parse(layout, dateStr); err == nil {
+		if t, err := time.ParseInLocation(layout, dateStr, loc); err == nil {
 			return &t
 		}
 	}

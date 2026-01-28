@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -75,30 +74,4 @@ func (h *PerformanceDigiposHandler) Import(c *fiber.Ctx) error {
 	}()
 	response := helper.APIResponse("File has been successfully received and is being processed.", fiber.StatusOK, "success", nil)
 	return c.Status(fiber.StatusOK).JSON(response)
-}
-
-// countCSVRows menghitung jumlah total baris dalam file CSV
-func countCSVRows(filePath string) (int, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	totalRows := 0
-
-	// Baca setiap baris dan hitung jumlah totalnya
-	for {
-		_, err := reader.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return 0, err
-		}
-		totalRows++
-	}
-
-	return totalRows, nil
 }
