@@ -145,6 +145,7 @@ func Route(db *gorm.DB) {
 	routes.PerformanceSkulIdRouter(api, db)
 
 	routes.PerformanceDigiposRouter(api, db)
+	routes.PerformanceIndianaRouter(api, db)
 	routes.DetailCommunityMemberRouter(api, db)
 
 	routes.AuthRouter(api, db)
