@@ -427,6 +427,72 @@ func (r *userRepository) GetUserByIDs(ids []uint) ([]response.UserResponse, erro
 	return responses, nil
 }
 
+func (r *userRepository) FindByYaeCode(yaeCode string) (*response.UserResponse, error) {
+	var user models.User
+	if err := r.db.Where("yae_code = ?", yaeCode).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Ambil role IDs dari model_has_roles
+	var roleIDs []uint
+	if err := r.db.Table("model_has_roles").
+		Where("model_id = ? AND model_type = ?", user.ID, "App\\Models\\User").
+		Pluck("role_id", &roleIDs).Error; err != nil {
+		return nil, err
+	}
+
+	// Ambil nama role
+	var roleNames []string
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("roles").
+			Where("id IN ?", roleIDs).
+			Pluck("name", &roleNames).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Ambil permission_id dari role_has_permissions
+	var permissionIDs []uint
+	if len(roleIDs) > 0 {
+		if err := r.db.Table("role_has_permissions").
+			Where("role_id IN ?", roleIDs).
+			Pluck("permission_id", &permissionIDs).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Ambil nama permission
+	var permissions []string
+	if len(permissionIDs) > 0 {
+		if err := r.db.Table("permissions").
+			Where("id IN ?", permissionIDs).
+			Pluck("name", &permissions).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Bangun response
+	response := &response.UserResponse{
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Avatar:        user.Avatar,
+		Msisdn:        user.Msisdn,
+		UserStatus:    user.UserStatus,
+		UserType:      user.UserType,
+		TerritoryID:   user.TerritoryID,
+		TerritoryType: user.TerritoryType,
+		YaeCode:       user.YaeCode,
+		RoleNames:     roleNames,
+		Permissions:   permissions,
+	}
+
+	return response, nil
+}
+
 func (r *userRepository) FindByEmail(email string) (*response.UserResponse, error) {
 	var user models.User
 	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
