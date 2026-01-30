@@ -172,6 +172,13 @@ var MenuList = []Menu{
 				Route:      "/import-digipos",
 				Status:     true,
 			},
+			{
+				Name:       "Import Performance Indiana",
+				Icon:       "fa-solid fa-file-import",
+				Permission: "import performance indiana",
+				Route:      "/import-indiana",
+				Status:     true,
+			},
 		},
 	},
 }
