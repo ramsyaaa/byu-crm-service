@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type KpiYaeRange struct {
 	ID        uint       `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -9,4 +11,11 @@ type KpiYaeRange struct {
 	Target    string     `json:"target"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+type UserKpiPerformance struct {
+	UserID       uint              `json:"user_id"`
+	Name         string            `json:"name"`
+	YaeCode      *string           `json:"yae_code"`
+	Performances []UserPerformance `json:"performances"`
 }

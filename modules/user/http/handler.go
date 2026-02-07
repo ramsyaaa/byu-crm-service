@@ -46,13 +46,6 @@ type Item struct {
 	Target string `json:"target"`
 }
 
-type UserPerformance struct {
-	Name       string `json:"name"`
-	Target     string `json:"target"`
-	Actual     string `json:"actual"`
-	Percentage string `json:"percentage"`
-}
-
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 	intID, err := strconv.Atoi(id)
@@ -244,7 +237,7 @@ func (h *UserHandler) GetUserProfileResume(c *fiber.Ctx) error {
 	}
 
 	var items []Item
-	var performances []UserPerformance
+	var performances []models.UserPerformance
 
 	err = json.Unmarshal([]byte(kpi_lists.Target), &items)
 	if err != nil {
@@ -267,7 +260,7 @@ func (h *UserHandler) GetUserProfileResume(c *fiber.Ctx) error {
 				percentage = (visitActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(visitActual),
@@ -286,7 +279,7 @@ func (h *UserHandler) GetUserProfileResume(c *fiber.Ctx) error {
 				percentage = (PresentationActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(PresentationActual),
@@ -447,7 +440,7 @@ func (h *UserHandler) GetUserSelfProfileResume(c *fiber.Ctx) error {
 	}
 
 	var items []Item
-	var performances []UserPerformance
+	var performances []models.UserPerformance
 
 	err = json.Unmarshal([]byte(kpi_lists.Target), &items)
 	if err != nil {
@@ -470,7 +463,7 @@ func (h *UserHandler) GetUserSelfProfileResume(c *fiber.Ctx) error {
 				percentage = (visitActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(visitActual),
@@ -489,7 +482,7 @@ func (h *UserHandler) GetUserSelfProfileResume(c *fiber.Ctx) error {
 				percentage = (PresentationActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(PresentationActual),
