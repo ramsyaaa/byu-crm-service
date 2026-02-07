@@ -29,3 +29,10 @@ type UserResponse struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
+
+type UserPerformance struct {
+	Name       string `json:"name"`
+	Target     string `json:"target"`
+	Actual     string `json:"actual"`
+	Percentage string `json:"percentage"`
+}
