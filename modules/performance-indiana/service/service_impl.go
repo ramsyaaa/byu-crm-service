@@ -98,6 +98,14 @@ func (s *performanceIndianaService) ProcessPerformanceIndiana(
 	return s.repo.Create(&performance)
 }
 
+func (s *performanceIndianaService) GetDataInByUserAndMonth(
+	userID int,
+	month uint,
+	year uint,
+) (int, error) {
+	return s.repo.GetDataInByUserAndMonth(userID, month, year)
+}
+
 func ParseStringToInt(stringData string) (int, error) {
 	dataIn, err := strconv.ParseInt(stringData, 10, 64)
 	if err != nil {
