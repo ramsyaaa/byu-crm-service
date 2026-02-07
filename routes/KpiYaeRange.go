@@ -9,6 +9,8 @@ import (
 	kpiYaeService "byu-crm-service/modules/kpi-yae/service"
 	performanceDigiposRepo "byu-crm-service/modules/performance-digipos/repository"
 	performanceDigiposService "byu-crm-service/modules/performance-digipos/service"
+	indianaRepo "byu-crm-service/modules/performance-indiana/repository"
+	indianaService "byu-crm-service/modules/performance-indiana/service"
 	userRepo "byu-crm-service/modules/user/repository"
 	userService "byu-crm-service/modules/user/service"
 	visitHistoryRepo "byu-crm-service/modules/visit-history/repository"
@@ -25,12 +27,14 @@ func KpiYaeRangeRouter(router fiber.Router, db *gorm.DB) {
 	performanceDigiposRepo := performanceDigiposRepo.NewPerformanceDigiposRepository(db)
 	clusterRepo := clusterRepo.NewClusterRepository(db)
 	userRepo := userRepo.NewUserRepository(db)
+	indianaRepo := indianaRepo.NewPerformanceIndianaRepository(db)
 	kpiYaeRangeService := service.NewKpiYaeRangeService(kpiYaeRangeRepo)
 	kpiYaeService := kpiYaeService.NewKpiYaeService(kpiYaeRepo)
 	visitHistoryService := visitHistoryService.NewVisitHistoryService(visitHistoryRepo)
 	performanceDigiposService := performanceDigiposService.NewPerformanceDigiposService(performanceDigiposRepo, clusterRepo)
 	userService := userService.NewUserService(userRepo)
-	kpiYaeRangeHandler := http.NewKpiYaeRangeHandler(kpiYaeRangeService, kpiYaeService, visitHistoryService, performanceDigiposService, userService)
+	indianaService := indianaService.NewPerformanceIndianaService(indianaRepo, userRepo)
+	kpiYaeRangeHandler := http.NewKpiYaeRangeHandler(kpiYaeRangeService, kpiYaeService, visitHistoryService, performanceDigiposService, userService, indianaService)
 
 	http.KpiYaeRangeRoutes(router, kpiYaeRangeHandler)
 

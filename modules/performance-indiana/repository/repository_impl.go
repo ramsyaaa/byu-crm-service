@@ -3,6 +3,7 @@ package repository
 import (
 	"byu-crm-service/models"
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -46,4 +47,30 @@ func (r *performanceIndianaRepository) Update(
 	data *models.PerformanceIndiana,
 ) error {
 	return r.db.Save(data).Error
+}
+
+func (r *performanceIndianaRepository) GetDataInByUserAndMonth(
+	userID int,
+	month uint,
+	year uint,
+) (int, error) {
+
+	monthStr := fmt.Sprintf("%04d-%02d", year, month)
+
+	var value int
+
+	err := r.db.
+		Table("performance_indianas").
+		Select("COALESCE(data_in, 0)").
+		Where("user_id = ?", userID).
+		Where("month = ?", monthStr).
+		Limit(1).
+		Scan(&value).Error
+
+	if err != nil {
+		return 0, err
+	}
+
+	// kalau record tidak ada → Scan tetap 0
+	return value, nil
 }

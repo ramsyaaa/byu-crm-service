@@ -7,6 +7,7 @@ import (
 	"byu-crm-service/modules/kpi-yae-range/validation"
 	kpiYaeService "byu-crm-service/modules/kpi-yae/service"
 	performanceDigiposService "byu-crm-service/modules/performance-digipos/service"
+	performanceIndianaService "byu-crm-service/modules/performance-indiana/service"
 	userService "byu-crm-service/modules/user/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"encoding/json"
@@ -23,10 +24,11 @@ type KpiYaeRangeHandler struct {
 	visitHistoryService       visitHistoryService.VisitHistoryService
 	performanceDigiposService performanceDigiposService.PerformanceDigiposService
 	userService               userService.UserService
+	performanceIndianaService performanceIndianaService.PerformanceIndianaService
 }
 
-func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService, performanceDigiposService performanceDigiposService.PerformanceDigiposService, userService userService.UserService) *KpiYaeRangeHandler {
-	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService, performanceDigiposService: performanceDigiposService, userService: userService}
+func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService, performanceDigiposService performanceDigiposService.PerformanceDigiposService, userService userService.UserService, performanceIndianaService performanceIndianaService.PerformanceIndianaService) *KpiYaeRangeHandler {
+	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService, performanceDigiposService: performanceDigiposService, userService: userService, performanceIndianaService: performanceIndianaService}
 }
 
 func (h *KpiYaeRangeHandler) GetCurrentKpiYaeRanges(c *fiber.Ctx) error {
@@ -237,6 +239,27 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 				Actual:     strconv.Itoa(PresentationActual),
 				Percentage: fmt.Sprintf("%d%%", percentage),
 			})
+		} else if item.Name == "Indiana" {
+			performance, err := h.performanceIndianaService.GetDataInByUserAndMonth(userID, month, year)
+			if err != nil {
+				response := helper.APIResponse("Error fetching Indiana Performance", fiber.StatusInternalServerError, "error", nil)
+				return c.Status(fiber.StatusInternalServerError).JSON(response)
+			}
+
+			var actual = performance
+
+			target, _ := strconv.Atoi(item.Target) // convertion to int
+			percentage := 0
+			if target > 0 {
+				percentage = (actual * 100) / target
+			}
+
+			performances = append(performances, models.UserPerformance{
+				Name:       item.Name,
+				Target:     item.Target,
+				Actual:     strconv.Itoa(actual),
+				Percentage: fmt.Sprintf("%d%%", percentage),
+			})
 		}
 	}
 	// Return response
@@ -355,6 +378,14 @@ func (h *KpiYaeRangeHandler) GetPerformanceUsers(c *fiber.Ctx) error {
 				if err != nil {
 					return c.Status(500).JSON(
 						helper.APIResponse("Counting Digipos Error", 500, "error", nil),
+					)
+				}
+			case "Indiana":
+				actual, err = h.performanceIndianaService.
+					GetDataInByUserAndMonth(userID, month, year)
+				if err != nil {
+					return c.Status(500).JSON(
+						helper.APIResponse("Error fetching Indiana Performance", 500, "error", nil),
 					)
 				}
 			}
