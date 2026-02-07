@@ -2,10 +2,12 @@ package http
 
 import (
 	"byu-crm-service/helper"
+	"byu-crm-service/models"
 	"byu-crm-service/modules/kpi-yae-range/service"
 	"byu-crm-service/modules/kpi-yae-range/validation"
 	kpiYaeService "byu-crm-service/modules/kpi-yae/service"
 	performanceDigiposService "byu-crm-service/modules/performance-digipos/service"
+	userService "byu-crm-service/modules/user/service"
 	visitHistoryService "byu-crm-service/modules/visit-history/service"
 	"encoding/json"
 	"fmt"
@@ -20,10 +22,11 @@ type KpiYaeRangeHandler struct {
 	kpiYaeService             kpiYaeService.KpiYaeService
 	visitHistoryService       visitHistoryService.VisitHistoryService
 	performanceDigiposService performanceDigiposService.PerformanceDigiposService
+	userService               userService.UserService
 }
 
-func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService, performanceDigiposService performanceDigiposService.PerformanceDigiposService) *KpiYaeRangeHandler {
-	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService, performanceDigiposService: performanceDigiposService}
+func NewKpiYaeRangeHandler(service service.KpiYaeRangeService, kpiYaeService kpiYaeService.KpiYaeService, visitHistoryService visitHistoryService.VisitHistoryService, performanceDigiposService performanceDigiposService.PerformanceDigiposService, userService userService.UserService) *KpiYaeRangeHandler {
+	return &KpiYaeRangeHandler{service: service, kpiYaeService: kpiYaeService, visitHistoryService: visitHistoryService, performanceDigiposService: performanceDigiposService, userService: userService}
 }
 
 func (h *KpiYaeRangeHandler) GetCurrentKpiYaeRanges(c *fiber.Ctx) error {
@@ -129,13 +132,6 @@ type Item struct {
 	Target string `json:"target"`
 }
 
-type UserPerformance struct {
-	Name       string `json:"name"`
-	Target     string `json:"target"`
-	Actual     string `json:"actual"`
-	Percentage string `json:"percentage"`
-}
-
 func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 	now := time.Now()
 	month := uint(now.Month())
@@ -173,7 +169,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 	}
 
 	var items []Item
-	var performances []UserPerformance
+	var performances []models.UserPerformance
 
 	err = json.Unmarshal([]byte(kpi_lists.Target), &items)
 	if err != nil {
@@ -196,7 +192,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 				percentage = (visitActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(visitActual),
@@ -215,7 +211,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 				percentage = (PresentationActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(PresentationActual),
@@ -235,7 +231,7 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 				percentage = (PresentationActual * 100) / target
 			}
 
-			performances = append(performances, UserPerformance{
+			performances = append(performances, models.UserPerformance{
 				Name:       item.Name,
 				Target:     item.Target,
 				Actual:     strconv.Itoa(PresentationActual),
@@ -250,4 +246,151 @@ func (h *KpiYaeRangeHandler) GetPerformanceUser(c *fiber.Ctx) error {
 
 	response := helper.APIResponse("Get Performance Successfully", fiber.StatusOK, "success", responseData)
 	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+func (h *KpiYaeRangeHandler) GetPerformanceUsers(c *fiber.Ctx) error {
+	now := time.Now()
+	month := uint(now.Month())
+	year := uint(now.Year())
+
+	// optional query
+	if m := c.Query("month"); m != "" {
+		if parsedMonth, err := strconv.Atoi(m); err == nil && parsedMonth >= 1 && parsedMonth <= 12 {
+			month = uint(parsedMonth)
+		}
+	}
+
+	if y := c.Query("year"); y != "" {
+		if parsedYear, err := strconv.Atoi(y); err == nil && parsedYear > 0 {
+			year = uint(parsedYear)
+		}
+	}
+
+	// ==========================
+	// 1. Ambil KPI master
+	// ==========================
+	kpiRange, err := h.service.GetKpiYaeRangeByDate(month, year)
+	if err != nil {
+		return c.Status(500).JSON(
+			helper.APIResponse("Failed to fetch KPI", 500, "error", nil),
+		)
+	}
+
+	var items []Item
+	if err := json.Unmarshal([]byte(kpiRange.Target), &items); err != nil {
+		return c.Status(500).JSON(
+			helper.APIResponse("Invalid KPI config", 500, "error", nil),
+		)
+	}
+
+	// ==========================
+	// 2. Ambil semua user
+	// ==========================
+	filters := map[string]string{
+		"search":      "",
+		"order_by":    "id",
+		"order":       "DESC",
+		"start_date":  "",
+		"end_date":    "",
+		"user_status": "active",
+	}
+
+	userRole := c.Locals("user_role").(string)
+	territoryID := c.Locals("territory_id").(int)
+
+	users, _, err := h.userService.GetAllUsers(
+		0, // limit
+		false,
+		1,
+		filters,
+		[]string{"YAE"},
+		false,
+		userRole,
+		territoryID,
+	)
+	if err != nil {
+		return c.Status(500).JSON(
+			helper.APIResponse("Failed to fetch users", 500, "error", nil),
+		)
+	}
+
+	var result []models.UserKpiPerformance
+
+	// ==========================
+	// 3. Loop user → hitung KPI
+	// ==========================
+	for _, user := range users {
+
+		userID := int(user.ID)
+		var performances []models.UserPerformance
+
+		for _, item := range items {
+
+			targetInt, _ := strconv.Atoi(item.Target)
+			actual := 0
+
+			switch item.Name {
+
+			case "Visit":
+				actual, err = h.visitHistoryService.
+					CountVisitHistory(userID, month, year, "")
+				if err != nil {
+					return c.Status(500).JSON(
+						helper.APIResponse("Counting Visit Error", 500, "error", nil),
+					)
+				}
+
+			case "Presentasi Demo":
+				actual, err = h.visitHistoryService.
+					CountVisitHistory(userID, month, year, "presentasi_demo")
+				if err != nil {
+					return c.Status(500).JSON(
+						helper.APIResponse("Counting Presentation Error", 500, "error", nil),
+					)
+				}
+
+			case "Digipos":
+				actual, err = h.performanceDigiposService.
+					CountPerformanceByUserYaeCode(userID, month, year)
+				if err != nil {
+					return c.Status(500).JSON(
+						helper.APIResponse("Counting Digipos Error", 500, "error", nil),
+					)
+				}
+			}
+
+			percentage := 0
+			if targetInt > 0 {
+				percentage = (actual * 100) / targetInt
+			}
+
+			performances = append(performances, models.UserPerformance{
+				Name:       item.Name,
+				Target:     item.Target,
+				Actual:     strconv.Itoa(actual),
+				Percentage: fmt.Sprintf("%d%%", percentage),
+			})
+		}
+
+		result = append(result, models.UserKpiPerformance{
+			UserID:       user.ID,
+			Name:         user.Name,
+			YaeCode:      user.YaeCode,
+			Performances: performances,
+		})
+	}
+
+	// ==========================
+	// 4. Response
+	// ==========================
+	return c.Status(200).JSON(
+		helper.APIResponse(
+			"Get Users Performance Successfully",
+			200,
+			"success",
+			map[string]interface{}{
+				"users": result,
+			},
+		),
+	)
 }
