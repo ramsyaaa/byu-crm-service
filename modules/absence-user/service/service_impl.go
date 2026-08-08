@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -519,13 +520,8 @@ func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[
 		if existingAbsence, ok := finalData[key][uniqueKey]; ok {
 			if existingAbsence.VisitHistory != nil && absence.VisitHistory != nil {
 				// --- HANDLE TARGET ---
-				var existingTargetMap, newTargetMap map[string]int
-				if err := json.Unmarshal([]byte(*existingAbsence.VisitHistory.Target), &existingTargetMap); err != nil {
-					existingTargetMap = make(map[string]int)
-				}
-				if err := json.Unmarshal([]byte(*absence.VisitHistory.Target), &newTargetMap); err != nil {
-					newTargetMap = make(map[string]int)
-				}
+				existingTargetMap := parseVisitTargetMap(existingAbsence.VisitHistory.Target)
+				newTargetMap := parseVisitTargetMap(absence.VisitHistory.Target)
 				targetUpdated := false
 				for k, newVal := range newTargetMap {
 					if newVal == 1 {
@@ -543,15 +539,22 @@ func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[
 				}
 
 				// --- HANDLE DETAIL VISIT ---
-				var existingDetailMap, newDetailMap map[string]string
-				if err := json.Unmarshal([]byte(*existingAbsence.VisitHistory.DetailVisit), &existingDetailMap); err != nil {
-					existingDetailMap = make(map[string]string)
-				}
-				if err := json.Unmarshal([]byte(*absence.VisitHistory.DetailVisit), &newDetailMap); err != nil {
-					newDetailMap = make(map[string]string)
-				}
+				existingDetailMap := parseVisitDetailMap(existingAbsence.VisitHistory.DetailVisit)
+				newDetailMap := parseVisitDetailMap(absence.VisitHistory.DetailVisit)
 				detailUpdated := false
 				for k, newVal := range newDetailMap {
+					// Amount dealing diakumulasi dari seluruh kunjungan ke akun yang sama
+					// dalam bulan tersebut, bukan diambil salah satu seperti field lainnya
+					if k == "amount_dealing" {
+						total := parseAmountDealing(existingDetailMap[k]) + parseAmountDealing(newVal)
+						totalStr := strconv.FormatInt(total, 10)
+						if existingDetailMap[k] != totalStr {
+							existingDetailMap[k] = totalStr
+							detailUpdated = true
+						}
+						continue
+					}
+
 					if _, exists := existingDetailMap[k]; !exists {
 						existingDetailMap[k] = newVal
 						detailUpdated = true
@@ -565,14 +568,16 @@ func (s *absenceUserService) GenerateAbsenceResumeExcel(userID int, filters map[
 				}
 			} else if absence.VisitHistory != nil {
 				// Jika existing belum ada VisitHistory, ambil dari absence
-				existingAbsence.VisitHistory = absence.VisitHistory
+				existingAbsence.VisitHistory = cloneVisitHistory(absence.VisitHistory)
 			}
 
 			// Simpan hasil
 			finalData[key][uniqueKey] = existingAbsence
 
 		} else {
-			// Belum ada, simpan langsung
+			// Belum ada, simpan langsung. VisitHistory disalin supaya akumulasi
+			// amount dealing tidak memutasi hasil query milik record aslinya
+			absence.VisitHistory = cloneVisitHistory(absence.VisitHistory)
 			finalData[key][uniqueKey] = absence
 		}
 
@@ -839,4 +844,85 @@ func parseJSONStringToMap(jsonStr string) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := json.Unmarshal([]byte(jsonStr), &result)
 	return result, err
+}
+
+// parseVisitTargetMap membaca kolom target visit history. Mengembalikan map kosong
+// jika kolomnya null atau bukan JSON yang valid.
+func parseVisitTargetMap(raw *string) map[string]int {
+	result := make(map[string]int)
+	if raw == nil {
+		return result
+	}
+	if err := json.Unmarshal([]byte(*raw), &result); err != nil {
+		return make(map[string]int)
+	}
+	return result
+}
+
+// parseVisitDetailMap membaca kolom detail_visit visit history. Mengembalikan map
+// kosong jika kolomnya null atau bukan JSON yang valid.
+func parseVisitDetailMap(raw *string) map[string]string {
+	result := make(map[string]string)
+	if raw == nil {
+		return result
+	}
+	if err := json.Unmarshal([]byte(*raw), &result); err != nil {
+		return make(map[string]string)
+	}
+	return result
+}
+
+// parseAmountDealing mengubah nilai amount_dealing menjadi angka agar bisa dijumlahkan.
+// Nilai disimpan sebagai string oleh handler, dan data lama bisa saja mengandung
+// pemisah ribuan atau desimal, sehingga keduanya ikut ditoleransi di sini.
+func parseAmountDealing(raw string) int64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	if n, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return n
+	}
+	if f, err := strconv.ParseFloat(raw, 64); err == nil {
+		return int64(f)
+	}
+
+	// Fallback: buang karakter selain digit, mis. "5.000.000" atau "Rp 5,000,000"
+	var digits strings.Builder
+	for _, r := range raw {
+		if r >= '0' && r <= '9' {
+			digits.WriteRune(r)
+		}
+	}
+	if digits.Len() == 0 {
+		return 0
+	}
+	n, err := strconv.ParseInt(digits.String(), 10, 64)
+	if err != nil {
+		return 0
+	}
+	if strings.HasPrefix(raw, "-") {
+		return -n
+	}
+	return n
+}
+
+// cloneVisitHistory menyalin visit history beserta isi pointer string-nya, supaya
+// perubahan hasil merge tidak ikut mengubah data hasil query.
+func cloneVisitHistory(vh *models.VisitHistory) *models.VisitHistory {
+	if vh == nil {
+		return nil
+	}
+
+	clone := *vh
+	if vh.Target != nil {
+		target := *vh.Target
+		clone.Target = &target
+	}
+	if vh.DetailVisit != nil {
+		detail := *vh.DetailVisit
+		clone.DetailVisit = &detail
+	}
+	return &clone
 }
